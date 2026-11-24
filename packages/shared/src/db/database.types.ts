@@ -206,6 +206,8 @@ export type Database = {
           instructions: string | null;
           media_url: string | null;
           created_at: string;
+          level: string;
+          contraindications: string[];
         };
         Insert: {
           id?: string;
@@ -216,6 +218,8 @@ export type Database = {
           instructions?: string | null;
           media_url?: string | null;
           created_at?: string;
+          level?: string;
+          contraindications?: string[];
         };
         Update: Partial<Database['public']['Tables']['exercises']['Insert']>;
       };
@@ -269,6 +273,8 @@ export type Database = {
           protein_per_100g: number | null;
           carbs_per_100g: number | null;
           fat_per_100g: number | null;
+          category: string | null;
+          allergens: string[];
         };
         Insert: {
           id?: string;
@@ -277,6 +283,8 @@ export type Database = {
           protein_per_100g?: number | null;
           carbs_per_100g?: number | null;
           fat_per_100g?: number | null;
+          category?: string | null;
+          allergens?: string[];
         };
         Update: Partial<Database['public']['Tables']['ingredients']['Insert']>;
       };
@@ -459,6 +467,7 @@ export type Database = {
           carbs_g: number | null;
           fat_g: number | null;
           created_at: string;
+          diet: string;
         };
         Insert: {
           id?: string;
@@ -471,6 +480,7 @@ export type Database = {
           carbs_g?: number | null;
           fat_g?: number | null;
           created_at?: string;
+          diet?: string;
         };
         Update: Partial<Database['public']['Tables']['recipes']['Insert']>;
       };

@@ -30,6 +30,15 @@ export async function createDb(): Promise<PGlite> {
   return db;
 }
 
+export const SEED_DIR = join(__dirname, '../../../../supabase/seed');
+
+/** Applies the catalog seed (supabase/seed/*.sql, in order) to a db that has the migrations. */
+export async function applySeed(db: PGlite): Promise<void> {
+  for (const f of readdirSync(SEED_DIR).filter((f) => f.endsWith('.sql')).sort()) {
+    await db.exec(readFileSync(join(SEED_DIR, f), 'utf8'));
+  }
+}
+
 /** Run `fn` as an authenticated user (RLS enforced). */
 export async function asUser<T>(db: PGlite, userId: string, fn: () => Promise<T>): Promise<T> {
   await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub', '${userId}', false)`);
