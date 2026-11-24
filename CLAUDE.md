@@ -1,6 +1,6 @@
 # CLAUDE.md — Agent conventions for GymApp (working brand: Fuelift)
 
-The spec is `docs/SPEC.md` (Portuguese). Each GitHub issue is self-contained: **the issue's acceptance criteria are your scope**.
+The spec is `docs/SPEC.md` (Portuguese). Human contributors using Cline follow `.clinerules/cline.md` (same standards; keep both files in sync). Each GitHub issue is self-contained: **the issue's acceptance criteria are your scope**.
 
 ## Prime directive: ship, don't plan
 - Read the issue → implement → test → open PR. Do **not** write plans, design docs or ADRs.
