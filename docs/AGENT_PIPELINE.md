@@ -1,68 +1,74 @@
-# Agent pipeline: one scheduled task per issue, strictly sequential
+# Agent pipeline: two scheduled runner sessions, strictly sequential
 
-Every step runs as a **one-shot scheduled task that starts a fresh session**. Sessions keep a small context, which saves tokens. Each session does its step, schedules the next one and stops. **At most one GymApp session or pending GymApp one-shot task exists at any time.** The owner explicitly authorized merging PRs that pass review with green CI. Never activate Stripe live keys or ad spend.
+The MVP is built by **two long-lived cloud sessions**. Each one has repo and GitHub access and its own hourly scheduled task (watchdog).
 
-Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. Status board: issue #36.
+| Runner | Session ID | Role |
+|---|---|---|
+| IMPLEMENTER | `session_01CWbvJqfz84tsJqy7tRiobX` | Implements issues and fixes review feedback |
+| REVIEWER | `session_01CWbvJsYk7BCAU48iigGYJn` | Reviews PRs, merges them, picks the next issue |
 
-## Scheduling the next step (used by every role)
-1. Run `list_triggers` (enabled only). If a GymApp one-shot task is already pending, do **not** create another.
-2. `create_trigger` with:
-   - `name`: one of `GymApp implement #<n>`, `GymApp review PR #<p>` or `GymApp fix PR #<p>`
-   - `run_once_at`: now + 2 minutes (RFC3339 UTC)
-   - `create_new_session_on_fire`: `true`
-   - `initiation`: `human_schedule`
-   - `prompt`: the short prompt for that role (below)
-3. Then `update_trigger` with `model`. Implementer and fix steps use the issue's `model:` label (`claude-sonnet-5-5` or `claude-haiku-5-5`); reviewers use `claude-sonnet-5-5`.
+They hand work to each other with `send_message`, so **only one of them works at a time**. The owner explicitly authorized merging PRs that pass review with green CI. Never activate Stripe live keys or ad spend.
 
-## Short prompts
-- **Implement:** `GymApp pipeline: clone https://github.com/Cyb3rWolf945/GymApp, read docs/AGENT_PIPELINE.md and act as IMPLEMENTER for issue #<n>.`
-- **Review:** `GymApp pipeline: clone https://github.com/Cyb3rWolf945/GymApp, read docs/AGENT_PIPELINE.md and act as REVIEWER for PR #<p> (issue #<n>).`
-- **Fix:** `GymApp pipeline: clone https://github.com/Cyb3rWolf945/GymApp, read docs/AGENT_PIPELINE.md and act as FIXER for PR #<p> (issue #<n>).`
+Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status board is issue #36. A human colleague may work on issues with Cline (`.clinerules/cline.md`): never take an issue that has a human assignee, but do review their PRs the same way.
 
-## IMPLEMENTER
-1. Read the issue, its comments and `CLAUDE.md`. Ship, don't plan.
-2. Label the issue `status:in-progress`, then work on branch `feat/<n>-<slug>` from `main`.
-3. Implement and run `pnpm install && pnpm lint && pnpm typecheck && pnpm test` until everything is green.
-4. Open a PR to `main` with `Closes #<n>` and label the issue `status:review`.
-5. Schedule `GymApp review PR #<p>`, then stop.
+## Start of every job (both runners)
+1. `git fetch origin && git checkout main && git reset --hard origin/main`, then re-read this file and `CLAUDE.md`.
+2. Keep the context small. Don't re-read large files you've already read; read only what the current issue needs.
 
-If the issue can't be done without owner input (keys, accounts, approvals):
-- label it `status:blocked`;
-- add a "Needs owner" line to #36;
-- schedule `GymApp implement` for the **next eligible issue** instead.
+## IMPLEMENTER runner
+**On `NEXT <n>`** (sent by the reviewer, or chosen yourself by the watchdog):
+1. Read issue #n and its comments. Label it `status:in-progress`.
+2. Work on branch `feat/<n>-<slug>`, created from `main`. Ship, don't plan.
+3. Run `pnpm install && pnpm lint && pnpm typecheck && pnpm test` until they all pass.
+4. Open a PR to `main` with `Closes #<n>`, then label the issue `status:review`.
+5. Send the REVIEWER: `REVIEW PR #<p> issue #<n>`. Stop.
 
-## REVIEWER
-1. Wait for CI. If it's still running, re-schedule yourself for 5 minutes later and stop.
+**On `FIX PR #<p> issue #<n>: …`:**
+1. Check out the PR branch.
+2. Address every point in the latest review comment and run the checks again.
+3. Push, then send the REVIEWER: `REVIEW PR #<p> issue #<n>`. Stop.
+
+**When the issue needs owner input** (keys, accounts, approvals):
+1. Label it `status:blocked` and add a "Needs owner" line to #36.
+2. Pick the next eligible issue yourself (rules below) and start it.
+
+## REVIEWER runner
+**On `REVIEW PR #<p> issue #<n>`:**
+1. Wait for CI to finish. Use `send_later` to check back in 5 minutes; don't poll in a loop.
 2. Review the diff against the issue's acceptance criteria and `CLAUDE.md`. Check:
    - correctness bugs;
    - missing tests in the mandatory areas;
    - RLS and server-side access checks;
    - secrets;
-   - webhook signature and idempotency;
+   - webhook signature checks and idempotency;
    - guardrails;
    - real user data sent to free models;
    - scope creep.
 3. Merge the PR branch onto current `main` locally and run lint, typecheck and tests.
 4. **If it passes:**
-   - squash-merge with title `<PR title> (#<p>)`;
-   - close the issue as completed and label it `status:done`;
-   - update the "Progress" section of #36 (closed x/35, last merged, next issue, blocked, needs owner);
-   - schedule `GymApp implement #<next eligible issue>`, then stop.
-5. **If it fails:** post one PR comment with the concrete required changes, schedule `GymApp fix PR #<p>`, then stop.
+   1. Squash-merge with the title `<PR title> (#<p>)`.
+   2. Close the issue as completed and label it `status:done`.
+   3. Update the "Progress" section of #36: closed x/35, last merged, next issue, blocked, needs owner.
+   4. Pick the next eligible issue and send the IMPLEMENTER: `NEXT <n>`. Stop.
+5. **If it fails:** post one PR comment listing the concrete required changes, then send the IMPLEMENTER: `FIX PR #<p> issue #<n>: <one-line summary>`. Stop.
 
-## FIXER
-1. Check out the PR branch.
-2. Address every point in the latest review comment and re-run the checks.
-3. Push, then schedule `GymApp review PR #<p>` and stop.
+## Hourly watchdog (scheduled task on each runner)
+1. If you are in the middle of a job, carry on.
+2. If the pipeline has stalled (no open PR or `status:in-progress` issue updated in the last 2 hours), restart it:
+   - the REVIEWER reviews any open PR, or sends `NEXT <n>`;
+   - the IMPLEMENTER resumes an unfinished `status:in-progress` issue of its own.
+3. Otherwise do nothing and stop. Keep this cheap.
 
 ## Next eligible issue
 - Open, and every `Depends on: E-xx` issue is closed.
-- No human assignee, so a colleague working with Cline isn't overridden, and not labelled `status:blocked`.
-- Order: `priority:must` before `should`, lower `day:` first, then lowest number.
-- If nothing is eligible, write "Pipeline idle: waiting on …" in #36 and stop. The hourly watchdog resumes later.
+- No human assignee, and not `status:blocked`.
+- Order: `priority:must` before `should`, then lower `day:`, then lowest number.
+- If nothing is eligible, write "Pipeline idle: waiting on …" in #36 and stop.
 
-## Comments
-End every GitHub comment with:
+## Conventions
+- In code, `OPENROUTER_API_KEY` comes from the environment. In the agent environment, set it to `proxy-injected`; the network proxy injects the real key. Never commit keys.
+- Use `MODEL_PROFILE=dev` (free models, synthetic data only) for every test. `prod` is only for production.
+- End every GitHub comment with:
 
 ```
 ---
