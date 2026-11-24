@@ -20,8 +20,6 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         if: steps.detect.outputs.has_pkg == 'true'
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         if: steps.detect.outputs.has_pkg == 'true'
@@ -44,6 +42,10 @@ jobs:
       - name: Test
         if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm test
+
+      - name: Web export
+        if: steps.detect.outputs.has_pkg == 'true'
+        run: pnpm --filter mobile exec expo export --platform web
 
       - name: No workspace yet
         if: steps.detect.outputs.has_pkg != 'true'

@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Fuelift",
+    "slug": "fuelift",
+    "scheme": "fuelift",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B0F",
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}
