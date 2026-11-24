@@ -5,3 +5,4 @@ export function greet(name: string): string {
 }
 export * from './catalog';
 export * from './db';
+export * from './ai/index.ts';
