@@ -12,7 +12,7 @@ let db: PGlite;
 beforeAll(async () => {
   db = await createDb();
   await db.exec(`insert into auth.users(id) values ('${A}'), ('${B}');
-    insert into public.profiles(user_id) values ('${A}'), ('${B}');
+    insert into public.profiles(user_id) values ('${A}'), ('${B}') on conflict do nothing;
     insert into public.entitlements(user_id, tier, status) values ('${A}','pro','active'), ('${B}','basic','active');
     insert into public.body_metrics(user_id, weight_kg) values ('${A}', 80), ('${B}', 70);
     insert into public.generation_jobs(user_id, kind) values ('${A}','workout_plan');
@@ -27,6 +27,15 @@ const userTables = ['workout_plans','workout_days','planned_exercises','workout_
 const adminTables = ['ai_call_logs','guardrail_events','analytics_events','admins','admin_audit_log',
   'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily'];
 const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients'];
+
+describe('auth profile trigger', () => {
+  it('creates a profile on first sign-in, using the provider name', async () => {
+    const id = '00000000-0000-0000-0000-0000000000c1';
+    await db.exec(`insert into auth.users(id, email, raw_user_meta_data) values ('${id}', 'c@x.co', '{"full_name":"Cy"}')`);
+    const r = await db.query<{ display_name: string }>(`select display_name from public.profiles where user_id='${id}'`);
+    expect(r.rows).toEqual([{ display_name: 'Cy' }]);
+  });
+});
 
 describe('RLS', () => {
   it('is enabled on every public table', async () => {
