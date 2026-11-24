@@ -1,0 +1,10 @@
+# Minimal Supabase CLI config (supabase init layout). Run `supabase start` / `supabase db reset` locally.
+project_id = "gymapp"
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
