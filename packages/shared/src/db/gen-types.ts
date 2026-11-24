@@ -21,6 +21,7 @@ export async function generateTypes(db: PGlite): Promise<string> {
   const enumNames = new Set(enums.map((e) => e.n));
   const tsType = (c: (typeof cols)[number]) => {
     if (c.dt === 'USER-DEFINED' && enumNames.has(c.udt)) return `Database['public']['Enums']['${c.udt}']`;
+    if (c.dt === 'ARRAY' && c.udt === '_text') return 'string[]';
     return TS[c.dt] ?? 'unknown';
   };
   const tables = [...new Set(cols.map((c) => c.t))];
