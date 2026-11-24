@@ -9,12 +9,15 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "gen:types": "tsx scripts/gen-types.ts"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.15.0",
     "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.74.0",
     "vitest": "^5.1.1"
