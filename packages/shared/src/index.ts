@@ -11,3 +11,4 @@ export * from './calc/index.ts';
 export * from './plan/index.ts';
 export * from './workout/index.ts';
 export * from './payments/index.ts';
+export * from './analytics/index.ts';

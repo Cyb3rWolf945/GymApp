@@ -86,6 +86,10 @@ export type Database = {
           status: string | null;
           created_at: string;
           role: string | null;
+          qa_result: string | null;
+          retry: number;
+          escalated: boolean;
+          refusal: boolean;
         };
         Insert: {
           id?: string;
@@ -100,6 +104,10 @@ export type Database = {
           status?: string | null;
           created_at?: string;
           role?: string | null;
+          qa_result?: string | null;
+          retry?: number;
+          escalated?: boolean;
+          refusal?: boolean;
         };
         Update: Partial<Database['public']['Tables']['ai_call_logs']['Insert']>;
       };
@@ -264,6 +272,7 @@ export type Database = {
           field: string | null;
           input_text: string | null;
           job_id: string | null;
+          reviewed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -274,6 +283,7 @@ export type Database = {
           field?: string | null;
           input_text?: string | null;
           job_id?: string | null;
+          reviewed_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['guardrail_events']['Insert']>;
       };

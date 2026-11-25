@@ -10,7 +10,9 @@ export async function generateTypes(db: PGlite): Promise<string> {
   const cols = (
     await db.query<{ t: string; c: string; dt: string; udt: string; n: string; d: string | null }>(
       `select table_name t, column_name c, data_type dt, udt_name udt, is_nullable n, column_default d
-       from information_schema.columns where table_schema='public' order by table_name, ordinal_position`,
+       from information_schema.columns where table_schema='public'
+         and table_name in (select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE')
+       order by table_name, ordinal_position`,
     )
   ).rows;
   const enums = (

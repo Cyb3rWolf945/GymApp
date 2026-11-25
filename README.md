@@ -23,3 +23,10 @@ In the cloud agent environment, set `SUPABASE_ACCESS_TOKEN=proxy-injected` and r
 3. In Stripe, add a webhook endpoint pointing at the `stripe-webhook` function for: `checkout.session.completed`, `customer.subscription.created|updated|deleted|trial_will_end`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`. Copy its signing secret to `STRIPE_WEBHOOK_SECRET`.
 4. Schedule `stripe-reconcile` daily, calling it with the service-role key as bearer token.
 5. Access is decided in SQL: `has_access(user, feature)` (service role) and `my_access(feature)` (signed-in user). Never use live keys from agents.
+
+## Analytics, AI logs and admin views
+
+- `track(sink, who, name, props)` in `packages/shared/src/analytics` is the typed helper for the server. The app uses `trackEvent` (`apps/mobile/src/analytics/track.ts`), which goes through the `track-event` function. Client events: quiz, onboarding screens, plan preview, paywall, checkout, workout logged. `signup`, `trial_start` and `purchase` are written by the database trigger and the Stripe webhook only.
+- Every OpenRouter call is logged to `ai_call_logs` (role, model, tokens, cost, latency, QA result, retry, escalated, refusal). Never the prompt or the output.
+- Guardrail events are counted in `guardrail_events`. The user's text is kept only for blocked or dropped input (the review queue) and removed after 30 days or once reviewed. Schedule the `daily-maintenance` function daily to purge it.
+- Views for the admin dashboards (service role only): `analytics_funnel_daily`, `ai_usage_daily`, `guardrail_daily`, `revenue_net_daily`.

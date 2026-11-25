@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { type OnboardingEventName, type StepId, ONBOARDING_VERSION, getStep, stepEvent } from '@gymapp/shared';
+import { type AnalyticsEventName, type EventProps, type OnboardingEventName, type StepId, ONBOARDING_STEPS, ONBOARDING_VERSION, getStep, stepEvent } from '@gymapp/shared';
 import { isSupabaseConfigured, supabase } from '../supabase';
 
 const ANON_KEY = 'fuelift.anon_id';
@@ -25,15 +25,22 @@ export async function getAnonId(): Promise<string> {
   return anonId;
 }
 
-/** Fire and forget: analytics must never block or break the flow. */
-export function trackOnboarding(name: OnboardingEventName, step: StepId): void {
+/** Typed, fire and forget: analytics must never block or break the flow. Money and identity events are server-only. */
+export function trackEvent<N extends Exclude<AnalyticsEventName, 'signup' | 'trial_start' | 'purchase'>>(name: N, props: EventProps<N>): void {
   if (!isSupabaseConfigured) return;
   void (async () => {
     try {
-      const evt = stepEvent(name, step, getStep(step).screen, ONBOARDING_VERSION);
-      await supabase.functions.invoke('track-event', { body: { anonId: await getAnonId(), ...evt } });
+      await supabase.functions.invoke('track-event', { body: { anonId: await getAnonId(), name, props } });
     } catch {
       /* ignore */
     }
   })();
+}
+
+export function trackOnboarding(name: OnboardingEventName, step: StepId): void {
+  const evt = stepEvent(name, step, getStep(step).screen, ONBOARDING_VERSION);
+  trackEvent(evt.name, evt.props);
+  // The quiz is the onboarding: it starts on the first screen and completes when onboarding finishes.
+  if (name === 'onboarding_step_viewed' && step === ONBOARDING_STEPS[0].id) trackEvent('quiz_start', {});
+  if (name === 'onboarding_finished') trackEvent('quiz_complete', {});
 }

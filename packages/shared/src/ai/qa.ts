@@ -56,6 +56,7 @@ export async function runQa(args: {
   notes: string;
   userId: string;
   jobId: string;
+  retry?: number;
 }): Promise<QaVerdict> {
   const { kind, inputs } = args;
   const profile = { goal: inputs.goal, level: inputs.level, daysPerWeek: inputs.daysPerWeek, sessionMinutes: inputs.sessionMinutes, equipment: inputs.equipment, contraindications: inputs.contraindications, diet: inputs.diet, conservative: inputs.conservative };
@@ -67,5 +68,7 @@ export async function runQa(args: {
     user: `<profile>${JSON.stringify(profile)}</profile>\n<user_notes>${escapeTags(args.notes)}</user_notes>\n<plan>${escapeTags(JSON.stringify(args.plan))}</plan>`,
     userId: args.userId,
     jobId: args.jobId,
+    retry: args.retry,
+    qaResult: (v: QaVerdict) => (verdictPasses(v) ? 'pass' : 'fail'),
   });
 }

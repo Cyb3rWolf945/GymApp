@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FOUNDING_COUPON, PAID_TIERS, type PaidTier, TRIAL_DAYS, annualSavingsPercent, formatUsd, perDayUsd } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
+import { trackEvent } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
 import { type PaywallData, fetchPaywall, startCheckout } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
@@ -25,7 +26,10 @@ export default function Paywall() {
 
   useEffect(() => {
     if (!user) return;
-    void fetchPaywall(user.id).then(setData, () => setFailed(true));
+    void fetchPaywall(user.id).then((d) => {
+      setData(d);
+      trackEvent('paywall_view', { variant: d.variant });
+    }, () => setFailed(true));
   }, [user]);
 
   const price = useMemo(() => {
@@ -38,6 +42,7 @@ export default function Paywall() {
     if (!key) return;
     setBusy(tier);
     setError(null);
+    trackEvent('checkout_start', { price_key: key, variant: data?.variant });
     // The founding offer only applies to Pro annual; the server enforces that too.
     const url = await startCheckout(key, key === FOUNDING_COUPON.lookupKey);
     setBusy(null);

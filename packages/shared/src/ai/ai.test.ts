@@ -110,7 +110,7 @@ describe('openrouter client', () => {
     );
     expect(out).toEqual(workoutPlan);
     expect(logs).toEqual([
-      { userId: SYNTHETIC_USER, jobId: 'job-1', role: 'planner', model: 'served-model', tokensIn: 100, tokensOut: 50, costUsd: 0.002, latencyMs: 250, status: 'ok' },
+      { userId: SYNTHETIC_USER, jobId: 'job-1', role: 'planner', model: 'served-model', tokensIn: 100, tokensOut: 50, costUsd: 0.002, latencyMs: 250, status: 'ok', retry: 0, escalated: false, refusal: false },
     ]);
     expect(JSON.stringify(logs)).not.toContain('usr');
   });

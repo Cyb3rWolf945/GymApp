@@ -2,6 +2,7 @@
 // Verifies the signature, is idempotent by event.id (stripe_events), and maps events with handleStripeEvent.
 // Deploy with --no-verify-jwt: Stripe has no Supabase JWT; the signature is the authentication.
 import { createClient } from '@supabase/supabase-js';
+import { analyticsFromStripeEvent } from '../../../packages/shared/src/analytics/index.ts';
 import { type StripeEvent, type StripeSubscription, handleStripeEvent, stripeClient, verifyStripeSignature } from '../../../packages/shared/src/payments/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
@@ -40,6 +41,9 @@ Deno.serve(async (req) => {
       const { error } = await admin.from('entitlements').upsert({ user_id: outcome.userId, ...outcome.patch, updated_at: new Date().toISOString() } as never);
       if (error) throw error;
     }
+    // Money events (trial_start, purchase) for the funnel and the dashboards. A failure here must not fail the webhook.
+    const derived = analyticsFromStripeEvent(event, outcome);
+    if (derived) await admin.from('analytics_events').insert({ user_id: derived.userId, name: derived.name, props: derived.props });
     return json(200, { ok: true, outcome: outcome.kind });
   } catch {
     // Let Stripe retry: forget the event so the next delivery is processed.

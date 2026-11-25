@@ -17,6 +17,8 @@ import {
   runPipeline,
   swapSignals,
   getModelProfile,
+  aiCallRow,
+  guardrailRow,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
 
@@ -104,10 +106,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
       // Metadata only: never prompts or model output.
       log: async (l: AiCallLog) => {
-        await admin.from('ai_call_logs').insert({
-          user_id: l.userId, job_id: l.jobId, role: l.role, model: l.model,
-          tokens_in: l.tokensIn, tokens_out: l.tokensOut, cost_usd: l.costUsd, latency_ms: l.latencyMs, status: l.status,
-        });
+        await admin.from('ai_call_logs').insert(aiCallRow(l));
       },
     };
 
@@ -118,9 +117,8 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
     const call = (c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c);
     const guard = await runGuardrails({ call: call as never, fields: extractFreeText(row.onboarding), userId, jobId });
     if (guard.events.length > 0) {
-      await admin.from('guardrail_events').insert(
-        guard.events.map((e) => ({ user_id: userId, job_id: jobId, field: e.field, rule: e.rule, action: e.action, input_text: e.inputText })),
-      );
+      // Text is kept only for the review queue and purged after the retention window (see guardrailRow).
+      await admin.from('guardrail_events').insert(guard.events.map((e) => guardrailRow(userId, jobId, e)));
     }
     const inputs = buildPlanInputs(row, new Date(), { conservative: guard.conservative, extraFlags: guard.riskFlags });
 
