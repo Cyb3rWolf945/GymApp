@@ -1,4 +1,4 @@
-import { type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, expandEquipment, isEntitled } from '@gymapp/shared';
+import { type Allergen, type JobRow, type PlanPriceRow, resolvePrices, type ShoppingRecipe, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
@@ -24,9 +24,10 @@ export async function startGeneration(kind: PlanKind): Promise<StartResult> {
 
 export const START_KINDS = PLAN_KINDS;
 
-export async function fetchEntitled(userId: string): Promise<boolean> {
-  const { data } = await supabase.from('entitlements').select('tier,status').eq('user_id', userId).maybeSingle();
-  return isEntitled(data);
+/** Server-side answer (`my_access` RPC) to "may this user use this feature?". */
+export async function fetchAccess(feature: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('my_access', { p_feature: feature } as never);
+  return !error && data === true;
 }
 
 /** Catalog names for the slugs in a plan. */
@@ -68,4 +69,119 @@ export async function fetchSwapOptions(
 export async function recordSwap(userId: string, jobId: string, dayIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
   const { error } = await supabase.from('plan_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, from_slug: fromSlug, to_slug: toSlug } as never);
   return !error;
+}
+
+type IngredientJoin = { grams: number; ingredients: { name: string; allergens: string[] } | null }[];
+
+/** All recipes with allergens derived from their ingredients: the pool for "Swap meal". */
+export async function fetchRecipeLibrary(): Promise<RecipeCandidate[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,name,diet,kcal,protein_g,carbs_g,fat_g,recipe_ingredients(ingredients(allergens))');
+  if (error) throw error;
+  return ((data ?? []) as unknown as (Omit<RecipeCandidate, 'allergens'> & { recipe_ingredients: IngredientJoin })[]).map(
+    ({ recipe_ingredients, ...r }) => ({ ...r, allergens: deriveAllergens((recipe_ingredients ?? []).map((i) => ({ allergens: i.ingredients?.allergens ?? [] }))) }),
+  );
+}
+
+export interface RecipeDetail {
+  slug: string;
+  name: string;
+  instructions: string | null;
+  servings: number;
+  kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  allergens: Allergen[];
+  ingredients: { name: string; grams: number }[];
+}
+
+export async function fetchRecipeDetail(slug: string): Promise<RecipeDetail | null> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,name,instructions,servings,kcal,protein_g,carbs_g,fat_g,recipe_ingredients(grams,ingredients(name,allergens))')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { recipe_ingredients, ...r } = data as unknown as Omit<RecipeDetail, 'allergens' | 'ingredients'> & { recipe_ingredients: IngredientJoin };
+  const rows = (recipe_ingredients ?? []).filter((i) => i.ingredients);
+  return {
+    ...r,
+    allergens: deriveAllergens(rows.map((i) => ({ allergens: i.ingredients!.allergens ?? [] }))),
+    ingredients: rows.map((i) => ({ name: i.ingredients!.name, grams: Number(i.grams) })).sort((a, b) => b.grams - a.grams),
+  };
+}
+
+/** Record a meal swap (own row, RLS). It is the signal for memory; the plan view applies it on top of the generated plan. */
+export async function recordMealSwap(userId: string, jobId: string, dayIndex: number, mealIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
+  const { error } = await supabase.from('meal_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, meal_index: mealIndex, from_slug: fromSlug, to_slug: toSlug } as never);
+  return !error;
+}
+
+/** Recipes with their ingredients (grams for the whole recipe), for the shopping list. */
+export async function fetchShoppingRecipes(slugs: string[]): Promise<Map<string, ShoppingRecipe>> {
+  if (!slugs.length) return new Map();
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,servings,recipe_ingredients(grams,ingredients(name,category))')
+    .in('slug', slugs);
+  if (error) throw error;
+  type Row = { slug: string; servings: number; recipe_ingredients: { grams: number; ingredients: { name: string; category: string | null } | null }[] };
+  return new Map(
+    ((data ?? []) as unknown as Row[]).map((r) => [
+      r.slug,
+      {
+        servings: r.servings,
+        ingredients: (r.recipe_ingredients ?? []).filter((i) => i.ingredients).map((i) => ({ name: i.ingredients!.name, category: i.ingredients!.category, grams: Number(i.grams) })),
+      },
+    ]),
+  );
+}
+
+export async function fetchCheckedItems(jobId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('shopping_list_items').select('label').eq('job_id', jobId).eq('checked', true);
+  if (error) throw error;
+  return ((data ?? []) as { label: string }[]).map((r) => r.label);
+}
+
+export async function setItemChecked(userId: string, jobId: string, label: string, grams: number, checked: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('shopping_list_items')
+    .upsert({ user_id: userId, job_id: jobId, label, grams, checked } as never, { onConflict: 'user_id,job_id,label' });
+  return !error;
+}
+
+export async function clearCheckedItems(jobId: string): Promise<boolean> {
+  const { error } = await supabase.from('shopping_list_items').update({ checked: false } as never).eq('job_id', jobId).eq('checked', true);
+  return !error;
+}
+
+export interface PaywallData {
+  variant: string;
+  prices: PlanPriceRow[];
+  /** Subscription is past due: show the "update your payment method" banner. */
+  pastDue: boolean;
+}
+
+/** Prices (with the user's A/B variant) from `plan_prices`, plus the billing state for the banner. */
+export async function fetchPaywall(userId: string): Promise<PaywallData> {
+  const [prices, ent] = await Promise.all([
+    supabase.from('plan_prices').select('lookup_key,tier,interval,cents,variant,stripe_price_id,active'),
+    supabase.from('entitlements').select('status').eq('user_id', userId).maybeSingle(),
+  ]);
+  if (prices.error) throw prices.error;
+  const { variant, prices: rows } = resolvePrices((prices.data ?? []) as unknown as PlanPriceRow[], userId);
+  return { variant, prices: rows, pastDue: (ent.data as { status?: string } | null)?.status === 'past_due' };
+}
+
+/** Stripe Checkout (web) or Customer Portal URL from the Edge Functions. Null on failure. */
+export async function startCheckout(priceKey: string, founding = false): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-checkout', { body: { priceKey, founding } });
+  return error ? null : ((data as { url?: string } | null)?.url ?? null);
+}
+export async function openPortal(): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-portal', { body: {} });
+  return error ? null : ((data as { url?: string } | null)?.url ?? null);
 }

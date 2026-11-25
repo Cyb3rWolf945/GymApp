@@ -1,3 +1,4 @@
+import { trackEvent } from '../../src/analytics/track';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
@@ -55,7 +56,8 @@ export default function WorkoutScreen() {
   if (!active || active.finishedAt) return <Redirect href="/" />;
 
   const onFinish = () => {
-    finish();
+    const done = finish();
+    if (done) trackEvent('workout_logged', { sets: done.sets, minutes: done.minutes });
     router.replace('/workout-summary');
   };
 

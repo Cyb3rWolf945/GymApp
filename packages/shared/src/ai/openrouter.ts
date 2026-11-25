@@ -15,6 +15,14 @@ export interface AiCallLog {
   costUsd: number | null;
   latencyMs: number;
   status: 'ok' | 'http_error' | 'invalid_output';
+  /** 0 for the first planner attempt, then 1, 2 (and one more for the escalation attempt). */
+  retry?: number;
+  /** Served by the escalation model. */
+  escalated?: boolean;
+  /** The model refused (refusal field or content filter). */
+  refusal?: boolean;
+  /** QA calls only: did the plan pass the review. */
+  qaResult?: 'pass' | 'fail' | null;
 }
 
 export type LogSink = (entry: AiCallLog) => Promise<void> | void;
@@ -30,6 +38,10 @@ export interface StructuredCall<T> {
   jobId?: string | null;
   /** Use the escalation model instead of the role's models. */
   escalate?: boolean;
+  /** Which attempt this is (logged to ai_call_logs). */
+  retry?: number;
+  /** QA calls: turn the parsed verdict into the logged result. */
+  qaResult?: (parsed: T) => 'pass' | 'fail';
 }
 
 export interface OpenRouterConfig {
@@ -93,7 +105,7 @@ export async function callStructured<T>(cfg: OpenRouterConfig, call: StructuredC
   const now = cfg.now ?? Date.now;
   const body = await buildRequestBody(cfg, call);
   const started = now();
-  const base = { userId: call.userId, jobId: call.jobId ?? null, role: call.role };
+  const base = { userId: call.userId, jobId: call.jobId ?? null, role: call.role, retry: call.retry ?? 0, escalated: !!call.escalate };
 
   const res = await doFetch(OPENROUTER_URL, {
     method: 'POST',
@@ -109,7 +121,7 @@ export async function callStructured<T>(cfg: OpenRouterConfig, call: StructuredC
 
   const json = (await res.json()) as {
     model?: string;
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string; refusal?: string | null }; finish_reason?: string }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
   };
   const entry: AiCallLog = {
@@ -120,6 +132,7 @@ export async function callStructured<T>(cfg: OpenRouterConfig, call: StructuredC
     costUsd: json.usage?.cost ?? null,
     latencyMs,
     status: 'ok',
+    refusal: !!json.choices?.[0]?.message?.refusal || json.choices?.[0]?.finish_reason === 'content_filter',
   };
 
   let parsed: T;
@@ -129,6 +142,6 @@ export async function callStructured<T>(cfg: OpenRouterConfig, call: StructuredC
     await cfg.log({ ...entry, status: 'invalid_output' });
     throw new AiCallError('INVALID_OUTPUT', 'The model output did not match the schema.');
   }
-  await cfg.log(entry);
+  await cfg.log({ ...entry, ...(call.qaResult ? { qaResult: call.qaResult(parsed) } : {}) });
   return parsed;
 }

@@ -8,3 +8,8 @@ major_version = 15
 [db.seed]
 enabled = true
 sql_paths = ["./seed/*.sql"]
+
+# The admin backoffice requires TOTP two-factor sign-in.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

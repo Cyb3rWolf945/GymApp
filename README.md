@@ -5,3 +5,53 @@ AI-personalised workouts **and** meal plans in one plan that adapts every week. 
 - Spec: [`docs/SPEC.md`](docs/SPEC.md)
 - Agent conventions: [`CLAUDE.md`](CLAUDE.md)
 - Work is tracked as GitHub issues (milestones Day 1–3) and built by a scheduled team of agents.
+
+## How to deploy DB changes
+
+1. Add a new file in `supabase/migrations` with a later timestamp prefix than the existing ones. Never edit an applied file.
+2. Run `pnpm gen:types` and commit the result.
+3. Apply to the real project: `SUPABASE_ACCESS_TOKEN=<token> pnpm tsx supabase/scripts/apply-remote.ts`.
+   The script applies migrations, then the seed, in order. Applied files are recorded in `_applied_migrations`, so re-running is safe. It prints row counts and any table without RLS.
+4. Add `--print-env` to print the project URL and anon key. Put them in Vercel env (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) and in your local `.env` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`). Never commit them.
+
+In the cloud agent environment, set `SUPABASE_ACCESS_TOKEN=proxy-injected` and run Node with `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` so `fetch` goes through the proxy.
+
+## Stripe (test mode)
+
+1. Create products, prices and the `FOUNDING` coupon: `STRIPE_SECRET_KEY=sk_test_... pnpm tsx scripts/stripe-setup.ts` (safe to re-run).
+2. Deploy the functions and set secrets (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `APP_URL`): `supabase functions deploy stripe-webhook --no-verify-jwt`, then `stripe-checkout`, `stripe-portal`, `stripe-reconcile`.
+3. In Stripe, add a webhook endpoint pointing at the `stripe-webhook` function for: `checkout.session.completed`, `customer.subscription.created|updated|deleted|trial_will_end`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`. Copy its signing secret to `STRIPE_WEBHOOK_SECRET`.
+4. Schedule `stripe-reconcile` daily, calling it with the service-role key as bearer token.
+5. Access is decided in SQL: `has_access(user, feature)` (service role) and `my_access(feature)` (signed-in user). Never use live keys from agents.
+
+## Analytics, AI logs and admin views
+
+- `track(sink, who, name, props)` in `packages/shared/src/analytics` is the typed helper for the server. The app uses `trackEvent` (`apps/mobile/src/analytics/track.ts`), which goes through the `track-event` function. Client events: quiz, onboarding screens, plan preview, paywall, checkout, workout logged. `signup`, `trial_start` and `purchase` are written by the database trigger and the Stripe webhook only.
+- Every OpenRouter call is logged to `ai_call_logs` (role, model, tokens, cost, latency, QA result, retry, escalated, refusal). Never the prompt or the output.
+- Guardrail events are counted in `guardrail_events`. The user's text is kept only for blocked or dropped input (the review queue) and removed after 30 days or once reviewed. Schedule the `daily-maintenance` function daily to purge it.
+- Views for the admin dashboards (service role only): `analytics_funnel_daily`, `ai_usage_daily`, `guardrail_daily`, `revenue_net_daily`.
+
+## Admin backoffice (`apps/admin`)
+
+Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it with `pnpm --filter admin dev` (port 3001) after copying `apps/admin/.env.example` to `.env.local`.
+
+- **Access:** sign in with Supabase email and password, then the account must be in the `admins` table and must verify a TOTP code in the current session (first login enrols an authenticator app). Add an admin with `insert into public.admins (user_id) values ('<auth user id>');`. Turn on TOTP in the Supabase dashboard (Auth, Multi-factor) for the hosted project; `supabase/config.toml` covers local.
+- **Service role:** only in `src/lib/supabase/admin.ts`, which imports `server-only`. Every page, action and route handler starts with `requireAdmin()`; the proxy only refreshes cookies.
+- **Audit:** `admin_audit_log` gets a row for each login, each 2FA step, the user list and every view of a user's health data (the row is written before the data is read; if it fails the page shows nothing).
+- **Vercel:** create a project with root directory `apps/admin` (it picks up `apps/admin/vercel.json`), set the three env vars from `.env.example`, and add the domain `admin.<domain>` in the project settings.
+
+## Legal pages and GDPR
+
+- **Pages:** `/legal/terms`, `/legal/privacy` and `/legal/health` (web routes, also opened in-app from onboarding and Settings). The text lives in `packages/shared/src/legal/docs.ts` and is a **template marked for legal review**: replace it with approved text and bump `LEGAL_VERSIONS` before launch.
+- **Consent:** when onboarding is saved, one row per consent goes to `consent_records` (kind, version of the text, time). Users can read and add rows but never edit or delete them.
+- **Export:** the `export-data` function returns all of a user's data as JSON (`EXPORT_TABLES`; a test fails if a new table with a `user_id` is missing from it).
+- **Deletion:** the `delete-account` function deletes the Stripe customer (cancels billing), runs `erase_user_traces`, then deletes the auth user; every other table cascades. A test checks that no table keeps a row about a deleted user.
+- Deploy both functions with `supabase functions deploy export-data delete-account` (they need `STRIPE_SECRET_KEY`).
+
+## Web landing, quiz funnel and Meta tracking
+
+- **Flow (web):** `/` shows the landing page (`app/landing.tsx`) to signed-out visitors, then the quiz (the onboarding), plan preview, paywall and Stripe Checkout. On iOS and Android signed-out users go straight to the quiz.
+- **UTM capture:** the landing URL's `utm_*` tags and `fbclid` are read once on load (first touch wins), kept on the device, counted in the `landing_view` event, and saved to `profiles.attribution` at sign-up.
+- **Cookie banner:** web only, Accept and Reject are equal. Nothing loads from Meta and nothing is sent until the visitor accepts. The choice is stored as a `marketing` consent record at sign-up; the Facebook ids are dropped from the saved attribution unless they accepted.
+- **Meta events:** `Lead` (quiz done) from the browser Pixel and from `track-event` (Conversions API) with the same event id (`lead_<anonId>`); `StartTrial` and `Purchase` from `stripe-webhook` only for users with an accepted `marketing` consent, with ids `trial_<subscription>` and `purchase_<invoice>`. Emails are hashed with SHA-256; no health data is ever sent.
+- **Setup:** set `EXPO_PUBLIC_META_PIXEL_ID` for the web build, and `META_PIXEL_ID`, `META_CAPI_TOKEN` (and `META_TEST_EVENT_CODE` while testing) as Edge Function secrets. Set `ALLOWED_ORIGINS` (or `APP_URL`) so the browser may call the functions (CORS).

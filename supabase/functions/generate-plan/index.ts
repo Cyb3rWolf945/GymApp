@@ -11,14 +11,17 @@ import {
   extractFreeText,
   runGuardrails,
   callStructured,
-  canGenerate,
+  decideGeneration,
+  startOfMonthUtc,
   expandEquipment,
   runPipeline,
   knownSwapSignals,
   getModelProfile,
-  isEntitled,
+  aiCallRow,
+  guardrailRow,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
+import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
@@ -28,7 +31,7 @@ const STALE_JOB_MS = 5 * 60 * 1000;
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
 
   const url = Deno.env.get('SUPABASE_URL')!;
@@ -46,7 +49,12 @@ Deno.serve(async (req) => {
 
   // Access is always checked server-side. Entitled users always; everyone else gets one free
   // generation per kind (failed jobs do not count), so the plan preview can come before the paywall.
-  const { data: ent } = await admin.from('entitlements').select('tier,status').eq('user_id', user.id).maybeSingle();
+  const { data: ent } = await admin.from('entitlements').select('tier,status,current_period_end,past_due_since').eq('user_id', user.id).maybeSingle();
+  const { data: month } = await admin
+    .from('generation_jobs')
+    .select('status')
+    .eq('user_id', user.id)
+    .gte('created_at', startOfMonthUtc());
   const { data: prior } = await admin
     .from('generation_jobs')
     .select('id,status,created_at')
@@ -65,8 +73,15 @@ Deno.serve(async (req) => {
   const running = jobs.find((j: { status: string }) => j.status === 'queued' || j.status === 'running');
   if (running) return json(202, { jobId: running.id });
 
-  if (!canGenerate(isEntitled(ent), jobs).allow) {
-    return json(403, { error: 'Start your trial to generate plans.' });
+  // Tier and quota rules (E-18): see decideGeneration. Everything is decided here, never in the app.
+  const decision = decideGeneration(ent as never, kind, jobs, month ?? []);
+  if (!decision.allow) {
+    const error = {
+      needs_trial: 'Start your trial to generate plans.',
+      upgrade: 'Upgrade to Pro to build your meal plan.',
+      quota: "You've used this month's plan generations. They reset next month.",
+    }[decision.reason];
+    return json(403, { error, reason: decision.reason });
   }
 
   const { data: job, error: jobErr } = await admin
@@ -78,7 +93,7 @@ Deno.serve(async (req) => {
 
   EdgeRuntime.waitUntil(run(admin, user.id, job.id, kind));
   return json(202, { jobId: job.id });
-});
+}, () => originsFromEnv((k) => Deno.env.get(k))));
 
 async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind) {
   const fail = (error: string) =>
@@ -92,10 +107,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
       // Metadata only: never prompts or model output.
       log: async (l: AiCallLog) => {
-        await admin.from('ai_call_logs').insert({
-          user_id: l.userId, job_id: l.jobId, role: l.role, model: l.model,
-          tokens_in: l.tokensIn, tokens_out: l.tokensOut, cost_usd: l.costUsd, latency_ms: l.latencyMs, status: l.status,
-        });
+        await admin.from('ai_call_logs').insert(aiCallRow(l));
       },
     };
 
@@ -106,9 +118,8 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
     const call = (c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c);
     const guard = await runGuardrails({ call: call as never, fields: extractFreeText(row.onboarding), userId, jobId });
     if (guard.events.length > 0) {
-      await admin.from('guardrail_events').insert(
-        guard.events.map((e) => ({ user_id: userId, job_id: jobId, field: e.field, rule: e.rule, action: e.action, input_text: e.inputText })),
-      );
+      // Text is kept only for the review queue and purged after the retention window (see guardrailRow).
+      await admin.from('guardrail_events').insert(guard.events.map((e) => guardrailRow(userId, jobId, e)));
     }
     const inputs = buildPlanInputs(row, new Date(), { conservative: guard.conservative, extraFlags: guard.riskFlags });
 

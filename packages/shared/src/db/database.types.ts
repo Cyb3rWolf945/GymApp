@@ -86,6 +86,10 @@ export type Database = {
           status: string | null;
           created_at: string;
           role: string | null;
+          qa_result: string | null;
+          retry: number;
+          escalated: boolean;
+          refusal: boolean;
         };
         Insert: {
           id?: string;
@@ -100,6 +104,10 @@ export type Database = {
           status?: string | null;
           created_at?: string;
           role?: string | null;
+          qa_result?: string | null;
+          retry?: number;
+          escalated?: boolean;
+          refusal?: boolean;
         };
         Update: Partial<Database['public']['Tables']['ai_call_logs']['Insert']>;
       };
@@ -141,6 +149,25 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['body_metrics']['Insert']>;
       };
+      consent_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: string;
+          version: string;
+          accepted: boolean;
+          accepted_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          kind: string;
+          version: string;
+          accepted: boolean;
+          accepted_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['consent_records']['Insert']>;
+      };
       cost_entries: {
         Row: {
           id: string;
@@ -171,6 +198,7 @@ export type Database = {
           stripe_subscription_id: string | null;
           source: string;
           updated_at: string;
+          past_due_since: string | null;
         };
         Insert: {
           user_id: string;
@@ -182,6 +210,7 @@ export type Database = {
           stripe_subscription_id?: string | null;
           source?: string;
           updated_at?: string;
+          past_due_since?: string | null;
         };
         Update: Partial<Database['public']['Tables']['entitlements']['Insert']>;
       };
@@ -262,6 +291,7 @@ export type Database = {
           field: string | null;
           input_text: string | null;
           job_id: string | null;
+          reviewed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -272,6 +302,7 @@ export type Database = {
           field?: string | null;
           input_text?: string | null;
           job_id?: string | null;
+          reviewed_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['guardrail_events']['Insert']>;
       };
@@ -297,6 +328,29 @@ export type Database = {
           allergens?: string[];
         };
         Update: Partial<Database['public']['Tables']['ingredients']['Insert']>;
+      };
+      meal_swaps: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          meal_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          meal_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['meal_swaps']['Insert']>;
       };
       meals: {
         Row: {
@@ -371,6 +425,27 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['nutrition_plans']['Insert']>;
       };
+      plan_prices: {
+        Row: {
+          lookup_key: string;
+          variant: string;
+          tier: Database['public']['Enums']['tier'];
+          interval: string;
+          cents: number;
+          stripe_price_id: string | null;
+          active: boolean;
+        };
+        Insert: {
+          lookup_key: string;
+          variant?: string;
+          tier: Database['public']['Enums']['tier'];
+          interval: string;
+          cents: number;
+          stripe_price_id?: string | null;
+          active?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['plan_prices']['Insert']>;
+      };
       plan_swaps: {
         Row: {
           id: string;
@@ -434,6 +509,7 @@ export type Database = {
           onboarding: Json;
           created_at: string;
           updated_at: string;
+          attribution: Json;
         };
         Insert: {
           user_id: string;
@@ -449,6 +525,7 @@ export type Database = {
           onboarding?: Json;
           created_at?: string;
           updated_at?: string;
+          attribution?: Json;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };
@@ -566,6 +643,7 @@ export type Database = {
           label: string;
           grams: number | null;
           checked: boolean;
+          job_id: string | null;
         };
         Insert: {
           id?: string;
@@ -575,8 +653,22 @@ export type Database = {
           label: string;
           grams?: number | null;
           checked?: boolean;
+          job_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['shopping_list_items']['Insert']>;
+      };
+      stripe_events: {
+        Row: {
+          id: string;
+          type: string;
+          received_at: string;
+        };
+        Insert: {
+          id: string;
+          type: string;
+          received_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['stripe_events']['Insert']>;
       };
       workout_days: {
         Row: {

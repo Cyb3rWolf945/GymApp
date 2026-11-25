@@ -43,6 +43,15 @@ jobs:
         if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm test
 
+      - name: Admin build
+        if: steps.detect.outputs.has_pkg == 'true'
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+        run: pnpm --filter admin build
+
       - name: Web export
         if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm --filter mobile exec expo export --platform web
