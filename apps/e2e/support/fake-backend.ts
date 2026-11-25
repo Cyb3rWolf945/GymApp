@@ -18,6 +18,8 @@ export interface AuthState {
   /** Like the Supabase project setting "Confirm email". Off by default so the funnel flows straight through. */
   confirmEmails: boolean;
   accounts: Map<string, { password: string; confirmed: boolean }>;
+  /** Sign-in methods of the signed-in user (what Settings → "Sign-in methods" lists). */
+  identities: string[];
   mailbox: { to: string; kind: 'confirm' | 'reset' | 'code'; /** The `?code=` of the link, or the 6 digits. */ code: string }[];
 }
 
@@ -78,7 +80,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
   const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {} };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
-  const auth: AuthState = { confirmEmails: false, accounts: new Map(), mailbox: [] };
+  const auth: AuthState = { confirmEmails: false, accounts: new Map(), identities: ['email'], mailbox: [] };
   const authUser = (email: string) => ({ ...(fakeSession().user as object), email, identities: [{ identity_id: 'i', provider: 'email' }], email_confirmed_at: now() });
   const authSession = (email: string) => ({ ...fakeSession(), user: authUser(email) });
   const authError = (route: Route, status: number, errorCode: string, msg: string) => json(route, { code: status, error_code: errorCode, msg }, status);
@@ -116,6 +118,13 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     const path = url.pathname;
 
     // ---- Auth
+    if (path === '/auth/v1/authorize') {
+      // Google / Apple in the browser: the provider's page is skipped; it sends you straight back with a code.
+      const provider = url.searchParams.get('provider') ?? 'google';
+      const back = url.searchParams.get('redirect_to') ?? '';
+      if (!auth.identities.includes(provider)) auth.identities.push(provider);
+      return route.fulfill({ status: 302, headers: { ...CORS, location: `${back}${back.includes('?') ? '&' : '?'}code=fake-${provider}-code` } });
+    }
     if (path.startsWith('/auth/v1/') && path !== '/auth/v1/user' && path !== '/auth/v1/logout') {
       const body = (parseBody(req) ?? {}) as Record<string, unknown>;
       const email = String(body.email ?? '').toLowerCase();
@@ -167,7 +176,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
       return json(route, authUser(USER.email));
     }
     if (path === '/auth/v1/otp') return json(route, {});
-    if (path === '/auth/v1/user') return json(route, { id: USER.id, email: USER.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: now() });
+    if (path === '/auth/v1/user') return json(route, { id: USER.id, email: USER.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: now(), identities: auth.identities.map((provider) => ({ identity_id: `identity-${provider}`, id: USER.id, user_id: USER.id, provider, identity_data: {}, created_at: now() })) });
     if (path === '/auth/v1/logout') return route.fulfill({ status: 204, headers: CORS });
 
     // ---- Edge Functions
