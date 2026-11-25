@@ -3,6 +3,7 @@ import { type Deps, type EntitlementRow, type StripeEvent, type StripeSubscripti
 import { FOUNDING_COUPON, PRICES, priceByKey, tierOfLookupKey } from './pricing.ts';
 import { aggregateRevenue } from './revenue.ts';
 import { signStripePayload, verifyStripeSignature } from './signature.ts';
+import { lowestMonthlyCents } from './variants.ts';
 import { encodeForm } from './stripe-api.ts';
 
 const T0 = 1_800_000_000;
@@ -148,5 +149,17 @@ describe('encodeForm', () => {
     expect(decodeURIComponent(encodeForm({ mode: 'subscription', line_items: [{ price: 'p1', quantity: 1 }], metadata: { a: 'x y' }, skip: undefined, none: null }))).toBe(
       'mode=subscription&line_items[0][price]=p1&line_items[0][quantity]=1&metadata[a]=x y',
     );
+  });
+});
+
+describe('lowestMonthlyCents', () => {
+  const row = (lookup_key: string, interval: 'month' | 'year', cents: number, active = true) =>
+    ({ lookup_key, tier: 'basic', interval, cents, variant: 'default', stripe_price_id: null, active }) as never;
+  it('is the cheapest active monthly price, ignoring annual and inactive ones', () => {
+    expect(lowestMonthlyCents([row('a', 'month', 999), row('b', 'month', 1499), row('c', 'year', 500), row('d', 'month', 100, false)])).toBe(999);
+  });
+  it('is null with no monthly price', () => {
+    expect(lowestMonthlyCents([])).toBeNull();
+    expect(lowestMonthlyCents([row('c', 'year', 500)])).toBeNull();
   });
 });

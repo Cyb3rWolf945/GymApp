@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { TrackingBanner } from '../src/marketing/TrackingBanner';
+import { AccountModalProvider } from '../src/onboarding/AccountModalProvider';
 import { OnboardingProvider } from '../src/onboarding/OnboardingProvider';
 import { useSaveOnboarding } from '../src/onboarding/useSaveOnboarding';
 import { AppThemeProvider, useTheme } from '../src/theme';
@@ -52,7 +53,9 @@ export default function RootLayout() {
         <AuthProvider>
           <OnboardingProvider>
             <ThemedStatusBar />
-            <RootStack />
+            <AccountModalProvider>
+              <RootStack />
+            </AccountModalProvider>
             <TrackingBanner />
           </OnboardingProvider>
         </AuthProvider>

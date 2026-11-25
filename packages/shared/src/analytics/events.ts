@@ -24,8 +24,10 @@ export const EVENT_PROPS = {
   onboarding_validation_unknown: z.object({ step: z.string().max(40), field: z.string().max(60) }).strict(),
   signin_method_chosen: z.object({ method: z.enum(['password', 'email_code', 'google', 'apple']) }).strict(),
   plan_preview_view: z.object({}).strict(),
-  paywall_view: z.object({ variant: z.string().max(40).optional() }).strict(),
-  checkout_start: z.object({ price_key: z.string().max(40), variant: z.string().max(40).optional() }).strict(),
+  // `placement` says where the plans were shown: the paywall page, or step 2 of the account modal (E-62).
+  paywall_view: z.object({ variant: z.string().max(40).optional(), placement: z.enum(['paywall', 'account_modal']).optional() }).strict(),
+  checkout_start: z.object({ price_key: z.string().max(40), variant: z.string().max(40).optional(), placement: z.enum(['paywall', 'account_modal']).optional() }).strict(),
+  plan_step_skipped: z.object({}).strict(),
   trial_start: z.object({ tier: tierProp }).strict(),
   purchase: z.object({ tier: tierProp, interval: z.enum(['month', 'year']), amount_usd: z.number().min(0), reason: z.string().max(40) }).strict(),
   workout_logged: z.object({ sets: z.number().int().min(0), minutes: z.number().int().min(0) }).strict(),
@@ -36,7 +38,7 @@ export type EventProps<N extends AnalyticsEventName> = z.infer<(typeof EVENT_PRO
 
 /** Events a browser or app may send through `track-event`. Everything else is written by the server only. */
 export const CLIENT_EVENTS = [
-  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'onboarding_validation_unknown', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'workout_logged',
+  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'onboarding_validation_unknown', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'plan_step_skipped', 'workout_logged',
 ] as const satisfies readonly AnalyticsEventName[];
 /** Money and identity events: written by webhooks and database triggers, so they can't be forged. */
 export const SERVER_EVENTS = ['signup', 'trial_start', 'purchase'] as const satisfies readonly AnalyticsEventName[];

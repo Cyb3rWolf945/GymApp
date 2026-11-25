@@ -16,11 +16,17 @@ interface Props {
   dialogFrom?: 'medium' | 'expanded';
   /** Widest the centred dialog gets (px). */
   dialogMaxWidth?: number;
+  /** Stays pinned below the scrolling content (a primary button that must always be reachable). */
+  footer?: ReactNode;
+  /** The sheet takes almost the full height (long content such as plan cards) instead of fitting its content. */
+  tall?: boolean;
+  /** When this changes while open, focus moves back to the dialog (a new step has a new title to announce). */
+  focusKey?: string;
   children: ReactNode;
 }
 
 /** Move focus into the sheet when it opens: the keyboard cursor on the web, the screen reader's focus on the phone. */
-function useFocusOnOpen(visible: boolean) {
+function useFocusOnOpen(visible: boolean, focusKey?: string) {
   const ref = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {
     if (!visible) return;
@@ -34,14 +40,14 @@ function useFocusOnOpen(visible: boolean) {
       }
     }, 50); // after the modal has mounted its content
     return () => clearTimeout(id);
-  }, [visible]);
+  }, [visible, focusKey]);
   return ref;
 }
 
-export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dismissOnBackdrop = true, dialogFrom = 'expanded', dialogMaxWidth = 520, children }: Props) {
+export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dismissOnBackdrop = true, dialogFrom = 'expanded', dialogMaxWidth = 520, footer, tall = false, focusKey, children }: Props) {
   const { colors, radius, spacing } = useTheme();
   const bp = useBreakpoint();
-  const focusRef = useFocusOnOpen(visible);
+  const focusRef = useFocusOnOpen(visible, focusKey);
   // Slides up from the bottom, or only fades with reduced motion.
   const sheetAnimation = useReducedMotion() ? 'fade' : 'slide';
   /** The dimmed area behind the sheet: a close button, or just a dim layer when tapping outside must do nothing. */
@@ -63,10 +69,11 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
             role="dialog"
             aria-modal
             aria-label={title}
-            style={{ width: '100%', maxWidth: dialogMaxWidth, maxHeight: '90%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.lg }}
+            style={{ width: '100%', maxWidth: dialogMaxWidth, maxHeight: '90%', ...(tall ? { height: '90%' } : null), backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.lg }}
           >
             {title ? <Text variant="heading" accessibilityRole="header">{title}</Text> : null}
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
+            <ScrollView style={tall ? { flex: 1 } : undefined} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
+            {footer ? <View style={{ gap: spacing.sm }}>{footer}</View> : null}
           </View>
         </View>
       </Modal>
@@ -84,6 +91,7 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
         aria-label={title}
         style={{
           maxHeight: '90%',
+          ...(tall ? { height: '90%' } : null),
           backgroundColor: colors.surface,
           borderTopLeftRadius: radius.lg,
           borderTopRightRadius: radius.lg,
@@ -94,7 +102,8 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
       >
         <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
         {title ? <Text variant="heading" accessibilityRole="header">{title}</Text> : null}
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
+        <ScrollView style={tall ? { flex: 1 } : undefined} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
+        {footer ? <View style={{ gap: spacing.sm }}>{footer}</View> : null}
       </View>
     </Modal>
   );

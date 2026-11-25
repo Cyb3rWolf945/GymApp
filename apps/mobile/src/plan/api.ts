@@ -210,11 +210,26 @@ export async function fetchPaywall(userId: string): Promise<PaywallData> {
 }
 
 /** Stripe Checkout (web) or Customer Portal URL from the Edge Functions. Null on failure. */
-export async function startCheckout(priceKey: string, founding = false): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke('stripe-checkout', { body: { priceKey, founding } });
+export async function startCheckout(priceKey: string, founding = false, returnTo?: 'account_modal'): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-checkout', { body: { priceKey, founding, ...(returnTo ? { returnTo } : {}) } });
   return error ? null : ((data as { url?: string } | null)?.url ?? null);
 }
 export async function openPortal(): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke('stripe-portal', { body: {} });
   return error ? null : ((data as { url?: string } | null)?.url ?? null);
+}
+
+/** The default price set, readable without an account (`plan_prices` is public): for the "Plans from $X a month" line before sign-up. */
+export async function fetchPublicPrices(): Promise<PlanPriceRow[]> {
+  const { data, error } = await supabase.from('plan_prices').select('lookup_key,tier,interval,cents,variant,stripe_price_id,active');
+  if (error) throw error;
+  return resolvePrices((data ?? []) as unknown as PlanPriceRow[], '').prices;
+}
+
+/** True when the signed-in user already has an active (or trialing) subscription. Own row, RLS. */
+export async function fetchHasPaidPlan(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.from('entitlements').select('status').eq('user_id', userId).maybeSingle();
+  if (error) return false;
+  const status = (data as { status?: string } | null)?.status;
+  return status === 'active' || status === 'trialing';
 }

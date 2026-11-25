@@ -18,6 +18,8 @@ test('landing → quiz → account → plan generated → preview → paywall �
 
   await completeQuiz(page);
   await signUpWithPassword(page);
+  // The modal moves to step 2 (plans) in place; this journey looks at its plan first.
+  await button(page, en.plan.generating.seePlan).click();
 
   // The profile is saved with the ad attribution and the consents, then the plan is generated (the fake is instant).
   await expect.poll(() => backend.functionCalls.filter((f) => f === 'generate-plan').length).toBe(2); // workout + meals
