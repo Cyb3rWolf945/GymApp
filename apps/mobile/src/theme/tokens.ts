@@ -50,6 +50,39 @@ export const palettes: Record<Scheme, Palette> = {
 export const MIN_TAP_TARGET = 48;
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
+// ---- Responsive layout. Widths in px (CSS pixels on web, dp on devices). Phones stay `compact`.
+export const BREAKPOINTS = { compact: 0, medium: 600, expanded: 1024 } as const;
+export type Breakpoint = keyof typeof BREAKPOINTS;
+
+/** `compact` below 600, `medium` from 600 to 1023, `expanded` from 1024. Anything that is not a number is `compact`. */
+export function breakpointFor(width: number): Breakpoint {
+  if (!(width >= BREAKPOINTS.medium)) return 'compact';
+  return width >= BREAKPOINTS.expanded ? 'expanded' : 'medium';
+}
+
+/** Widest the content gets: reading screens (about 720) and dashboards (about 1200). */
+export const CONTENT_MAX_WIDTH = { reading: 720, dashboard: 1200 } as const;
+export type ContentVariant = keyof typeof CONTENT_MAX_WIDTH;
+
+/** Padding around screen content. `compact` is what every screen already uses, so phones look the same. */
+export const SCREEN_PADDING: Record<Breakpoint, number> = { compact: spacing.xl, medium: spacing.xxl, expanded: spacing.xxxl };
+
+/** Width of the side navigation (left rail) on `medium` and `expanded`. */
+export const SIDE_NAV_WIDTH: Record<Exclude<Breakpoint, 'compact'>, number> = { medium: 176, expanded: 224 };
+
+/** Columns of a `ResponsiveGrid` by breakpoint. */
+export type GridColumns = Record<Breakpoint, number>;
+export const DEFAULT_GRID_COLUMNS: GridColumns = { compact: 1, medium: 2, expanded: 3 };
+
+export const columnsFor = (bp: Breakpoint, columns: Partial<GridColumns> = {}): number => {
+  const n = { ...DEFAULT_GRID_COLUMNS, ...columns }[bp];
+  return Math.max(1, Math.floor(n));
+};
+
+/** Width of one cell in a grid of `columns` with `gap` between them (px, never negative). */
+export const cellWidth = (containerWidth: number, columns: number, gap: number): number =>
+  Math.max(0, Math.floor((containerWidth - gap * (columns - 1)) / columns));
+
 export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
 
 export const typography = {

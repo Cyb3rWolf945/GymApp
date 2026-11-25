@@ -1,23 +1,36 @@
 import { Tabs } from 'expo-router';
 import { PlanDataProvider } from '../../../src/home/usePlanData';
 import { en } from '../../../src/copy/en';
-import { useTheme } from '../../../src/theme';
+import { SIDE_NAV_WIDTH, useBreakpoint, useTheme } from '../../../src/theme';
 
 const t = en.home.tabs;
 
+/**
+ * The same five tabs everywhere. On phones (`compact`) they are a bottom bar. From 600 px wide (tablets, desktop web)
+ * they become a left side navigation with the same labels, and the content fills the rest of the width.
+ */
 export default function TabsLayout() {
-  const { colors, minTapTarget } = useTheme();
+  const { colors, spacing, minTapTarget } = useTheme();
+  const bp = useBreakpoint();
+  const side = bp !== 'compact';
   return (
     <PlanDataProvider>
       <Tabs
         screenOptions={{
           headerShown: false,
+          tabBarPosition: side ? 'left' : 'bottom',
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.muted,
-          tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: minTapTarget + 16 },
-          tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+          tabBarActiveBackgroundColor: side ? colors.surfaceAlt : undefined,
+          tabBarStyle: side
+            ? { backgroundColor: colors.surface, borderRightColor: colors.border, borderRightWidth: 1, width: SIDE_NAV_WIDTH[bp], minWidth: SIDE_NAV_WIDTH[bp], maxWidth: SIDE_NAV_WIDTH[bp], paddingTop: spacing.xl }
+            : { backgroundColor: colors.surface, borderTopColor: colors.border, height: minTapTarget + 16 },
+          // In the rail the label is the tap target: line height plus padding makes it at least `minTapTarget` tall.
+          tabBarLabelStyle: side ? { fontSize: 16, lineHeight: 24, paddingVertical: (minTapTarget - 24) / 2, fontWeight: '600', textAlign: 'left' } : { fontSize: 12, fontWeight: '600' },
           tabBarIconStyle: { display: 'none' },
-          tabBarItemStyle: { justifyContent: 'center', minHeight: minTapTarget },
+          tabBarItemStyle: side
+            ? { justifyContent: 'center', alignItems: 'flex-start', minHeight: minTapTarget, paddingHorizontal: spacing.lg }
+            : { justifyContent: 'center', minHeight: minTapTarget },
         }}
       >
         <Tabs.Screen name="index" options={{ title: t.today }} />

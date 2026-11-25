@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { type Scheme, type Theme, createTheme, palettes } from './tokens';
 
 export * from './tokens';
+export { useBreakpoint } from './useBreakpoint';
 
 /** Back-compat for code written before the design system: the dark palette. */
 export const colors = palettes.dark;
