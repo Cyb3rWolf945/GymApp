@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { type StepId, getStep, isStepId, nextStepId, prevStepId, progressOf, validateStep } from '@gymapp/shared';
 import { trackOnboarding } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
 import { STEP_BODIES } from '../../src/onboarding/steps';
 import { useTheme } from '../../src/theme';
-import { Button, ProgressBar, Text } from '../../src/ui';
+import { Button, ProgressBar, Screen, Text } from '../../src/ui';
 
 const t = en.onboarding;
 type StepCopy = { title: string; body?: string; skip?: string; cta?: string };
@@ -18,7 +17,7 @@ export default function OnboardingStep() {
   const { step } = useLocalSearchParams<{ step: string }>();
   const { hydrated, answers, update, setStepId, resumeStep } = useOnboarding();
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const [showError, setShowError] = useState(false);
   const id = isStepId(step) ? step : null;
 
@@ -55,20 +54,13 @@ export default function OnboardingStep() {
   const errorText = id === 'consents' ? t.errors.needConsents : id === 'equipment' ? t.errors.pickAtLeastOne : t.errors.pickOne;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-        {id !== 'welcome' ? <ProgressBar step={n} total={total} label={t.progress(n, total)} /> : null}
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="display">{text.title}</Text>
-          {text.body ? <Text tone="muted">{text.body}</Text> : null}
-        </View>
-        <View style={{ gap: spacing.lg }}>
-          <Body answers={answers} update={update} onContinue={onContinue} />
-        </View>
-        {showError && !valid ? <Text tone="danger" accessibilityRole="alert">{errorText}</Text> : null}
-      </ScrollView>
-      <View style={{ padding: spacing.xl, gap: spacing.sm }}>
-        {id === 'welcome' ? (
+    <Screen
+      framed
+      center
+      keyboardTaps
+      header={id !== 'welcome' ? <ProgressBar step={n} total={total} label={t.progress(n, total)} /> : null}
+      footer={
+        id === 'welcome' ? (
           <Button label={t.haveAccount} variant="ghost" onPress={() => router.replace('/sign-in')} />
         ) : (
           <>
@@ -78,8 +70,17 @@ export default function OnboardingStep() {
               {def.skippable ? <View style={{ flex: 1 }}><Button label={text.skip ?? en.common.skip} variant="ghost" onPress={() => goNext('onboarding_step_skipped')} /></View> : null}
             </View>
           </>
-        )}
+        )
+      }
+    >
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="display">{text.title}</Text>
+        {text.body ? <Text tone="muted">{text.body}</Text> : null}
       </View>
-    </SafeAreaView>
+      <View style={{ gap: spacing.lg }}>
+        <Body answers={answers} update={update} onContinue={onContinue} />
+      </View>
+      {showError && !valid ? <Text tone="danger" accessibilityRole="alert">{errorText}</Text> : null}
+    </Screen>
   );
 }

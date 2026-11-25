@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NutritionPlanSchema, WorkoutPlanSchema, activeChecked, buildShoppingList, trainingWeekdays, type ShoppingRecipe } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
@@ -9,7 +8,7 @@ import { PlanGate } from '../../src/home/PlanGate';
 import { type PlanData, PlanDataProvider } from '../../src/home/usePlanData';
 import { clearCheckedItems, fetchCheckedItems, fetchShoppingRecipes, setItemChecked } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, Text } from '../../src/ui';
+import { Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, Text } from '../../src/ui';
 
 const t = en.nutrition.shopping;
 
@@ -71,14 +70,14 @@ function Shopping({ data }: { data: PlanData }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}>
+    <Screen variant="dashboard">
         <Text variant="display">{t.title}</Text>
         <Text tone="muted">{t.body}</Text>
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
         {!recipes && !error ? <ActivityIndicator color={colors.accent} /> : null}
         {recipes && total === 0 ? <EmptyState title={t.empty} /> : null}
         {total > 0 ? <Text tone="muted">{t.checkedCount(done.size, total)}</Text> : null}
+        <ResponsiveGrid gap={spacing.lg}>
         {groups.map((g) => (
           <Card key={g.category} style={{ gap: spacing.xs }}>
             <Text variant="heading">{t.categories[g.category] ?? g.category}</Text>
@@ -92,10 +91,10 @@ function Shopping({ data }: { data: PlanData }) {
             ))}
           </Card>
         ))}
+        </ResponsiveGrid>
         {done.size > 0 ? <Button label={t.clear} variant="secondary" onPress={() => void clear()} /> : null}
         <Button label={en.common.close} variant="secondary" onPress={() => router.back()} />
-      </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 

@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { type MemoryFact, deleteMemoryFact, fetchMemoryFacts } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, Text, useToast } from '../../src/ui';
+import { Button, Card, EmptyState, Screen, Text, useToast } from '../../src/ui';
 
 const t = en.home.memory;
 
@@ -44,8 +43,7 @@ export default function Memory() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl, flexGrow: 1 }}>
+    <Screen style={{ flexGrow: 1 }} footer={<Button label={en.common.back} variant="ghost" onPress={() => router.back()} />}>
         <Text variant="display">{t.title}</Text>
         <Text tone="muted">{t.body}</Text>
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
@@ -67,10 +65,6 @@ export default function Memory() {
             ))}
           </Card>
         )}
-      </ScrollView>
-      <View style={{ padding: spacing.xl }}>
-        <Button label={en.common.back} variant="ghost" onPress={() => router.back()} />
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }

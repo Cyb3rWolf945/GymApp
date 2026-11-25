@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { en } from '../../src/copy/en';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
 import { useUpdatePlan } from '../../src/plan/useUpdatePlan';
 import { useTheme } from '../../src/theme';
-import { Button, Card, ListItem, Text } from '../../src/ui';
+import { Button, Card, ListItem, Screen, Text } from '../../src/ui';
 
 const t = en.home.update;
 
@@ -14,7 +13,7 @@ const t = en.home.update;
 export default function UpdatePlan() {
   const { view, retry } = useUpdatePlan();
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
 
   useEffect(() => {
     if (view.kind === 'needs_upgrade') router.replace('/paywall');
@@ -26,8 +25,14 @@ export default function UpdatePlan() {
       : [{ id: 'calories' as const, state: 'done' as const }, { id: 'exercises' as const, state: view.kind === 'starting' ? ('active' as const) : ('pending' as const) }, { id: 'meals' as const, state: 'pending' as const }];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl, flexGrow: 1, justifyContent: view.kind === 'done' ? 'flex-start' : 'center' }}>
+    <Screen
+      center={view.kind !== 'done'}
+      footer={
+        view.kind === 'done' || view.kind === 'error' ? (
+          <Button label={t.back} variant={view.kind === 'done' ? 'primary' : 'ghost'} onPress={() => router.replace('/plan')} />
+        ) : null
+      }
+    >
         {view.kind === 'done' ? (
           <>
             <Text variant="display">{t.doneTitle}</Text>
@@ -62,12 +67,6 @@ export default function UpdatePlan() {
             <GenerationSteps steps={steps} />
           </>
         )}
-      </ScrollView>
-      {view.kind === 'done' || view.kind === 'error' ? (
-        <View style={{ padding: spacing.xl }}>
-          <Button label={t.back} variant={view.kind === 'done' ? 'primary' : 'ghost'} onPress={() => router.replace('/plan')} />
-        </View>
-      ) : null}
-    </SafeAreaView>
+    </Screen>
   );
 }

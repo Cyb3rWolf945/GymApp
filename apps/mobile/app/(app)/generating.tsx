@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { en } from '../../src/copy/en';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
 import { useGeneration } from '../../src/plan/useGeneration';
 import { useTheme } from '../../src/theme';
-import { Button, Text } from '../../src/ui';
+import { Button, Screen, Text } from '../../src/ui';
 
 const t = en.plan.generating;
 
@@ -14,7 +13,7 @@ const t = en.plan.generating;
 export default function Generating() {
   const { view, retry } = useGeneration();
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
 
   useEffect(() => {
     if (view.kind === 'done') router.replace('/preview');
@@ -36,18 +35,16 @@ export default function Generating() {
       : null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flex: 1, padding: spacing.xl, gap: spacing.xxl, justifyContent: 'center' }}>
-        <Text variant="display">{t.title}</Text>
-        {error ? (
-          <View style={{ gap: spacing.lg }}>
-            <Text tone="danger" accessibilityRole="alert">{error}</Text>
-            <Button label={t.retry} onPress={retry} />
-          </View>
-        ) : (
-          <GenerationSteps steps={steps} />
-        )}
-      </View>
-    </SafeAreaView>
+    <Screen center framed>
+      <Text variant="display">{t.title}</Text>
+      {error ? (
+        <View style={{ gap: spacing.lg }}>
+          <Text tone="danger" accessibilityRole="alert">{error}</Text>
+          <Button label={t.retry} onPress={retry} />
+        </View>
+      ) : (
+        <GenerationSteps steps={steps} />
+      )}
+    </Screen>
   );
 }

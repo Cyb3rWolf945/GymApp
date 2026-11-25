@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { detectPRs, volumeKg } from '@gymapp/shared';
 import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
 import { useTheme } from '../../src/theme';
-import { Button, Card, ChipGroup, Text, TextField, useToast } from '../../src/ui';
+import { Button, Card, ChipGroup, Screen, Text, TextField, useToast } from '../../src/ui';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout.summary;
@@ -56,8 +55,15 @@ export default function WorkoutSummary() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }} keyboardShouldPersistTaps="handled">
+    <Screen
+      keyboardTaps
+      footer={
+        <>
+          <Button label={t.save} loading={busy} disabled={!rating[0] && !note.trim()} onPress={() => void save()} />
+          <Button label={error ? t.done : t.skip} variant="ghost" onPress={leave} />
+        </>
+      }
+    >
         <Text variant="display">{t.title}</Text>
 
         {stats.prs.map((p) => (
@@ -76,11 +82,6 @@ export default function WorkoutSummary() {
           <TextField multiline maxLength={280} value={note} placeholder={t.notePlaceholder} accessibilityLabel={t.notePlaceholder} onChangeText={setNote} />
           {error ? <Text tone="danger" accessibilityRole="alert">{t.saveError}</Text> : null}
         </View>
-      </ScrollView>
-      <View style={{ padding: spacing.xl, gap: spacing.sm }}>
-        <Button label={t.save} loading={busy} disabled={!rating[0] && !note.trim()} onPress={() => void save()} />
-        <Button label={error ? t.done : t.skip} variant="ghost" onPress={leave} />
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { scaleIngredients } from '@gymapp/shared';
 import { en } from '../../../src/copy/en';
 import { type RecipeDetail, fetchRecipeDetail } from '../../../src/plan/api';
-import { useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, ListItem, Text } from '../../../src/ui';
+import { useBreakpoint, useTheme } from '../../../src/theme';
+import { Button, Card, EmptyState, ListItem, Screen, Text } from '../../../src/ui';
 
 const r = en.nutrition.recipe;
 
@@ -14,6 +13,7 @@ export default function RecipeScreen() {
   const { slug, portions: portionsParam } = useLocalSearchParams<{ slug: string; portions?: string }>();
   const portions = Math.min(4, Math.max(0.25, Number(portionsParam) || 1));
   const router = useRouter();
+  const wide = useBreakpoint() === 'expanded';
   const { colors, radius, spacing } = useTheme();
   const [state, setState] = useState<{ status: 'loading' } | { status: 'error' } | { status: 'ready'; recipe: RecipeDetail | null }>({ status: 'loading' });
 
@@ -49,30 +49,35 @@ export default function RecipeScreen() {
             </View>
           ))}
         </View>
+        {/* Ingredients and steps side by side on wide screens. */}
+        <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.lg }}>
+        <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%' }}>
         <Card style={{ gap: spacing.xs }}>
           <Text variant="heading">{r.ingredients}</Text>
           {scaleIngredients(rec.ingredients, rec.servings, portions).map((i) => (
             <ListItem key={i.name} title={i.name} trailing={<Text tone="muted">{i.scaledGrams} g</Text>} />
           ))}
         </Card>
+        </View>
         {steps.length ? (
+          <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%' }}>
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{r.steps}</Text>
             {steps.map((s, i) => (
               <Text key={i}>{`${i + 1}. ${s.replace(/^\d+[.)]\s*/, '')}`}</Text>
             ))}
           </Card>
+          </View>
         ) : null}
+        </View>
       </>
     );
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}>
-        {body()}
-        <Button label={en.common.close} variant="secondary" onPress={() => router.back()} />
-      </ScrollView>
-    </SafeAreaView>
+    <Screen variant="dashboard" style={{ gap: spacing.lg }}>
+      {body()}
+      <Button label={en.common.close} variant="secondary" onPress={() => router.back()} />
+    </Screen>
   );
 }
