@@ -2,7 +2,6 @@ import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applySeed, createDb } from '../db/harness';
 import {
-  AiCallError,
   type AiCallLog,
   MODEL_PROFILES,
   NutritionPlanSchema,
@@ -12,12 +11,9 @@ import {
   buildUserMessage,
   callStructured,
   expandEquipment,
-  generatePlan,
   getModelProfile,
   hashUserId,
   toJsonSchema,
-  validateWorkoutPlan,
-  type ExerciseCandidate,
   type StructuredCall,
 } from './index';
 
@@ -162,43 +158,6 @@ describe('buildPlanInputs', () => {
   it('expands gym tiers', () => {
     expect(expandEquipment(['full_gym'])).toContain('barbell');
     expect(expandEquipment([])).toEqual(['bodyweight']);
-  });
-});
-
-describe('generatePlan', () => {
-  const candidates: ExerciseCandidate[] = [{ slug: 'squat', name: 'Squat', equipment: 'barbell', level: 'beginner', muscles: ['quadriceps'] }];
-  const inputs = () => buildPlanInputs(profileRow(), new Date('2026-11-24'));
-  const base = { kind: 'workout_plan' as const, userId: SYNTHETIC_USER, jobId: 'j', inputs: inputs(), candidates, memorySummary: '' };
-
-  it('returns a valid plan', async () => {
-    const plan = await generatePlan({ ...base, canEscalate: false, call: async () => workoutPlan as never });
-    expect(plan).toEqual(workoutPlan);
-  });
-  it('rejects slugs outside the candidate list', async () => {
-    const bad = { ...workoutPlan, days: [{ name: 'A', exercises: [{ ...workoutPlan.days[0].exercises[0], exerciseSlug: 'made-up' }] }] };
-    await expect(generatePlan({ ...base, canEscalate: false, call: async () => bad as never })).rejects.toBeInstanceOf(AiCallError);
-    expect(validateWorkoutPlan(bad as never, new Set(['squat']))[0]).toMatch(/unknown exercise/);
-  });
-  it('escalates once on invalid output when allowed', async () => {
-    const seen: (boolean | undefined)[] = [];
-    const plan = await generatePlan({
-      ...base,
-      canEscalate: true,
-      call: async (c) => {
-        seen.push(c.escalate);
-        if (!c.escalate) throw new AiCallError('INVALID_OUTPUT', 'bad');
-        return workoutPlan as never;
-      },
-    });
-    expect(plan).toEqual(workoutPlan);
-    expect(seen).toEqual([false, true]);
-  });
-  it('does not escalate on HTTP errors', async () => {
-    let calls = 0;
-    await expect(
-      generatePlan({ ...base, canEscalate: true, call: async () => { calls++; throw new AiCallError('HTTP_ERROR', 'x'); } }),
-    ).rejects.toMatchObject({ code: 'HTTP_ERROR' });
-    expect(calls).toBe(1);
   });
 });
 

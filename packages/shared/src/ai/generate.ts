@@ -1,22 +1,8 @@
 import { calorieTarget, trainingRestSplit, type Goal, type RiskFlag } from '../calc/index.ts';
 import { ALLERGENS, CONTRAINDICATIONS, DIETS, EQUIPMENT, EXERCISE_LEVELS } from '../catalog/index.ts';
 import { z } from 'zod';
-import { AiCallError, type StructuredCall } from './openrouter.ts';
-import {
-  type ExerciseCandidate,
-  type PlanInputs,
-  type RecipeCandidate,
-  SYSTEM_PROMPTS,
-  buildUserMessage,
-} from './prompts.ts';
-import {
-  type NutritionPlan,
-  PLAN_SCHEMAS,
-  type PlanKind,
-  type WorkoutPlan,
-  validateNutritionPlan,
-  validateWorkoutPlan,
-} from './schemas.ts';
+import type { StructuredCall } from './openrouter.ts';
+import type { PlanInputs } from './prompts.ts';
 
 /** What onboarding stores in profiles.onboarding. Unknown keys are ignored. */
 export const OnboardingSchema = z.object({
@@ -24,6 +10,7 @@ export const OnboardingSchema = z.object({
   cutPace: z.enum(['slow', 'moderate', 'aggressive']).default('moderate'),
   activity: z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).default('moderate'),
   daysPerWeek: z.number().int().min(1).max(7).default(3),
+  sessionMinutes: z.number().int().min(20).max(180).default(75),
   equipment: z.array(z.enum(EQUIPMENT)).default(['bodyweight']),
   contraindications: z.array(z.enum(CONTRAINDICATIONS)).default([]),
   allergens: z.array(z.enum(ALLERGENS)).default([]),
@@ -75,6 +62,7 @@ export function buildPlanInputs(row: ProfileRow, today = new Date()): PlanInputs
     goal: ob.goalType,
     level,
     daysPerWeek: ob.daysPerWeek,
+    sessionMinutes: ob.sessionMinutes,
     equipment: ob.equipment,
     contraindications: ob.contraindications,
     allergens: ob.allergens,
@@ -84,55 +72,6 @@ export function buildPlanInputs(row: ProfileRow, today = new Date()): PlanInputs
 }
 
 export type CallFn = <T>(call: StructuredCall<T>) => Promise<T>;
-
-export interface GenerateArgs {
-  kind: PlanKind;
-  userId: string;
-  jobId: string;
-  inputs: PlanInputs;
-  candidates: ExerciseCandidate[] | RecipeCandidate[];
-  memorySummary: string;
-  call: CallFn;
-  /** True when the profile has an escalation model. */
-  canEscalate: boolean;
-}
-
-/**
- * Run one plan generation: cheap model first; if the output fails schema or deterministic
- * validation, retry once on the escalation model (prod only).
- */
-export async function generatePlan(args: GenerateArgs): Promise<WorkoutPlan | NutritionPlan> {
-  const { kind } = args;
-  const { name, schema } = PLAN_SCHEMAS[kind];
-  const allowed = new Set(args.candidates.map((c) => c.slug));
-  const user = buildUserMessage(kind, args.inputs, args.candidates, args.memorySummary);
-
-  const attempt = async (escalate: boolean) => {
-    const plan = await args.call({
-      role: 'planner',
-      schemaName: name,
-      schema: schema as z.ZodType<WorkoutPlan | NutritionPlan>,
-      system: SYSTEM_PROMPTS[kind],
-      user,
-      userId: args.userId,
-      jobId: args.jobId,
-      escalate,
-    });
-    const errors =
-      kind === 'workout_plan'
-        ? validateWorkoutPlan(plan as WorkoutPlan, allowed)
-        : validateNutritionPlan(plan as NutritionPlan, allowed);
-    if (errors.length > 0) throw new AiCallError('INVALID_OUTPUT', errors.slice(0, 3).join('; '));
-    return plan;
-  };
-
-  try {
-    return await attempt(false);
-  } catch (e) {
-    if (e instanceof AiCallError && e.code === 'INVALID_OUTPUT' && args.canEscalate) return attempt(true);
-    throw e;
-  }
-}
 
 /** Gym tiers include the individual equipment kinds. Bodyweight is always available. */
 export function expandEquipment(selected: readonly string[]): string[] {

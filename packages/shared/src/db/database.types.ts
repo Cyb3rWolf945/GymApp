@@ -236,6 +236,7 @@ export type Database = {
           error: string | null;
           created_at: string;
           finished_at: string | null;
+          needs_review: boolean;
         };
         Insert: {
           id?: string;
@@ -247,6 +248,7 @@ export type Database = {
           error?: string | null;
           created_at?: string;
           finished_at?: string | null;
+          needs_review?: boolean;
         };
         Update: Partial<Database['public']['Tables']['generation_jobs']['Insert']>;
       };
