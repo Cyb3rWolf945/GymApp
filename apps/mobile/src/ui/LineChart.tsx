@@ -25,7 +25,7 @@ export function LineChart({ values, dots, label }: Props) {
   const raw = scaleSeries(dots ?? [], W, H, 8, range);
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label}>
-      <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      <Svg width="100%" height={H} viewBox={`-6 0 ${W + 12} ${H}`} preserveAspectRatio="none">
         {raw.map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5} />
         ))}
