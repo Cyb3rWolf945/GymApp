@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: 'tests',
   timeout: 90_000,
   expect: { timeout: 15_000 },
-  fullyParallel: false,
+  // Tests are independent (each has its own page and fake backend). With one worker they still run one at a time, but
+  // Playwright can now split them evenly across CI shards instead of by file.
+  fullyParallel: true,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
