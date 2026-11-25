@@ -1,6 +1,6 @@
 # Setting up runner team B (collaborator account)
 
-Team B is a copy of the runner pipeline running on a second person's Claude account. Both teams stay switched on, and the shift lock in issue #49 makes sure only one of them works at a time (see `docs/AGENT_PIPELINE.md` → "Shift lock"). When team A reaches 90% of its 5-hour usage limit, it hands the lock to team B, which starts at its next watchdog run (within about 30 minutes). The other way round works the same. If a team stops without handing over, the other team takes over once the lock is 45 minutes old.
+Team B is a copy of the runner pipeline running on a second person's Claude account. Both teams stay switched on, and the shift lock in issue #49 makes sure only one of them works at a time (see `docs/AGENT_PIPELINE.md` → "Shift lock"). When team A reaches 65% of its 5-hour usage limit, it hands the lock to team B, which starts at its next watchdog run (within about 30 minutes). The other way round works the same. If a team stops without handing over, the other team takes over once the lock is 45 minutes old.
 
 ## 1. Prerequisites (about 5 minutes)
 1. **GitHub:** the repo owner adds you as a collaborator on `Cyb3rWolf945/GymApp` (Settings → Collaborators). Accept the invite.
