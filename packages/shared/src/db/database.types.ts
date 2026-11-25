@@ -371,6 +371,27 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['nutrition_plans']['Insert']>;
       };
+      plan_swaps: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['plan_swaps']['Insert']>;
+      };
       planned_exercises: {
         Row: {
           id: string;

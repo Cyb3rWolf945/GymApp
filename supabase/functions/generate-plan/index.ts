@@ -14,6 +14,7 @@ import {
   canGenerate,
   expandEquipment,
   runPipeline,
+  swapSignals,
   getModelProfile,
   isEntitled,
   type PlanKind,
@@ -129,7 +130,11 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       .eq('obsolete', false)
       .order('created_at', { ascending: false })
       .limit(20);
-    const memorySummary = (facts ?? []).map((f: { fact: string }) => `- ${f.fact}`).join('\n');
+    // Swap signal: exercises the user keeps swapping out (catalog names only, never free text).
+    const { data: swaps } = await admin.from('plan_swaps').select('from_slug').eq('user_id', userId);
+    const swapped = swapSignals(swaps ?? []);
+    const swapLines = swapped.length ? [`- The user often swaps out these exercises (avoid them): ${swapped.join(', ')}`] : [];
+    const memorySummary = [...(facts ?? []).map((f: { fact: string }) => `- ${f.fact}`), ...swapLines].join('\n');
 
     const result = await runPipeline({
       kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary },
