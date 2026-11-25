@@ -196,3 +196,53 @@ describe('tier gating (E-18)', () => {
     await expect(asUser(db, U, () => db.query(`update public.plan_prices set cents = 1`))).resolves.toMatchObject({ affectedRows: 0 });
   });
 });
+
+describe('instrumentation (E-29)', () => {
+  it('creates a signup analytics event with the provider on first sign-in', async () => {
+    const id = '00000000-0000-0000-0000-0000000000a1';
+    await db.exec(`insert into auth.users(id, email, raw_app_meta_data) values ('${id}', 'g@x.co', '{"provider":"google"}')`);
+    const r = await db.query<{ name: string; props: { method: string } }>(`select name, props from public.analytics_events where user_id = '${id}'`);
+    expect(r.rows).toEqual([{ name: 'signup', props: { method: 'google' } }]);
+    const id2 = '00000000-0000-0000-0000-0000000000a2';
+    await db.exec(`insert into auth.users(id, email) values ('${id2}', 'e@x.co')`);
+    const r2 = await db.query<{ props: { method: string } }>(`select props from public.analytics_events where user_id = '${id2}'`);
+    expect(r2.rows[0].props.method).toBe('email');
+  });
+
+  it('purges guardrail text after the retention window or once reviewed, and keeps the counts', async () => {
+    await db.exec(`insert into public.guardrail_events(user_id, field, rule, action, input_text, created_at) values
+      ('${A}', 'notes', 'injection', 'blocked', 'old text', now() - interval '40 days'),
+      ('${A}', 'notes', 'injection', 'blocked', 'fresh text', now()),
+      ('${A}', 'notes', 'off_topic', 'dropped', 'reviewed text', now())`);
+    await db.exec(`update public.guardrail_events set reviewed_at = now() where input_text = 'reviewed text'`);
+    const n = (await db.query<{ n: number }>(`select public.purge_guardrail_text(30) as n`)).rows[0].n;
+    expect(n).toBe(2);
+    const rows = await db.query<{ input_text: string | null }>(`select input_text from public.guardrail_events where field = 'notes' order by created_at`);
+    expect(rows.rows.map((r) => r.input_text).filter(Boolean)).toEqual(['fresh text']);
+    expect(rows.rows).toHaveLength(3);
+    await expect(asUser(db, A, () => db.query('select public.purge_guardrail_text(1)'))).rejects.toThrow(/permission denied/);
+  });
+
+  it('admin views aggregate per day and show nothing to signed-in users', async () => {
+    await db.exec(`insert into public.analytics_events(user_id, anon_id, name) values
+      (null, 'visitor-aaaa', 'paywall_view'), (null, 'visitor-aaaa', 'paywall_view'), (null, 'visitor-bbbb', 'paywall_view');
+      insert into public.ai_call_logs(user_id, role, model, tokens_in, tokens_out, cost_usd, latency_ms, status, qa_result, retry, escalated, refusal) values
+      ('${A}', 'qa', 'm', 100, 50, 0.002, 200, 'ok', 'fail', 1, true, false),
+      ('${A}', 'qa', 'm', 100, 50, 0.004, 400, 'invalid_output', null, 0, false, true);
+      insert into public.revenue_daily(day, tier, gross_usd, fees_usd, refunds_usd) values (current_date, 'pro', 100, 5, 10)`);
+    const funnel = await db.query<{ events: number; visitors: number }>(`select events, visitors from public.analytics_funnel_daily where name = 'paywall_view'`);
+    expect(funnel.rows).toEqual([{ events: 3, visitors: 2 }]);
+    const ai = await db.query<Record<string, number>>(`select calls, tokens_in, errors, escalated_calls, refusals, qa_fails, retried_calls, avg_latency_ms, cost_usd::float as cost_usd from public.ai_usage_daily where model = 'm'`);
+    expect(ai.rows[0]).toMatchObject({ calls: 2, tokens_in: 200, errors: 1, escalated_calls: 1, refusals: 1, qa_fails: 1, retried_calls: 1, avg_latency_ms: 300, cost_usd: 0.006 });
+    // One of the two blocked rows was backdated 40 days, so the view has one row per day.
+    const guard = await db.query<{ day: string; events: number }>(`select day::text, events from public.guardrail_daily where category = 'injection' and action = 'blocked' order by day`);
+    expect(guard.rows.map((r) => r.events)).toEqual([1, 1]);
+    const rev = await db.query<{ net_usd: string }>(`select net_usd from public.revenue_net_daily`);
+    expect(Number(rev.rows[0].net_usd)).toBe(85);
+    for (const v of ['analytics_funnel_daily', 'ai_usage_daily', 'guardrail_daily', 'revenue_net_daily']) {
+      // The test harness grants blanket table access after the migrations; security_invoker + RLS still return nothing.
+      const rows = await asUser(db, A, async () => (await db.query(`select * from public.${v}`)).rows);
+      expect(rows, v).toEqual([]);
+    }
+  });
+});

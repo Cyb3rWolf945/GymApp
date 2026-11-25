@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
+import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
 import { Button, Card, EmptyState, ListItem, StatTile, Text } from '../../src/ui';
@@ -35,6 +36,7 @@ export default function Preview() {
         if (!active) return;
         const preview = buildPreview(jobs.workout_plan?.result, jobs.nutrition_plan?.result, exerciseNames, recipes);
         setEntitled(isEntitled);
+        if (preview.workout && preview.meals) trackEvent('plan_preview_view', {});
         setState(preview.workout && preview.meals ? { kind: 'ready', preview } : { kind: 'error' });
       } catch {
         if (active) setState({ kind: 'error' });

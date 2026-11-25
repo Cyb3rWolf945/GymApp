@@ -58,7 +58,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
       ? validateWorkout(plan as WorkoutPlan, inputs, args.library as ExerciseCandidate[])
       : validateNutrition(plan as NutritionPlan, inputs, args.library as RecipeCandidate[]);
 
-  const attempt = async (stage: 'planner' | 'escalation'): Promise<PipelineResult | null> => {
+  const attempt = async (stage: 'planner' | 'escalation', retry: number): Promise<PipelineResult | null> => {
     let plan: WorkoutPlan | NutritionPlan;
     try {
       plan = await args.call({
@@ -70,6 +70,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
         userId: args.userId,
         jobId: args.jobId,
         escalate: stage === 'escalation',
+        retry,
       }) as WorkoutPlan | NutritionPlan;
     } catch (e) {
       if (!(e instanceof AiCallError)) throw e;
@@ -89,7 +90,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
 
     let qa: QaVerdict;
     try {
-      qa = await runQa({ call: args.call, kind, plan, inputs, notes: args.userText.notes, userId: args.userId, jobId: args.jobId });
+      qa = await runQa({ call: args.call, kind, plan, inputs, notes: args.userText.notes, userId: args.userId, jobId: args.jobId, retry });
     } catch (e) {
       if (!(e instanceof AiCallError)) throw e;
       // The deterministic checks passed; keep the plan but ask a human to look.
@@ -107,11 +108,11 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
   };
 
   for (let i = 0; i <= MAX_RETRIES; i++) {
-    const done = await attempt('planner');
+    const done = await attempt('planner', i);
     if (done) return done;
   }
   if (args.canEscalate) {
-    const done = await attempt('escalation');
+    const done = await attempt('escalation', MAX_RETRIES + 1);
     if (done) return done;
   }
 

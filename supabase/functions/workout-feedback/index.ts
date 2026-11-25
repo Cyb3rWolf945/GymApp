@@ -6,6 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 import {
   type AiCallLog,
   FeedbackSchema,
+  aiCallRow,
+  guardrailRow,
   callStructured,
   getModelProfile,
   runGuardrails,
@@ -43,10 +45,7 @@ Deno.serve(async (req) => {
       apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
       // Metadata only: never the note itself.
       log: async (l: AiCallLog) => {
-        await admin.from('ai_call_logs').insert({
-          user_id: l.userId, role: l.role, model: l.model, tokens_in: l.tokensIn, tokens_out: l.tokensOut,
-          cost_usd: l.costUsd, latency_ms: l.latencyMs, status: l.status,
-        });
+        await admin.from('ai_call_logs').insert(aiCallRow(l));
       },
     };
     const guard = await runGuardrails({
@@ -56,9 +55,7 @@ Deno.serve(async (req) => {
       jobId: sessionId,
     });
     if (guard.events.length > 0) {
-      await admin.from('guardrail_events').insert(
-        guard.events.map((e) => ({ user_id: user.id, field: e.field, rule: e.rule, action: e.action, input_text: e.inputText })),
-      );
+      await admin.from('guardrail_events').insert(guard.events.map((e) => guardrailRow(user.id, null, e)));
     }
     if (guard.notes) {
       const { error } = await admin.from('memory_facts').insert({ user_id: user.id, kind: 'workout_feedback', fact: guard.notes });
