@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../auth/AuthProvider';
 import { en } from '../copy/en';
 import { useTheme } from '../theme';
 import { Button, Text } from '../ui';
@@ -15,6 +16,7 @@ const t = en.tracking;
 export function TrackingBanner() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
   const [choice, setChoice] = useState<TrackingChoice | null | undefined>(undefined);
 
   useEffect(() => {
@@ -26,12 +28,14 @@ export function TrackingBanner() {
     return onTrackingChoice(setChoice);
   }, []);
 
-  if (Platform.OS !== 'web' || choice !== null) return null;
+  // Only for signed-out visitors (the ad funnel). Signed-in users never see it. It sits at the top so it can't cover
+  // the Continue and action buttons at the bottom of every screen.
+  if (Platform.OS !== 'web' || choice !== null || session) return null;
   return (
     <View
       accessibilityRole="alert"
       style={{
-        position: 'absolute', left: spacing.md, right: spacing.md, bottom: spacing.md, gap: spacing.sm, padding: spacing.lg,
+        position: 'absolute', left: spacing.md, right: spacing.md, top: spacing.md, gap: spacing.sm, padding: spacing.lg,
         borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, zIndex: 100,
       }}
     >

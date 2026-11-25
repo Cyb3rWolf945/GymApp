@@ -10,6 +10,8 @@ import { useTheme } from '../src/theme';
 import { Button, Card, Text } from '../src/ui';
 
 const t = en.landing;
+// The router can mount this screen twice on a first visit (anchor route plus the resolved one): count the visit once.
+let visitCounted = false;
 
 /** Web landing page for ads and search. Signed-out visitors on iOS and Android go straight to the quiz. */
 export default function Landing() {
@@ -17,7 +19,8 @@ export default function Landing() {
   const { colors, spacing } = useTheme();
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || visitCounted) return;
+    visitCounted = true;
     // Keep the UTM tags (first touch) and count the visit with them.
     void captureAttribution().then((a) => trackEvent('landing_view', utmProps(a)));
   }, []);
