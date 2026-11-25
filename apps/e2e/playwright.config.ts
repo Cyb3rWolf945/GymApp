@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { SIZES } from './support/projects';
 
 const PORT = Number(process.env.E2E_PORT ?? 4173);
 
@@ -15,10 +16,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'off',
-    viewport: { width: 420, height: 900 },
     // Set CHROMIUM_PATH to use a browser that is already installed instead of Playwright's own download.
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
   },
-  projects: [{ name: 'web', use: { ...devices['Desktop Chrome'], viewport: { width: 420, height: 900 } } }],
+  // Every spec runs at three screen sizes. The browser is the same; only the window changes.
+  projects: (['phone', 'tablet', 'desktop'] as const).map((name) => ({ name, use: { ...devices['Desktop Chrome'], viewport: SIZES[name] } })),
   webServer: { command: 'node serve.mjs', port: PORT, reuseExistingServer: !process.env.CI, env: { E2E_PORT: String(PORT) } },
 });
