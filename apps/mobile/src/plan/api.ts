@@ -1,4 +1,4 @@
-import { type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, isEntitled } from '@gymapp/shared';
+import { type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, expandEquipment, isEntitled } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
@@ -38,4 +38,34 @@ export async function fetchCatalogNames(exerciseSlugs: string[], recipeSlugs: st
   const exerciseNames = new Map(((ex.data ?? []) as { slug: string; name: string }[]).map((e) => [e.slug, e.name]));
   const recipes = ((rc.data ?? []) as Omit<RecipeCandidate, 'allergens'>[]).map((r) => ({ ...r, allergens: [] })) as RecipeCandidate[];
   return { exerciseNames, recipes };
+}
+
+export interface SwapOption {
+  slug: string;
+  name: string;
+  equipment: string | null;
+  level: string;
+}
+
+/** Deterministic alternatives from the library (same primary muscle, your equipment, no contraindications). */
+export async function fetchSwapOptions(
+  slug: string,
+  profile: { equipment: string[]; contraindications: string[]; level: string },
+  excludeSlugs: string[],
+): Promise<SwapOption[]> {
+  const { data, error } = await supabase.rpc('swap_candidates', {
+    p_slug: slug,
+    p_equipment: expandEquipment(profile.equipment),
+    p_contraindications: profile.contraindications,
+    p_level: profile.level,
+    p_exclude: excludeSlugs,
+  } as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as SwapOption[];
+}
+
+/** Record a swap (own row, RLS). The plan view applies it on top of the generated plan. */
+export async function recordSwap(userId: string, jobId: string, dayIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
+  const { error } = await supabase.from('plan_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, from_slug: fromSlug, to_slug: toSlug } as never);
+  return !error;
 }
