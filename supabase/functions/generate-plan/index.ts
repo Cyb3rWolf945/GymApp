@@ -10,7 +10,7 @@ import {
   buildPlanInputs,
   callStructured,
   expandEquipment,
-  generatePlan,
+  runPipeline,
   getModelProfile,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
@@ -97,14 +97,16 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       },
     };
 
-    const result = await generatePlan({
-      kind, userId, jobId, inputs, candidates, memorySummary,
+    const result = await runPipeline({
+      kind, userId, jobId, inputs, memorySummary,
+      library: candidates, // already filtered in SQL; the validator re-checks every item
       canEscalate: profile.escalation !== null,
       call: (c) => callStructured(cfg, c),
     });
+    // Plan + QA scores + attempt log live in generation_jobs.result.
     await admin
       .from('generation_jobs')
-      .update({ status: 'done', result, finished_at: new Date().toISOString() })
+      .update({ status: 'done', result, needs_review: result.needsReview, finished_at: new Date().toISOString() })
       .eq('id', jobId);
   } catch (e) {
     // Keep errors generic: they can echo model output.

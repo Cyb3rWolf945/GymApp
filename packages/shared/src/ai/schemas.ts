@@ -70,25 +70,3 @@ export function toJsonSchema(schema: z.ZodType): Record<string, unknown> {
   delete out.$schema;
   return out;
 }
-
-/** Deterministic checks the JSON Schema cannot express. Returns error strings (empty = ok). */
-export function validateWorkoutPlan(plan: WorkoutPlan, allowedSlugs: ReadonlySet<string>): string[] {
-  const errors: string[] = [];
-  plan.days.forEach((d, i) =>
-    d.exercises.forEach((e) => {
-      if (!allowedSlugs.has(e.exerciseSlug)) errors.push(`day ${i + 1}: unknown exercise "${e.exerciseSlug}"`);
-      if (e.repsMin > e.repsMax) errors.push(`day ${i + 1}: repsMin > repsMax for "${e.exerciseSlug}"`);
-    }),
-  );
-  return errors;
-}
-
-export function validateNutritionPlan(plan: NutritionPlan, allowedSlugs: ReadonlySet<string>): string[] {
-  const errors: string[] = [];
-  plan.days.forEach((d, i) =>
-    d.meals.forEach((m) => {
-      if (!allowedSlugs.has(m.recipeSlug)) errors.push(`day ${i + 1}: unknown recipe "${m.recipeSlug}"`);
-    }),
-  );
-  return errors;
-}
