@@ -34,3 +34,16 @@ export function swapSignals(swaps: readonly Pick<SwapRow, 'from_slug'>[], thresh
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([slug]) => slug);
 }
+
+/**
+ * `swapSignals` restricted to slugs that exist in the exercise catalog. The planner prompt must only
+ * ever see catalog slugs (defence in depth: the database also enforces this on `plan_swaps`).
+ */
+export function knownSwapSignals(
+  swaps: readonly Pick<SwapRow, 'from_slug'>[],
+  catalogSlugs: ReadonlySet<string> | readonly string[],
+  threshold = SWAP_SIGNAL_THRESHOLD,
+): string[] {
+  const known = catalogSlugs instanceof Set ? catalogSlugs : new Set(catalogSlugs);
+  return swapSignals(swaps, threshold).filter((slug) => known.has(slug));
+}
