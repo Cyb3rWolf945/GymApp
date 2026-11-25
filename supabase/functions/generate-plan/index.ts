@@ -8,6 +8,8 @@ import {
   PLAN_KINDS,
   PlanInputError,
   buildPlanInputs,
+  extractFreeText,
+  runGuardrails,
   callStructured,
   expandEquipment,
   runPipeline,
@@ -60,9 +62,31 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
   try {
     await admin.from('generation_jobs').update({ status: 'running' }).eq('id', jobId);
 
+    const profile = getModelProfile(Deno.env.get('MODEL_PROFILE'));
+    const cfg = {
+      profile,
+      apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
+      // Metadata only: never prompts or model output.
+      log: async (l: AiCallLog) => {
+        await admin.from('ai_call_logs').insert({
+          user_id: l.userId, job_id: l.jobId, role: l.role, model: l.model,
+          tokens_in: l.tokensIn, tokens_out: l.tokensOut, cost_usd: l.costUsd, latency_ms: l.latencyMs, status: l.status,
+        });
+      },
+    };
+
     const { data: row } = await admin.from('profiles').select('*').eq('user_id', userId).maybeSingle();
     if (!row) return await fail('Profile is incomplete.');
-    const inputs = buildPlanInputs(row);
+
+    // Guardrails first: limit, classify (rules, then the light model), sanitise, log.
+    const call = (c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c);
+    const guard = await runGuardrails({ call: call as never, fields: extractFreeText(row.onboarding), userId, jobId });
+    if (guard.events.length > 0) {
+      await admin.from('guardrail_events').insert(
+        guard.events.map((e) => ({ user_id: userId, job_id: jobId, field: e.field, rule: e.rule, action: e.action, input_text: e.inputText })),
+      );
+    }
+    const inputs = buildPlanInputs(row, new Date(), { conservative: guard.conservative, extraFlags: guard.riskFlags });
 
     // Candidates are pre-filtered in SQL by equipment, contraindications and allergens.
     const { data: candidates, error: cErr } =
@@ -84,21 +108,8 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       .limit(20);
     const memorySummary = (facts ?? []).map((f: { fact: string }) => `- ${f.fact}`).join('\n');
 
-    const profile = getModelProfile(Deno.env.get('MODEL_PROFILE'));
-    const cfg = {
-      profile,
-      apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
-      // Metadata only: never prompts or model output.
-      log: async (l: AiCallLog) => {
-        await admin.from('ai_call_logs').insert({
-          user_id: l.userId, job_id: l.jobId, role: l.role, model: l.model,
-          tokens_in: l.tokensIn, tokens_out: l.tokensOut, cost_usd: l.costUsd, latency_ms: l.latencyMs, status: l.status,
-        });
-      },
-    };
-
     const result = await runPipeline({
-      kind, userId, jobId, inputs, memorySummary,
+      kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary },
       library: candidates, // already filtered in SQL; the validator re-checks every item
       canEscalate: profile.escalation !== null,
       call: (c) => callStructured(cfg, c),
@@ -106,7 +117,13 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
     // Plan + QA scores + attempt log live in generation_jobs.result.
     await admin
       .from('generation_jobs')
-      .update({ status: 'done', result, needs_review: result.needsReview, finished_at: new Date().toISOString() })
+      .update({
+        status: 'done',
+        // Disclaimer + professional suggestion travel with the plan when a red flag was seen.
+        result: { ...result, guardrails: { conservative: guard.conservative, disclaimer: guard.disclaimer } },
+        needs_review: result.needsReview || guard.conservative,
+        finished_at: new Date().toISOString(),
+      })
       .eq('id', jobId);
   } catch (e) {
     // Keep errors generic: they can echo model output.

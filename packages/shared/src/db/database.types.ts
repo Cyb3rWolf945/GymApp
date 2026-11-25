@@ -259,6 +259,9 @@ export type Database = {
           rule: string;
           action: string;
           created_at: string;
+          field: string | null;
+          input_text: string | null;
+          job_id: string | null;
         };
         Insert: {
           id?: string;
@@ -266,6 +269,9 @@ export type Database = {
           rule: string;
           action: string;
           created_at?: string;
+          field?: string | null;
+          input_text?: string | null;
+          job_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['guardrail_events']['Insert']>;
       };
