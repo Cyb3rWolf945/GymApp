@@ -7,6 +7,7 @@ export * from './validator.ts';
 export * from './qa.ts';
 export * from './templates.ts';
 export * from './pipeline.ts';
+export * from './sweep.ts';
 export * from './guardrails.ts';
 export * from './logging.ts';
 export * from './smoke.ts';

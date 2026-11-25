@@ -20,6 +20,10 @@ export interface ModelProfile {
   escalation: string | null;
   /** Ask OpenRouter to route only to providers that do not store/train on prompts. */
   denyDataCollection: boolean;
+  /** Planner retries after the first failed attempt. Free models take about 30 s a call, so dev retries once. */
+  maxRetries: number;
+  /** `skip`: the deterministic validator alone decides (free-model QA fails every time and doubles the wall time). */
+  qa: 'enforce' | 'skip';
 }
 
 const DEV_MODELS = [
@@ -39,6 +43,8 @@ export const MODEL_PROFILES: Record<ModelProfileName, ModelProfile> = {
     },
     escalation: null,
     denyDataCollection: false,
+    maxRetries: 1,
+    qa: 'skip',
   },
   // Paid models: production only.
   prod: {
@@ -50,6 +56,8 @@ export const MODEL_PROFILES: Record<ModelProfileName, ModelProfile> = {
     },
     escalation: 'anthropic/claude-sonnet-5.5',
     denyDataCollection: true,
+    maxRetries: 2,
+    qa: 'enforce',
   },
 };
 
