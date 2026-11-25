@@ -38,12 +38,22 @@ export function ageFromBirthDate(birthDate: string, today: Date): number {
 }
 
 /** Profile row → LLM inputs. Calorie and macro targets come from the calc lib, never the LLM. */
-export function buildPlanInputs(row: ProfileRow, today = new Date()): PlanInputs {
+export interface PlanInputOptions {
+  /** From the guardrails: a medical red flag was seen. */
+  conservative?: boolean;
+  extraFlags?: RiskFlag[];
+}
+
+export function buildPlanInputs(row: ProfileRow, today = new Date(), opts: PlanInputOptions = {}): PlanInputs {
   if ((row.sex !== 'male' && row.sex !== 'female') || !row.birth_date || !row.height_cm || !row.weight_kg) {
     throw new PlanInputError('Profile is incomplete.');
   }
   const ob = OnboardingSchema.parse(row.onboarding ?? {});
-  const goal: Goal = ob.goalType === 'cut' ? { type: 'cut', pace: ob.cutPace } : { type: ob.goalType };
+  const flags = [...new Set([...(ob.flags as RiskFlag[]), ...(opts.extraFlags ?? [])])];
+  const conservative = opts.conservative === true || flags.length > 0;
+  // Conservative mode never uses more than the slowest cut pace.
+  const pace = conservative ? 'slow' : ob.cutPace;
+  const goal: Goal = ob.goalType === 'cut' ? { type: 'cut', pace } : { type: ob.goalType };
   const target = calorieTarget(
     {
       sex: row.sex,
@@ -51,7 +61,7 @@ export function buildPlanInputs(row: ProfileRow, today = new Date()): PlanInputs
       weightKg: Number(row.weight_kg),
       heightCm: Number(row.height_cm),
       activity: ob.activity,
-      flags: ob.flags as RiskFlag[],
+      flags,
     },
     goal,
   );
@@ -63,6 +73,7 @@ export function buildPlanInputs(row: ProfileRow, today = new Date()): PlanInputs
     level,
     daysPerWeek: ob.daysPerWeek,
     sessionMinutes: ob.sessionMinutes,
+    conservative,
     equipment: ob.equipment,
     contraindications: ob.contraindications,
     allergens: ob.allergens,

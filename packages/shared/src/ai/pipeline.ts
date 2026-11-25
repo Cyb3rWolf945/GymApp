@@ -1,6 +1,6 @@
 import { AiCallError } from './openrouter.ts';
 import type { CallFn } from './generate.ts';
-import { type ExerciseCandidate, type PlanInputs, type RecipeCandidate, SYSTEM_PROMPTS, buildUserMessage } from './prompts.ts';
+import { type ExerciseCandidate, type PlanInputs, type RecipeCandidate, SYSTEM_PROMPTS, type UserText, buildUserMessage } from './prompts.ts';
 import { type QaVerdict, qaFeedback, runQa, verdictPasses } from './qa.ts';
 import { nutritionTemplate, workoutTemplate } from './templates.ts';
 import { type NutritionPlan, PLAN_SCHEMAS, type PlanKind, type WorkoutPlan } from './schemas.ts';
@@ -36,7 +36,8 @@ export interface PipelineArgs {
   inputs: PlanInputs;
   /** Candidates already filtered in SQL; also the library the validator checks against. */
   library: ExerciseCandidate[] | RecipeCandidate[];
-  memorySummary: string;
+  /** Guardrail-cleared notes and retrieved memory. */
+  userText: UserText;
   call: CallFn;
   /** True when the model profile has an escalation model (prod only). */
   canEscalate: boolean;
@@ -65,7 +66,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
         schemaName: name,
         schema: schema as never,
         system: SYSTEM_PROMPTS[kind],
-        user: buildUserMessage(kind, inputs, args.library, args.memorySummary, feedback),
+        user: buildUserMessage(kind, inputs, args.library, args.userText, feedback),
         userId: args.userId,
         jobId: args.jobId,
         escalate: stage === 'escalation',
@@ -88,7 +89,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
 
     let qa: QaVerdict;
     try {
-      qa = await runQa({ call: args.call, kind, plan, inputs, userId: args.userId, jobId: args.jobId });
+      qa = await runQa({ call: args.call, kind, plan, inputs, notes: args.userText.notes, userId: args.userId, jobId: args.jobId });
     } catch (e) {
       if (!(e instanceof AiCallError)) throw e;
       // The deterministic checks passed; keep the plan but ask a human to look.

@@ -31,6 +31,7 @@ const inputs = (over: Partial<PlanInputs> = {}): PlanInputs => ({
   level: 'intermediate',
   daysPerWeek: 2,
   sessionMinutes: 60,
+  conservative: false,
   equipment: ['dumbbells'],
   contraindications: ['knee'],
   allergens: ['nuts'],
@@ -127,7 +128,7 @@ describe('validateNutrition', () => {
 });
 
 const qa = (over: Partial<QaVerdict['criteria'][number]> = {}, drop = false): QaVerdict => ({
-  criteria: QA_CRITERIA.map((c, i) => ({ criterion: c, score: 4, pass: true, feedback: 'ok', ...(i === 0 ? over : {}) })).slice(0, drop ? 6 : 7) as QaVerdict['criteria'],
+  criteria: QA_CRITERIA.map((c, i) => ({ criterion: c, score: 4, pass: true, feedback: 'ok', ...(i === 0 ? over : {}) })).slice(0, drop ? QA_CRITERIA.length - 1 : QA_CRITERIA.length) as QaVerdict['criteria'],
   pass: true,
   feedback: 'ok',
 });
@@ -165,7 +166,7 @@ function fakeCall(script: Script) {
   }) as never;
   return { call, seen };
 }
-const base = { kind: 'workout_plan' as const, userId: USER, jobId: 'job', memorySummary: '', library };
+const base = { kind: 'workout_plan' as const, userId: USER, jobId: 'job', userText: { notes: '', memory: '' }, library };
 
 describe('runPipeline', () => {
   it('passes on the first try when validator and QA are happy', async () => {
@@ -245,11 +246,11 @@ describe('templates and 3 synthetic profiles on the seeded catalog', () => {
     // Workout: a fake planner that returns the template passes validator + QA.
     const w = workoutTemplate(inp, exercises);
     expect(validateWorkout(w, inp, exercises)).toEqual([]);
-    const okRun = await runPipeline({ kind: 'workout_plan', userId: USER, jobId: 'j', inputs: inp, library: exercises, memorySummary: '', canEscalate: false, call: (async (c: StructuredCall<unknown>) => (c.role === 'qa' ? qa() : w)) as never });
+    const okRun = await runPipeline({ kind: 'workout_plan', userId: USER, jobId: 'j', inputs: inp, library: exercises, userText: { notes: '', memory: '' }, canEscalate: false, call: (async (c: StructuredCall<unknown>) => (c.role === 'qa' ? qa() : w)) as never });
     expect(okRun).toMatchObject({ source: 'planner', needsReview: false });
 
     // Nutrition: a useless model falls back to the template, which is schema-shaped and allergen-free.
-    const n = await runPipeline({ kind: 'nutrition_plan', userId: USER, jobId: 'j', inputs: inp, library: foods, memorySummary: '', canEscalate: false, call: (async () => { throw new AiCallError('INVALID_OUTPUT', 'x'); }) as never });
+    const n = await runPipeline({ kind: 'nutrition_plan', userId: USER, jobId: 'j', inputs: inp, library: foods, userText: { notes: '', memory: '' }, canEscalate: false, call: (async () => { throw new AiCallError('INVALID_OUTPUT', 'x'); }) as never });
     expect(n).toMatchObject({ source: 'template', needsReview: true });
     const plan = n.plan as NutritionPlan;
     const bySlug = new Map(foods.map((f) => [f.slug, f]));
@@ -265,7 +266,7 @@ describe.skipIf(!process.env.RUN_LIVE_AI)('live dev models (synthetic data only)
     const row = { sex: 'male', birth_date: '1995-01-01', height_cm: 178, weight_kg: 78, experience: 'beginner', onboarding: { goalType: (['cut', 'bulk', 'recomp'] as const)[i], daysPerWeek: 3, equipment: ['dumbbells'] } };
     const inp = buildPlanInputs(row, new Date('2026-11-24'));
     const r = await runPipeline({
-      kind: 'workout_plan', userId: USER, jobId: 'live', inputs: inp, library, memorySummary: '', canEscalate: false,
+      kind: 'workout_plan', userId: USER, jobId: 'live', inputs: inp, library, userText: { notes: '', memory: '' }, canEscalate: false,
       call: (c) => callStructured({ profile: MODEL_PROFILES.dev, apiKey: process.env.OPENROUTER_API_KEY ?? 'proxy-injected', log: () => {} }, c),
     });
     expect(validateWorkout(r.plan as WorkoutPlan, inp, library)).toEqual([]);

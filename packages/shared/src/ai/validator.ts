@@ -13,6 +13,9 @@ export const MIN_WEEKLY_SETS_PER_TRAINING_DAY = 6;
 const SECONDS_PER_SET = 40;
 const WARMUP_MINUTES = 5;
 const DURATION_SLACK = 1.1;
+/** Conservative mode (medical red flag): gentler effort and volume. */
+export const CONSERVATIVE_MAX_RPE = 7;
+export const CONSERVATIVE_MAX_WEEKLY_SETS_PER_MUSCLE = 16;
 const LEVEL_ORDER = ['beginner', 'intermediate', 'advanced'];
 
 export function estimateSessionMinutes(day: WorkoutPlan['days'][number]): number {
@@ -61,6 +64,9 @@ export function validateWorkout(
         continue;
       }
       for (const p of exerciseProblems(info, inputs)) errors.push(`${label}: "${ex.exerciseSlug}" ${p}.`);
+      if (inputs.conservative && ex.rpe > CONSERVATIVE_MAX_RPE) {
+        errors.push(`${label}: "${ex.exerciseSlug}" has RPE ${ex.rpe}; keep it at ${CONSERVATIVE_MAX_RPE} or lower.`);
+      }
       if (ex.repsMin > ex.repsMax) errors.push(`${label}: repsMin is above repsMax for "${ex.exerciseSlug}".`);
       for (const m of info.muscles) weekly.set(m, (weekly.get(m) ?? 0) + ex.sets);
     }
@@ -70,8 +76,9 @@ export function validateWorkout(
     }
   });
   for (const [muscle, sets] of weekly) {
-    if (sets > MAX_WEEKLY_SETS_PER_MUSCLE) {
-      errors.push(`${muscle} gets ${sets} sets per week; the maximum is ${MAX_WEEKLY_SETS_PER_MUSCLE}.`);
+    const max = inputs.conservative ? CONSERVATIVE_MAX_WEEKLY_SETS_PER_MUSCLE : MAX_WEEKLY_SETS_PER_MUSCLE;
+    if (sets > max) {
+      errors.push(`${muscle} gets ${sets} sets per week; the maximum is ${max}.`);
     }
   }
   const total = plan.days.reduce((t, d) => t + d.exercises.reduce((s, e) => s + e.sets, 0), 0);
