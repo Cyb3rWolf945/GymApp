@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LEGAL_KINDS } from '@gymapp/shared';
+import { COACH_STYLES, LEGAL_KINDS, type CoachStyle } from '@gymapp/shared';
 import { deleteAccount, deliverExport, fetchExport } from '../../../src/account/api';
 import { signOut } from '../../../src/auth/authService';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { authCopy } from '../../../src/auth/copy';
 import { SignInMethods } from '../../../src/auth/SignInMethods';
 import { en } from '../../../src/copy/en';
+import { useCoachStyle } from '../../../src/coach/useCoachStyle';
 import { useWeeklyAdaptSetting } from '../../../src/plan/weekly';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, ListItem, Screen, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const d = t.data;
@@ -24,6 +25,8 @@ export default function SettingsScreen() {
   const toast = useToast();
   const push = usePushReminders();
   const weekly = useWeeklyAdaptSetting();
+  const coach = useCoachStyle();
+  const [coachError, setCoachError] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -61,6 +64,23 @@ export default function SettingsScreen() {
         <Card style={{ gap: spacing.sm }}>
           <Text variant="small" tone="muted">{t.account}</Text>
           <Text variant="bodyStrong">{user?.email ?? ''}</Text>
+        </Card>
+
+        <Card style={{ gap: spacing.sm }}>
+          <Text variant="heading">{en.coach.settingsTitle}</Text>
+          <Text tone="muted">{en.coach.settingsBody}</Text>
+          <ChipGroup
+            options={COACH_STYLES.map((v) => ({ value: v, label: en.coach.styles[v].label }))}
+            value={[coach.style]}
+            onChange={(v) => {
+              const next = v[0] as CoachStyle | undefined;
+              if (!next) return;
+              setCoachError(false);
+              void coach.save(next).then((ok) => (ok ? toast.show(en.coach.saved, 'success') : setCoachError(true)));
+            }}
+          />
+          <Text variant="small" tone="muted">{en.coach.styles[coach.style].example}</Text>
+          {coachError ? <Text tone="danger" accessibilityRole="alert">{en.coach.error}</Text> : null}
         </Card>
 
         {weekly.enabled !== null ? (

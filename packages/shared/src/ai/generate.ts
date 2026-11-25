@@ -1,6 +1,7 @@
 import { calorieTarget, trainingRestSplit, type Goal, type RiskFlag } from '../calc/index.ts';
 import { ALLERGENS, CONTRAINDICATIONS, DIETS, EQUIPMENT, EXERCISE_LEVELS } from '../catalog/index.ts';
 import { z } from 'zod';
+import { parseCoachStyle } from './coach.ts';
 import type { StructuredCall } from './openrouter.ts';
 import type { PlanInputs } from './prompts.ts';
 
@@ -25,6 +26,8 @@ export interface ProfileRow {
   weight_kg: number | null;
   experience: string | null;
   onboarding: unknown;
+  /** E-55: `profiles.coach_style`; missing or unknown means Calm. */
+  coach_style?: string | null;
 }
 
 export class PlanInputError extends Error {}
@@ -78,6 +81,7 @@ export function buildPlanInputs(row: ProfileRow, today = new Date(), opts: PlanI
     contraindications: ob.contraindications,
     allergens: ob.allergens,
     diet: ob.diet,
+    coachStyle: parseCoachStyle(row.coach_style),
     targets: trainingRestSplit(target.kcal, Number(row.weight_kg), ob.goalType, ob.daysPerWeek, row.sex),
   };
 }

@@ -546,6 +546,7 @@ export type Database = {
           updated_at: string;
           attribution: Json;
           weekly_adapt: boolean;
+          coach_style: string;
         };
         Insert: {
           user_id: string;
@@ -563,6 +564,7 @@ export type Database = {
           updated_at?: string;
           attribution?: Json;
           weekly_adapt?: boolean;
+          coach_style?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };

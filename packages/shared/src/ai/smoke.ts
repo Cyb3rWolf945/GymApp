@@ -13,15 +13,15 @@ export interface SmokeProfile {
 export const SMOKE_PROFILES: readonly SmokeProfile[] = [
   {
     name: 'cut, gym, no restrictions',
-    row: { sex: 'male', birth_date: '1991-05-12', height_cm: 180, weight_kg: 88, experience: 'intermediate', onboarding: { goalType: 'cut', cutPace: 'moderate', targetWeightKg: 82, daysPerWeek: 4, sessionMinutes: 60, equipment: ['full_gym'], contraindications: [], diet: 'omnivore', allergens: [], activity: 'light' } },
+    row: { coach_style: 'calm', sex: 'male', birth_date: '1991-05-12', height_cm: 180, weight_kg: 88, experience: 'intermediate', onboarding: { goalType: 'cut', cutPace: 'moderate', targetWeightKg: 82, daysPerWeek: 4, sessionMinutes: 60, equipment: ['full_gym'], contraindications: [], diet: 'omnivore', allergens: [], activity: 'light' } },
   },
   {
     name: 'bulk, home dumbbells, vegetarian, nut allergy, knee care',
-    row: { sex: 'female', birth_date: '1998-09-03', height_cm: 166, weight_kg: 58, experience: 'beginner', onboarding: { goalType: 'bulk', targetWeightKg: 62, daysPerWeek: 3, sessionMinutes: 45, equipment: ['dumbbells', 'bands'], contraindications: ['knee'], diet: 'vegetarian', allergens: ['nuts'], activity: 'moderate' } },
+    row: { coach_style: 'direct', sex: 'female', birth_date: '1998-09-03', height_cm: 166, weight_kg: 58, experience: 'beginner', onboarding: { goalType: 'bulk', targetWeightKg: 62, daysPerWeek: 3, sessionMinutes: 45, equipment: ['dumbbells', 'bands'], contraindications: ['knee'], diet: 'vegetarian', allergens: ['nuts'], activity: 'moderate' } },
   },
   {
     name: 'recomp, basic gym, vegan, gluten and soy allergies, shoulder care',
-    row: { sex: 'male', birth_date: '1985-02-20', height_cm: 175, weight_kg: 76, experience: 'advanced', onboarding: { goalType: 'recomp', daysPerWeek: 5, sessionMinutes: 60, equipment: ['basic_gym'], contraindications: ['shoulder'], diet: 'vegan', allergens: ['gluten', 'soy'], activity: 'active' } },
+    row: { coach_style: 'hype', sex: 'male', birth_date: '1985-02-20', height_cm: 175, weight_kg: 76, experience: 'advanced', onboarding: { goalType: 'recomp', daysPerWeek: 5, sessionMinutes: 60, equipment: ['basic_gym'], contraindications: ['shoulder'], diet: 'vegan', allergens: ['gluten', 'soy'], activity: 'active' } },
   },
 ];
 

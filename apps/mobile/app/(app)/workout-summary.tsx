@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { detectPRs, volumeKg } from '@gymapp/shared';
+import { detectPRs, pickLine, seedOf, volumeKg } from '@gymapp/shared';
+import { useCoachStyle } from '../../src/coach/useCoachStyle';
 import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
 import { useTheme } from '../../src/theme';
@@ -17,6 +18,7 @@ export default function WorkoutSummary() {
   const router = useRouter();
   const toast = useToast();
   const { colors, spacing } = useTheme();
+  const { style } = useCoachStyle();
   const [rating, setRating] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -64,11 +66,12 @@ export default function WorkoutSummary() {
         </>
       }
     >
-        <Text variant="display">{t.title}</Text>
+        <Text variant="display">{pickLine(en.coach.summaryTitle, style, seedOf(active.id))}</Text>
 
         {stats.prs.map((p) => (
           <Card key={p.slug} style={{ gap: spacing.xs, borderColor: colors.accent }}>
             <Text variant="heading" tone="accent">{t.pr(nameOf(p.slug), p.e1rm)}</Text>
+            <Text tone="muted">{pickLine(en.coach.prCheer, style, seedOf(p.slug))}</Text>
             <Text tone="muted">{t.prDelta(Math.round((p.e1rm - p.previous) * 10) / 10)}</Text>
           </Card>
         ))}

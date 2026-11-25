@@ -209,6 +209,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
           historyRaw: UserHistorySchema.safeParse(historyRaw).success ? historyRaw : {},
           historyText: history,
           goal: inputs.goal,
+          coachStyle: inputs.coachStyle,
           call: ((c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c)) as never,
           userId,
           jobId,

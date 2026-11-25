@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ALLERGENS, CONTRAINDICATIONS, DIETS, EQUIPMENT, EXERCISE_LEVELS } from '../catalog/index.ts';
+import { COACH_STYLES } from '../ai/coach.ts';
 import { FREE_TEXT_MAX } from '../ai/guardrails.ts';
 
 // Onboarding answers (docs/SPEC.md → "Ecrãs do onboarding"). One Zod schema per screen, shared by
@@ -89,6 +90,9 @@ export const BudgetSchema = z.object({
   cookingMinutes: z.union(COOKING_MINUTES.map((m) => z.literal(m)) as unknown as [z.ZodLiteral<15>, z.ZodLiteral<30>, z.ZodLiteral<45>, z.ZodLiteral<60>]).optional(),
 });
 
+/** Skippable (E-55). Stored in `profiles.coach_style`, default Calm. */
+export const CoachStyleSchema = z.object({ coachStyle: z.enum(COACH_STYLES).optional() });
+
 /** Explicit consent is required for terms, privacy and health data (GDPR special category). */
 export const ConsentsSchema = z.object({
   consents: z.object({
@@ -112,6 +116,7 @@ export const OnboardingAnswersSchema = z.object({
   ...DietSchema.shape,
   ...AllergiesSchema.shape,
   ...BudgetSchema.shape,
+  ...CoachStyleSchema.shape,
   ...ConsentsSchema.shape,
 });
 export type OnboardingAnswers = z.infer<typeof OnboardingAnswersSchema>;

@@ -10,6 +10,8 @@ export interface ProfileUpdate {
   goal: OnboardingAnswers['goalType'];
   experience: OnboardingAnswers['experience'];
   units: OnboardingAnswers['units'];
+  /** Only present when the person picked one: otherwise the column keeps its value (Calm by default). */
+  coach_style?: NonNullable<OnboardingAnswers['coachStyle']>;
   onboarding: Record<string, unknown>;
 }
 
@@ -21,6 +23,7 @@ function compact(a: OnboardingAnswers): Record<string, unknown> {
     if (Array.isArray(v) && v.length === 0 && k !== 'contraindications' && k !== 'allergens') continue;
     out[k] = v;
   }
+  delete out.coachStyle; // lives in profiles.coach_style
   if (a.referenceLifts && Object.values(a.referenceLifts).every((v) => v === undefined)) delete out.referenceLifts;
   return out;
 }
@@ -35,6 +38,7 @@ export function toProfileUpdate(answers: PartialAnswers, now = new Date()): Prof
     goal: a.goalType,
     experience: a.experience,
     units: a.units,
+    ...(a.coachStyle ? { coach_style: a.coachStyle } : {}),
     onboarding: { ...compact(a), version: 1 },
   };
 }

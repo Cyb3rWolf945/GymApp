@@ -3,8 +3,8 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   ACTIVITY_LEVELS, ALLERGENS, BUDGETS, COOKING_MINUTES, CONTRAINDICATIONS, CUT_PACES, DIETS, DISLIKE_OPTIONS, EQUIPMENT,
-  EXERCISE_LEVELS, FREE_TEXT_MAX, GOALS, LOCATIONS, MEALS_PER_DAY, Limits, SESSION_MINUTES, SEXES, UNIT_SYSTEMS, WEEKDAYS,
-  type PartialAnswers, type StepId, cmToFtIn, cmToIn, inToCm, kgToLb, lbToKg,
+  COACH_STYLES, EXERCISE_LEVELS, FREE_TEXT_MAX, GOALS, LOCATIONS, MEALS_PER_DAY, Limits, SESSION_MINUTES, SEXES, UNIT_SYSTEMS, WEEKDAYS,
+  type CoachStyle, type PartialAnswers, type StepId, cmToFtIn, cmToIn, inToCm, kgToLb, lbToKg,
 } from '@gymapp/shared';
 import { en } from '../copy/en';
 import { useTheme } from '../theme';
@@ -255,6 +255,22 @@ function Budget({ answers, update }: StepProps) {
   );
 }
 
+/** Three styles, each with a one-line example. */
+function CoachStyleStep({ answers, update }: StepProps) {
+  return (
+    <Section>
+      <ChipGroup
+        options={COACH_STYLES.map((v) => ({ value: v, label: en.coach.styles[v].label }))}
+        value={answers.coachStyle ? [answers.coachStyle] : []}
+        onChange={(v) => update({ coachStyle: (v[0] as CoachStyle | undefined) ?? undefined })}
+      />
+      {COACH_STYLES.map((v) => (
+        <Text key={v} tone="muted">{`${en.coach.styles[v].label}: ${en.coach.styles[v].example}`}</Text>
+      ))}
+    </Section>
+  );
+}
+
 const CONSENT_KEYS = ['terms', 'privacy', 'healthData', 'disclaimer'] as const;
 
 function Consents({ answers, update }: StepProps) {
@@ -295,5 +311,6 @@ export const STEP_BODIES: Record<StepId, (p: StepProps) => ReactNode> = {
   diet: Diet,
   allergies: Allergies,
   budget: Budget,
+  coachStyle: CoachStyleStep,
   consents: Consents,
 };

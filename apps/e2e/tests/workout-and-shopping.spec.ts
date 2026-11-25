@@ -18,7 +18,8 @@ test('workout logging: start, log sets, finish, see the summary', async ({ page 
   await button(page, en.workout.finish).first().click();
 
   await expect(page).toHaveURL(/\/workout-summary/);
-  await expect(shown(page, en.workout.summary.title)).toBeVisible();
+  // The title is one of the Calm variants (Calm is the default style).
+  await expect(page.getByText(new RegExp(`^(${en.coach.summaryTitle.calm.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`)).filter({ visible: true }).first()).toBeVisible();
 
   // What the app sent: the workout and its two sets (to the fake backend), with weights and reps.
   await expect.poll(() => backend.writesTo('/set_logs').length).toBeGreaterThan(0);

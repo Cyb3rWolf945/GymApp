@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import {
-  ActivitySchema, AllergiesSchema, AvailabilitySchema, BasicsSchema, BudgetSchema, ConsentsSchema, DietSchema,
+  ActivitySchema, AllergiesSchema, AvailabilitySchema, BasicsSchema, BudgetSchema, CoachStyleSchema, ConsentsSchema, DietSchema,
   EquipmentSchema, ExperienceSchema, GoalSchema, InjuriesSchema, OnboardingAnswersSchema, type PartialAnswers,
   TargetSchema, WelcomeSchema,
 } from './schema.ts';
@@ -17,7 +17,7 @@ export interface StepDef {
 
 export const STEP_IDS = [
   'welcome', 'goal', 'basics', 'target', 'experience', 'availability', 'equipment',
-  'injuries', 'activity', 'diet', 'allergies', 'budget', 'consents',
+  'injuries', 'activity', 'diet', 'allergies', 'budget', 'coachStyle', 'consents',
 ] as const;
 export type StepId = (typeof STEP_IDS)[number];
 
@@ -35,7 +35,8 @@ export const ONBOARDING_STEPS: readonly StepDef[] = [
   { id: 'diet', screen: 10, schema: DietSchema, skippable: false },
   { id: 'allergies', screen: 11, schema: AllergiesSchema, skippable: false },
   { id: 'budget', screen: 12, schema: BudgetSchema, skippable: true },
-  { id: 'consents', screen: 13, schema: ConsentsSchema, skippable: false },
+  { id: 'coachStyle', screen: 13, schema: CoachStyleSchema, skippable: true },
+  { id: 'consents', screen: 14, schema: ConsentsSchema, skippable: false },
 ];
 
 const byId = new Map(ONBOARDING_STEPS.map((s) => [s.id, s]));

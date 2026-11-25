@@ -16,7 +16,7 @@ const without = (...keys: (keyof PartialAnswers)[]): PartialAnswers => {
 const errs = (id: StepId, a: PartialAnswers) => stepFieldErrors(id, a).map((e) => `${e.field}:${e.reason}`);
 
 describe('a valid step has no errors', () => {
-  it.each(['goal', 'basics', 'target', 'experience', 'availability', 'equipment', 'injuries', 'activity', 'diet', 'allergies', 'budget', 'consents', 'welcome'] as StepId[])('%s', (id) => {
+  it.each(['goal', 'basics', 'target', 'experience', 'availability', 'equipment', 'injuries', 'activity', 'diet', 'allergies', 'budget', 'coachStyle', 'consents', 'welcome'] as StepId[])('%s', (id) => {
     expect(stepFieldErrors(id, valid)).toEqual([]);
   });
 });

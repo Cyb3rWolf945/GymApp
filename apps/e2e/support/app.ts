@@ -60,6 +60,7 @@ export async function completeQuiz(page: Page, { waitForModal = true } = {}): Pr
   await button(page, en.common.continue).click(); // allergies: none
 
   await button(page, o.budget.skip).click();
+  await button(page, o.coachStyle.skip).click(); // coach style: Calm by default
 
   for (const k of ['terms', 'privacy', 'healthData', 'disclaimer'] as const) await chip(page, o.consents[k]).click();
   await button(page, o.consents.cta).click();
