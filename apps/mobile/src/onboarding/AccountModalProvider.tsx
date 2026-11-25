@@ -1,5 +1,6 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PAID_TIERS, TRIAL_DAYS, formatUsd, lowestMonthlyCents } from '@gymapp/shared';
 import { trackEvent } from '../analytics/track';
@@ -116,6 +117,7 @@ function PlanStep({ initial, onSkip, onDismiss, onCheckoutStart }: { initial: Pl
 export function AccountModalProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const { spacing } = useTheme();
+  const router = useRouter();
   const [state, dispatch] = useReducer(accountModalReducer, 'waiting');
   const [restored, setRestored] = useState<PlanSelection | null>(null);
   const handling = useRef(false);
@@ -148,7 +150,14 @@ export function AccountModalProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         if (sel) setRestored(sel);
         dispatch('checkout_cancelled');
-        window.history.replaceState(null, '', window.location.pathname);
+        // Drop `?checkout=cancelled` (through the router, which would otherwise put it back) so a reload does not reopen the modal.
+        setTimeout(() => {
+          try {
+            router.replace('/');
+          } catch {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }, 0);
       }
     })();
     return () => {

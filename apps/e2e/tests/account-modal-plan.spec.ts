@@ -36,7 +36,7 @@ test('step 1 shows "1 of 2" and the price line; signing up moves to step 2 in pl
   // Pro is pre-selected and marked "Most popular"; Annual is selected.
   await expect(page.getByRole('radio', { name: p.chosen('Pro', p.annual) })).toBeChecked();
   await expect(shown(page, p.popular)).toBeVisible();
-  await expect(button(page, p.annual)).toHaveAttribute('aria-selected', 'true');
+  await expect(button(page, p.annual)).toHaveAttribute('aria-pressed', 'true');
   await expect(button(page, p.ctaTrial(7))).toBeVisible();
   await expect(page.getByText(/Then \$\d+\.\d\d\/year after the trial\. Cancel anytime\./).filter({ visible: true }).first()).toBeVisible();
 
@@ -83,15 +83,13 @@ test('Escape closes step 2 and leaves "Choose a plan"; the button brings it back
   await toModal(page);
   await signUpWithPassword(page);
   await expect(planDialog(page)).toBeVisible();
-  // Tapping outside does not close it.
-  await page.mouse.click(2, 2);
-  await expect(planDialog(page)).toBeVisible();
-  // (Escape is heard by whatever has focus inside the dialog; the click outside moved focus away, so put it back.)
-  await planDialog(page).focus();
   await page.keyboard.press('Escape');
   await expect(planDialog(page)).toHaveCount(0);
   await expect(button(page, g.planCta)).toBeVisible();
   await button(page, g.planCta).click();
+  await expect(planDialog(page)).toBeVisible();
+  // Tapping outside does not close it.
+  await page.mouse.click(2, 2);
   await expect(planDialog(page)).toBeVisible();
 });
 

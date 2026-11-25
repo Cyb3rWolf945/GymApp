@@ -98,10 +98,10 @@ export function usePlanPicker({ placement, mode, initial = DEFAULT_SELECTION, on
     <>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
-          <Button label={t.monthly} variant={interval === 'month' ? 'primary' : 'secondary'} accessibilityState={{ selected: interval === 'month' }} onPress={() => setInterval('month')} />
+          <Button label={t.monthly} variant={interval === 'month' ? 'primary' : 'secondary'} accessibilityState={{ selected: interval === 'month' }} aria-pressed={interval === 'month'} onPress={() => setInterval('month')} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button label={t.annual} variant={interval === 'year' ? 'primary' : 'secondary'} accessibilityState={{ selected: interval === 'year' }} onPress={() => setInterval('year')} />
+          <Button label={t.annual} variant={interval === 'year' ? 'primary' : 'secondary'} accessibilityState={{ selected: interval === 'year' }} aria-pressed={interval === 'year'} onPress={() => setInterval('year')} />
         </View>
       </View>
       {/* Tiers side by side from `medium`, stacked on phones. */}
