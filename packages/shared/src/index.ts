@@ -18,3 +18,4 @@ export * from './http/index.ts';
 export * from './marketing/index.ts';
 export * from './store/listing.ts';
 export * from './notifications/index.ts';
+export * from './exercise/index.ts';

@@ -1,5 +1,5 @@
 import type { Page, Request, Route } from '@playwright/test';
-import { EXERCISES, NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, fakeSession, sessionHistory, setLogHistory, weightHistory } from './fixtures';
+import { NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, exerciseRows, fakeSession, sessionHistory, setLogHistory, weightHistory } from './fixtures';
 
 // A small in-memory stand-in for Supabase (auth, PostgREST tables, RPC and the Edge Functions the app calls).
 // It answers by table and ignores row filters: there is one synthetic user. It records every write so tests can
@@ -30,7 +30,7 @@ export interface Backend {
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
   functionCalls: string[];
-  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null };
+  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown> };
   /** What the Stripe webhook would do after a successful payment. */
   completeCheckout(): void;
   writesTo(path: string): Recorded[];
@@ -75,7 +75,7 @@ export function applyFilters(rows: unknown[], params: URLSearchParams): unknown[
 }
 
 export async function installFakeBackend(page: Page, opts: { checkoutUrl: string }): Promise<Backend> {
-  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null };
+  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {} };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
   const auth: AuthState = { confirmEmails: false, accounts: new Map(), mailbox: [] };
@@ -99,7 +99,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     profiles: () => (state.profile ? [state.profile] : []),
     entitlements: () => (state.entitled ? [entitlement()] : []),
     generation_jobs: () => state.jobs,
-    exercises: () => EXERCISES,
+    exercises: () => exerciseRows(),
     recipes: () => RECIPES,
     plan_prices: () => PLAN_PRICES,
     shopping_list_items: () => state.checked.map((label) => ({ label, checked: true })),
@@ -189,7 +189,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.replace('/rest/v1/rpc/', '');
       if (fn === 'my_access') return json(route, state.entitled);
-      return json(route, []);
+      return json(route, state.rpc[fn] ?? []);
     }
 
     // ---- Tables
