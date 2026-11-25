@@ -15,12 +15,32 @@ The owner explicitly authorized merging PRs that pass review with green CI. Neve
 The body of issue #49 holds exactly two lines: `owner: <A|B>` and `heartbeat: <ISO-8601 UTC>`.
 
 **Before every job and every watchdog run**, read issue #49:
-- **`owner` is your team:** set `heartbeat` to now (keep `owner`), then do the job. Refresh `heartbeat` again when the job ends.
+- **`owner` is your team:** run the usage check below first. If you're under 90%, set `heartbeat` to now (keep `owner`), then do the job. Refresh `heartbeat` again when the job ends.
 - **`owner` is the other team and `heartbeat` is less than 90 minutes old:** the other team is working. Do nothing and stop.
 - **`owner` is the other team and `heartbeat` is 90 minutes old or more:** that team has stalled, probably because its account ran out of usage. **Take over**:
   1. Set `owner` to your team and `heartbeat` to now.
   2. Add a line to #36: "Shift taken over by team <X> at <time>".
   3. Resume as described in "Hourly watchdog" below. The REVIEWER reviews any open PR first. The IMPLEMENTER continues any `status:in-progress` issue on its existing branch, keeping the other team's commits.
+
+### Usage handoff at 90%
+Each team hands over the shift **before** its account runs out, so the other team can start at its next watchdog run without waiting 90 minutes.
+
+**Usage check.** Call `get_session` with no `session_id` to get your own session ID. Then call `list_events` on that ID with `kinds: ["rate_limit_event"]` and `limit: 100`. Read `unifiedWindows.five_hour.utilization` from the newest event. It's account-wide, so it covers both runners of your team. If no event is returned, treat usage as under 90%.
+
+**When to check:** before every job, at every watchdog run, and after every push.
+
+**At 90% or more** (`utilization >= 0.9`), or if `five_hour.status` isn't `allowed`, while your team holds the lock:
+1. Stop where you are. Push any work in progress to its branch, even if checks fail, and don't open a new PR.
+2. Comment on the issue or PR you're working on: "Handoff from team <X> at <time> (5-hour usage <n>%). Branch `<branch>`. Done: … Next step: …". This note is what the other team resumes from.
+3. Set issue #49 to `owner: <other team>` and `heartbeat: <now>`.
+4. Add a line to #36: "Shift handed to team <Y> at <time> (team <X> at <n>% of its 5-hour limit, resets <time from five_hour.resetsAt>)".
+5. Don't send any more `NEXT`, `REVIEW` or `FIX` messages, and don't refresh the heartbeat again. Stop.
+
+**When the lock is handed to you** (`owner` is your team, but your team didn't hold it before), resume as in step 3 of "Take over" above. Read the latest "Handoff from team …" comment first.
+
+**If your own usage is also 90% or more** when the lock is yours, don't hand it back. Do nothing, don't refresh the heartbeat, and stop. Whichever team has usage left takes over once the heartbeat is 90 minutes old.
+
+The 90-minute takeover rule stays as the fallback for a team that stops without handing over.
 
 Only the REVIEWER of the owning team edits #36's "Progress" section.
 
@@ -76,7 +96,7 @@ Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status boa
 5. **If it fails:** post one PR comment listing the concrete required changes, then send the IMPLEMENTER: `FIX PR #<p> issue #<n>: <one-line summary>`. Stop.
 
 ## Hourly watchdog (scheduled task on each runner)
-0. Apply the shift-lock rules above first. If the other team holds a fresh lock, stop.
+0. Apply the shift-lock rules above first, including the usage check. If the other team holds a fresh lock, or you just handed it over, stop.
 1. If you are in the middle of a job, carry on.
 2. If the pipeline has stalled (no open PR or `status:in-progress` issue updated in the last 2 hours), restart it:
    - the REVIEWER reviews any open PR, or sends `NEXT <n>`;
