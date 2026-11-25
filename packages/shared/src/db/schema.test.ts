@@ -406,3 +406,47 @@ describe('admin metrics views (E-31)', () => {
     expect(mine).toBe(2);
   });
 });
+
+describe('admin users and guardrails queue (E-32)', () => {
+  const U1 = '00000000-0000-0000-0000-0000000000b1';
+  const U2 = '00000000-0000-0000-0000-0000000000b2';
+  const search = async (q: string | null) => (await db.query<{ id: string; email: string; tier: string; status: string; last_active: string | null }>(`select id, email, tier, status, last_active::text from public.admin_user_list(${q === null ? 'null' : `'${q.replace(/'/g, "''")}'`}, 50, 0)`)).rows;
+
+  it('lists users with their plan and last activity, and searches by email or id', async () => {
+    await db.exec(`insert into auth.users(id, email, last_sign_in_at) values ('${U1}', 'ana.silva@example.test', '2026-11-01T10:00:00Z'), ('${U2}', '50%_off@example.test', null) on conflict (id) do nothing;
+      insert into public.profiles(user_id) values ('${U1}'), ('${U2}') on conflict do nothing;
+      insert into public.entitlements(user_id, tier, status, current_period_end) values ('${U1}', 'pro', 'active', now() + interval '30 days') on conflict (user_id) do update set tier = 'pro', status = 'active';
+      insert into public.workout_sessions(user_id, started_at) values ('${U1}', '2026-11-20T08:00:00Z')`);
+    const byEmail = await search('SILVA');
+    expect(byEmail.map((u) => u.email)).toEqual(['ana.silva@example.test']);
+    expect(byEmail[0]).toMatchObject({ tier: 'pro', status: 'active' });
+    expect(byEmail[0].last_active).toContain('2026-11-20'); // the later of the sign-in and the last workout
+    expect((await search(U1)).map((u) => u.id)).toEqual([U1]);
+    expect((await search(` ${U2.toUpperCase()} `)).map((u) => u.id)).toEqual([U2]);
+    const none = (await search('50%_off@example.test'))[0];
+    expect(none).toMatchObject({ id: U2, tier: 'none', status: 'none', last_active: null });
+    expect((await search(null)).length).toBeGreaterThanOrEqual(2);
+    expect((await search('')).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('matches % and _ literally, not as wildcards', async () => {
+    expect((await search('%')).map((u) => u.id)).toEqual([U2]); // only the address that really contains a percent sign
+    expect((await search('_')).map((u) => u.id)).toEqual([U2]);
+    expect(await search('no-such-user')).toEqual([]);
+  });
+
+  it('is for the service role only', async () => {
+    await expect(asUser(db, U1, () => db.query(`select * from public.admin_user_list(null, 5, 0)`))).rejects.toThrow(/permission denied/);
+  });
+
+  it('records the reviewer decision on a guardrail event, from a fixed list', async () => {
+    await db.exec(`insert into public.guardrail_events(user_id, rule, action, field, input_text) values ('${U1}', 'injection', 'blocked', 'notes', 'ignore the rules')`);
+    const id = (await db.query<{ id: string }>(`select id from public.guardrail_events where input_text = 'ignore the rules'`)).rows[0].id;
+    await db.exec(`update public.guardrail_events set review_decision = 'kept_blocked', reviewed_at = now(), reviewed_by = '${U2}' where id = '${id}'`);
+    await expect(db.exec(`update public.guardrail_events set review_decision = 'ignored' where id = '${id}'`)).rejects.toThrow(/check/);
+    // Reviewed rows lose their text at the next purge, the decision stays.
+    await db.query(`select public.purge_guardrail_text(30)`);
+    const row = (await db.query<{ input_text: string | null; review_decision: string }>(`select input_text, review_decision from public.guardrail_events where id = '${id}'`)).rows[0];
+    expect(row).toEqual({ input_text: null, review_decision: 'kept_blocked' });
+  });
+});

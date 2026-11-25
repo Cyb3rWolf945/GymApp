@@ -40,6 +40,26 @@ describe('admin access guards', () => {
     for (const body of bodies) expect(body, body.slice(0, 40)).toMatch(/^\w+\([^)]*\) \{\n\s+await requireAdmin\(\);/);
   });
 
+  it('every server action calls requireAdmin() (actions are public endpoints: a page guard does not cover them)', () => {
+    const actionFiles = (function walk(dir: string): string[] {
+      return readdirSync(dir).flatMap((name) => {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) return walk(full);
+        return /^actions\.ts$/.test(name) ? [full] : [];
+      });
+    })(ADMIN_DIR);
+    expect(actionFiles.length).toBeGreaterThanOrEqual(2); // users and guardrails
+    for (const file of actionFiles) {
+      const src = readFileSync(file, 'utf8');
+      const actions = src.match(/export async function \w+/g) ?? [];
+      const guarded = src.match(/await requireAdmin\(\)/g) ?? [];
+      expect(actions.length, file).toBeGreaterThan(0);
+      expect(guarded.length, `${file}: ${actions.length} actions, ${guarded.length} requireAdmin calls`).toBe(actions.length);
+      // And each action audits before it changes anything.
+      expect((src.match(/await audit\(/g) ?? []).length, file).toBeGreaterThanOrEqual(actions.length);
+    }
+  });
+
   it('the service-role client is only imported by server code', () => {
     const adminClient = readFileSync(join(SRC, 'lib', 'supabase', 'admin.ts'), 'utf8');
     expect(adminClient).toContain("import 'server-only'");

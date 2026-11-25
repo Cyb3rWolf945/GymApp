@@ -66,3 +66,10 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md): database, Edge Functions (`supabase/scri
 - **Funnel:** landing to purchase with a source (UTM) and period filter, plus the drop-off for onboarding screens 1 to 13. Anonymous quiz events and the signed-in events of the same person are joined (`analytics_events_attributed`).
 - **AI health:** generations, first-pass, retry, escalation and fallback rates, p50 and p95 latency per role, cost per generation, user and in total, failures by type, refusals and the active prompt versions.
 - Apply migration `20261125000017_admin_metrics.sql` (`supabase/scripts/apply-remote.ts`) before opening these pages; the webhook starts storing the price key (`entitlements.price_key`) after it.
+
+### Admin: Users and Guardrails
+
+- **Users:** list with masked emails, plan, status, signup and last active (last sign-in or workout), searchable by part of the email or the exact id (`admin_user_list`, service role only). Opening a user shows the full profile, the current plan, the generation history with QA scores, workouts and 4-week adherence and the Stripe customer link, and is audited first.
+- **Actions** (each: `requireAdmin()`, then an audit row, then the change): grant a plan (a tier until an end date of at most a year; refused for users with a live Stripe subscription, since the next Stripe event would overwrite it), regenerate the plan (calls `generate-plan` with the service-role key; only that key may pass a `userId`, and it skips the user's tier and quota), resend the sign-in link (Supabase sends it to the user's own address), export the user's data (same tables as the user's own export) and delete the account (same erasure as the user's own, via `delete-account`; the admin types the user's email to confirm).
+- **Guardrails queue:** blocked inputs with the classifier's category and decision, and Approve, Keep blocked or Contact user. A decision marks the event reviewed, so the next daily purge removes the user's text. A chart shows attempts per day.
+- Needs `APP_URL` (and optionally `STRIPE_DASHBOARD_URL`) in the admin project's environment, and migration `20261125000018` applied.
