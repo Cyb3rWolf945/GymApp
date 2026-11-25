@@ -2,7 +2,7 @@ import { type Page, expect } from '@playwright/test';
 import { authCopy } from '../../mobile/src/auth/copy';
 import { en } from '../../mobile/src/copy/en';
 import { type Backend, installFakeBackend } from './fake-backend';
-import { SESSION_STORAGE_KEY, fakeSession } from './fixtures';
+import { NUTRITION_PLAN, SESSION_STORAGE_KEY, WORKOUT_PLAN, fakeSession } from './fixtures';
 
 // Labels come from the app's own copy file, so a wording change cannot silently break the tests.
 
@@ -78,4 +78,19 @@ export async function signUpWithMagicLink(page: Page): Promise<void> {
   await expect(shown(page, authCopy.checkInbox)).toBeVisible();
   await page.evaluate(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
   await page.goto('/');
+}
+
+/** A signed-in Pro user whose plan is already generated, on Home. */
+export async function signedInWithPlan(page: Page): Promise<Backend> {
+  const backend = await start(page);
+  backend.completeCheckout();
+  const job = (id: string, kind: 'workout_plan' | 'nutrition_plan', plan: unknown) => ({ id, kind, status: 'done', created_at: new Date().toISOString(), result: { plan } });
+  backend.state.jobs = [
+    job('20000000-0000-4000-8000-000000000001', 'workout_plan', WORKOUT_PLAN),
+    job('20000000-0000-4000-8000-000000000002', 'nutrition_plan', NUTRITION_PLAN),
+  ];
+  backend.state.profile = { user_id: 'u', onboarding: { preferredDays: ['mon', 'thu'], equipment: ['full_gym'], contraindications: [] }, experience: 'beginner' };
+  await page.addInitScript(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
+  await page.goto('/');
+  return backend;
 }

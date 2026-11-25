@@ -7,12 +7,13 @@ export interface ChartPoint {
 
 /**
  * Maps values onto a box: x evenly by position, y with a little padding around min and max (a flat series sits in
- * the middle). SVG y grows downwards, so higher values get smaller y.
+ * the middle). SVG y grows downwards, so higher values get smaller y. Pass `range` to put several series on one
+ * y-scale; each series still spreads over the full width on its own.
  */
-export function scaleSeries(values: readonly number[], width: number, height: number, pad = 8): ChartPoint[] {
+export function scaleSeries(values: readonly number[], width: number, height: number, pad = 8, range?: { min: number; max: number }): ChartPoint[] {
   if (values.length === 0) return [];
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = range?.min ?? Math.min(...values);
+  const max = range?.max ?? Math.max(...values);
   const span = max - min;
   const inner = height - pad * 2;
   return values.map((v, i) => ({

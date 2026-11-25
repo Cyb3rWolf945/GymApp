@@ -64,3 +64,48 @@ export function fakeSession(): Record<string, unknown> {
 
 /** supabase-js keeps the session in localStorage under `sb-<first label of the host>-auth-token`. */
 export const SESSION_STORAGE_KEY = 'sb-localhost-auth-token';
+
+// ---- Workout history for screens that need it (Progress, store screenshots). Dates are relative to `now`.
+const DAY_MS = 86_400_000;
+const iso = (now: Date, daysAgo: number, hour = 9) => new Date(now.getTime() - daysAgo * DAY_MS + (hour - 10) * 3_600_000).toISOString();
+
+export function weightHistory(now: Date) {
+  // 4 weeks of weigh-ins, drifting from 78.4 kg to 77.1 kg with a little noise.
+  const noise = [0.2, -0.3, 0.1, 0.4, -0.2, 0, 0.3, -0.1];
+  return Array.from({ length: 22 }, (_, i) => {
+    const daysAgo = 28 - Math.round(i * (28 / 21));
+    return { measured_on: iso(now, daysAgo).slice(0, 10), weight_kg: Math.round((78.4 - i * 0.06 + noise[i % noise.length]) * 10) / 10 };
+  });
+}
+
+const MUSCLES: Record<string, { muscle: string; role: 'primary' | 'secondary' }[]> = {
+  'barbell-bench-press': [{ muscle: 'pectoralis_major', role: 'primary' }, { muscle: 'triceps_brachii', role: 'secondary' }, { muscle: 'deltoid_anterior', role: 'secondary' }],
+  'standing-barbell-overhead-press': [{ muscle: 'deltoid_anterior', role: 'primary' }, { muscle: 'triceps_brachii', role: 'secondary' }, { muscle: 'trapezius', role: 'secondary' }],
+  'barbell-back-squat': [{ muscle: 'quadriceps', role: 'primary' }, { muscle: 'gluteus_maximus', role: 'primary' }, { muscle: 'hamstrings', role: 'secondary' }],
+  'conventional-deadlift': [{ muscle: 'hamstrings', role: 'primary' }, { muscle: 'gluteus_maximus', role: 'primary' }, { muscle: 'erector_spinae', role: 'primary' }, { muscle: 'latissimus_dorsi', role: 'secondary' }],
+};
+
+/** Sets of the last 3 weeks (an upper and a lower workout each week) with rising weights. */
+export function setLogHistory(now: Date) {
+  const rows: { weight_kg: number; reps: number; logged_at: string; exercises: { slug: string; name: string; exercise_muscles: (typeof MUSCLES)[string] } }[] = [];
+  const base: Record<string, number> = { 'barbell-bench-press': 70, 'standing-barbell-overhead-press': 42.5, 'barbell-back-squat': 90, 'conventional-deadlift': 110 };
+  for (let week = 0; week < 3; week++) {
+    for (const [slugs, offset] of [[['barbell-bench-press', 'standing-barbell-overhead-press'], 1], [['barbell-back-squat', 'conventional-deadlift'], 4]] as const) {
+      for (const slug of slugs) {
+        const ex = EXERCISES.find((e) => e.slug === slug)!;
+        for (let set = 0; set < 3; set++) {
+          // The most recent week (0) is the heaviest: the trend goes up.
+          rows.push({ weight_kg: base[slug] + (2 - week) * 2.5, reps: 10 - set, logged_at: iso(now, week * 7 + offset), exercises: { slug, name: ex.name, exercise_muscles: MUSCLES[slug] } });
+        }
+      }
+    }
+  }
+  return rows;
+}
+
+export function sessionHistory(now: Date) {
+  return [0, 1, 2].flatMap((week) => [
+    { id: `30000000-0000-4000-8000-0000000000${week}1`, day_name: 'Upper body', started_at: iso(now, week * 7 + 1) },
+    { id: `30000000-0000-4000-8000-0000000000${week}2`, day_name: 'Lower body', started_at: iso(now, week * 7 + 4) },
+  ]);
+}

@@ -5,3 +5,9 @@ dist
 .env.local
 *.tsbuildinfo
 .vercel
+
+# Google Play service account key (store submission): never commit
+google-play-service-account.json
+*.p8
+*.p12
+*.keystore

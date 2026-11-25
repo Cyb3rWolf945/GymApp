@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Splash mark on a transparent background; the splash colour (#0B0B0F) comes from app.json. -->
+  <rect x="352" y="352" width="320" height="320" rx="80" fill="#C6FF3D"/>
+  <path d="M452 412 H584 V453 H495 V487 H566 V527 H495 V612 H452 Z" fill="#0B0B0F"/>
+</svg>

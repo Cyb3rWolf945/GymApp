@@ -1,21 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
-import { SESSION_STORAGE_KEY, fakeSession } from '../support/fixtures';
-import { button, shown, start } from '../support/app';
-
-// A signed-in Pro user with a plan already generated.
-async function signedInWithPlan(page: import('@playwright/test').Page) {
-  const backend = await start(page);
-  backend.completeCheckout();
-  backend.state.jobs = [
-    { id: '20000000-0000-4000-8000-000000000001', kind: 'workout_plan', status: 'done', created_at: new Date().toISOString(), result: { plan: (await import('../support/fixtures')).WORKOUT_PLAN } },
-    { id: '20000000-0000-4000-8000-000000000002', kind: 'nutrition_plan', status: 'done', created_at: new Date().toISOString(), result: { plan: (await import('../support/fixtures')).NUTRITION_PLAN } },
-  ];
-  backend.state.profile = { user_id: 'u', onboarding: { preferredDays: ['mon', 'thu'], equipment: ['full_gym'], contraindications: [] }, experience: 'beginner' };
-  await page.addInitScript(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
-  await page.goto('/');
-  return backend;
-}
+import { button, shown, signedInWithPlan } from '../support/app';
 
 test('workout logging: start, log sets, finish, see the summary', async ({ page }) => {
   const backend = await signedInWithPlan(page);

@@ -150,6 +150,14 @@ describe('scaleSeries', () => {
     expect(pts[0].y).toBe(45);
     expect(pts[2].y).toBe(5);
   });
+  it('puts several series on one y-scale while each spreads over the full width', () => {
+    const range = { min: 0, max: 100 };
+    const line = scaleSeries([0, 100], 100, 50, 5, range);
+    const dots = scaleSeries([50, 50, 50], 100, 50, 5, range);
+    expect(line.map((p) => p.x)).toEqual([0, 100]);
+    expect(dots.map((p) => p.x)).toEqual([0, 50, 100]);
+    expect(dots.map((p) => p.y)).toEqual([25, 25, 25]); // 50 is the middle of 0..100 on the shared scale
+  });
   it('centres flat and single-point series and handles empty input', () => {
     expect(scaleSeries([7, 7], 100, 50).map((p) => p.y)).toEqual([25, 25]);
     expect(scaleSeries([7], 100, 50)).toEqual([{ x: 50, y: 25 }]);

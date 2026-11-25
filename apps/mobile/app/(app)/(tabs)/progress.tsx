@@ -136,9 +136,11 @@ export default function ProgressScreen() {
                 placeholder={p.weightPlaceholder}
                 keyboardType="decimal-pad"
                 accessibilityLabel={p.weightPlaceholder}
-                style={{ flex: 1, minHeight: 48 }}
+                style={{ flex: 1, minHeight: 48, minWidth: 0 }}
               />
-              <Button label={p.logWeight} loading={saving} onPress={() => void saveWeight()} />
+              <View style={{ flexShrink: 0 }}>
+                <Button label={p.logWeight} loading={saving} onPress={() => void saveWeight()} />
+              </View>
             </View>
             {weightError ? <Text tone="danger" accessibilityRole="alert">{weightError}</Text> : null}
           </Card>
