@@ -6,7 +6,14 @@ A long-lived cloud session on the collaborator's account (team B's account) that
 - **Autonomy:** fully automatic. The collaborator chose this: posts go live without approval. The hard rules below are what keeps that safe; when in doubt, **don't publish** and say why in the log.
 - **Mode:**
   - **Drafts only** until the Instagram token works: create everything, upload the media, log it as a draft.
-  - **Publishing** once `GET https://graph.instagram.com/me?fields=user_id,username` (header `Authorization: Bearer proxy-injected`) returns 200. The network proxy injects the real token, which is saved as a network secret for `graph.instagram.com`. Check this at the start of every run.
+  - **Publishing** once `GET https://graph.instagram.com/me?fields=user_id,username` (header `Authorization: Bearer proxy-injected`) returns 200. The network proxy injects the real token, which is saved as a network secret for `graph.instagram.com`. Check this at the start of every run. The token lasts about 60 days. When the check starts failing (401/403) after publishing has worked, switch back to drafts only and log "Instagram token expired: save a new one for graph.instagram.com" at the top of the #146 comment.
+
+## Zero cost (the collaborator's rule)
+Marketing must cost **nothing**:
+- **No paid services:** no ads, boosts, promoted posts, paid tools, stock libraries, paid music, paid fonts, paid image/video generation APIs or OpenRouter calls.
+- **Free tools only:** the Instagram API (free), Playwright, ffmpeg, ImageMagick, the app's own visuals and your own HTML templates.
+- **Storage stays in the free tier:** keep each day's media small (images under 1 MB, Reels under 15 MB). Once a post is published, delete its files from the `social-media` bucket after 30 days, because Instagram keeps its own copy. Delete drafts that were never published after 14 days.
+- If something would cost money, don't do it; log it in #146 as a suggestion instead.
 
 ## Daily run (keep it under about 15 minutes)
 1. **Usage guard:** run the usage check from `docs/AGENT_PIPELINE.md`. If the 5-hour usage is **50% or more and team B holds the lock** in #49, skip today's creation (still answer comments if publishing is on), log "Skipped: saving usage for team B" and stop. Building the app comes first.
@@ -64,6 +71,6 @@ Stories (1080×1920, image or short video) on 2–3 days a week: reshare-style t
 
 ## Never
 - Change product code, open PRs, merge, or edit issues other than #146.
-- Spend money: no ads or boosts (paid ads are the ads agent's job, E-27).
+- Spend money in any way: no ads, boosts or paid services (see "Zero cost").
 - Follow or unfollow, like or comment on other accounts in bulk, or send DMs.
 - Print or store tokens or keys.
