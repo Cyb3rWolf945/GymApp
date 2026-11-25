@@ -26,7 +26,7 @@ const userTables = ['workout_plans','workout_days','planned_exercises','workout_
   'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps'];
 const adminTables = ['ai_call_logs','guardrail_events','analytics_events','admins','admin_audit_log',
   'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily','stripe_events'];
-const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients'];
+const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients','plan_prices'];
 
 describe('auth profile trigger', () => {
   it('creates a profile on first sign-in, using the provider name', async () => {
@@ -145,5 +145,54 @@ describe('has_access (E-17)', () => {
     await asUser(db, U, async () => {
       expect((await db.query<{ ok: boolean }>(`select public.my_access() as ok`)).rows[0].ok).toBe(true);
     });
+  });
+});
+
+describe('tier gating (E-18)', () => {
+  const U = '00000000-0000-0000-0000-0000000000f2';
+  const job = '00000000-0000-0000-0000-0000000000f3';
+  const setTier = async (tier: string) => {
+    await db.exec(`insert into auth.users(id) values ('${U}') on conflict do nothing;
+      insert into public.profiles(user_id) values ('${U}') on conflict do nothing;
+      insert into public.generation_jobs(id, user_id, kind) values ('${job}', '${U}', 'nutrition_plan') on conflict do nothing;
+      insert into public.entitlements(user_id, tier, status, current_period_end)
+        values ('${U}', '${tier}', 'active', now() + interval '10 days')
+        on conflict (user_id) do update set tier = excluded.tier, status = 'active', current_period_end = excluded.current_period_end`);
+  };
+  const swap = `insert into public.meal_swaps(user_id, job_id, day_index, meal_index, from_slug, to_slug) values ('${U}', '${job}', 0, 0, 'a', 'b')`;
+  const shop = `insert into public.shopping_list_items(user_id, label, job_id) values ('${U}', 'Oats', '${job}')`;
+
+  it('Basic cannot write meal swaps or shopping rows; Pro can', async () => {
+    await setTier('basic');
+    await expect(asUser(db, U, () => db.query(swap))).rejects.toThrow(/row-level security/);
+    await expect(asUser(db, U, () => db.query(shop))).rejects.toThrow(/row-level security/);
+    await setTier('pro');
+    await asUser(db, U, () => db.query(swap));
+    await asUser(db, U, () => db.query(shop));
+    const rows = await asUser(db, U, async () => (await db.query('select * from public.meal_swaps')).rows);
+    expect(rows).toHaveLength(1);
+  });
+  it('a lapsed subscriber keeps reading their rows but cannot write new ones', async () => {
+    await db.exec(`update public.entitlements set status = 'canceled' where user_id = '${U}'`);
+    const rows = await asUser(db, U, async () => (await db.query('select * from public.shopping_list_items')).rows);
+    expect(rows).toHaveLength(1);
+    await expect(asUser(db, U, () => db.query(shop.replace("'Oats'", "'Rice'")))).rejects.toThrow(/row-level security/);
+  });
+  it('weekly_adjust is Elite-only', async () => {
+    const access = async (f: string) => (await db.query<{ ok: boolean }>(`select public.has_access('${U}', '${f}') as ok`)).rows[0].ok;
+    await setTier('pro');
+    expect(await access('weekly_adjust')).toBe(false);
+    await setTier('elite');
+    expect(await access('weekly_adjust')).toBe(true);
+  });
+  it('signed-in users cannot call has_access directly, only my_access', async () => {
+    await expect(asUser(db, U, () => db.query(`select public.has_access('${U}')`))).rejects.toThrow(/permission denied/);
+    const ok = await asUser(db, U, async () => (await db.query<{ ok: boolean }>(`select public.my_access('workouts') as ok`)).rows[0].ok);
+    expect(ok).toBe(true);
+  });
+  it('plan_prices is readable by everyone and seeded with the six default prices', async () => {
+    const rows = await asUser(db, U, async () => (await db.query('select * from public.plan_prices')).rows);
+    expect(rows).toHaveLength(6);
+    await expect(asUser(db, U, () => db.query(`update public.plan_prices set cents = 1`))).resolves.toMatchObject({ affectedRows: 0 });
   });
 });

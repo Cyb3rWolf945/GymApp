@@ -3,6 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WEEKDAY_LABELS, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
+import { PastDueBanner } from '../../../src/billing/PastDueBanner';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
 import { PlanGate } from '../../../src/home/PlanGate';
@@ -42,6 +43,7 @@ function Today({ data }: { data: PlanData }) {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
         <Text variant="display">{t.title}</Text>
+        <PastDueBanner />
 
         {workout?.kind === 'workout' ? (
           <Card style={{ gap: spacing.sm }}>

@@ -9,7 +9,7 @@ import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
-import { fetchEntitled, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
+import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
 import { BottomSheet, Button, Card, EmptyState, ListItem, Text, useToast } from '../../../src/ui';
 
@@ -40,11 +40,11 @@ function Nutrition({ data }: { data: PlanData }) {
     return p.success ? p.data.days.length : 0;
   }, [data]);
 
-  // Stub gate until the paywall (E-18). The server stays the source of truth for access.
+  // The server decides (`my_access`); the database also refuses Pro-only writes without it.
   const [entitled, setEntitled] = useState<boolean | null>(null);
   useEffect(() => {
     if (!user) return;
-    void fetchEntitled(user.id).then(setEntitled, () => setEntitled(false));
+    void fetchAccess('nutrition').then(setEntitled, () => setEntitled(false));
   }, [user]);
 
   const [target, setTarget] = useState<Target | null>(null);

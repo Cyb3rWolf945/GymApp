@@ -36,3 +36,21 @@ export const FOUNDING_COUPON = { id: 'FOUNDING', tier: 'pro' as PaidTier, lookup
 
 export const priceByKey = (key: string): PriceSpec | undefined => PRICES.find((x) => x.lookupKey === key);
 export const tierOfLookupKey = (key: string | null | undefined): Tier => (key ? (priceByKey(key)?.tier ?? 'none') : 'none');
+
+// Feature matrix (SPEC §6), enforced server-side. Keep `FEATURE_MIN_TIER` and the SQL `has_access` in sync.
+export const FEATURES = ['workouts', 'swaps', 'nutrition', 'recipes', 'shopping', 'unlimited_generation', 'weekly_adjust'] as const;
+export type Feature = (typeof FEATURES)[number];
+
+export const FEATURE_MIN_TIER: Record<Feature, Exclude<Tier, 'none'>> = {
+  workouts: 'basic',
+  swaps: 'basic',
+  nutrition: 'pro',
+  recipes: 'pro',
+  shopping: 'pro',
+  unlimited_generation: 'pro',
+  weekly_adjust: 'elite',
+};
+
+const RANK: Record<Tier, number> = { none: 0, basic: 1, pro: 2, elite: 3 };
+export const tierIncludes = (tier: Tier, feature: Feature): boolean => RANK[tier] >= RANK[FEATURE_MIN_TIER[feature]];
+

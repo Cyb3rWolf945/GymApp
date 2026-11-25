@@ -1,4 +1,4 @@
-import { type Tier, tierOfLookupKey } from './pricing.ts';
+import { FEATURE_MIN_TIER, type Feature, type Tier, tierIncludes, tierOfLookupKey } from './pricing.ts';
 
 // Stripe events -> `entitlements` row. Pure: network and database access come in through `Deps`, so the
 // whole mapping is unit-tested. Access itself is decided in SQL (`has_access`) and mirrored by `hasAccess`.
@@ -127,12 +127,12 @@ export async function handleStripeEvent(event: StripeEvent, deps: Deps): Promise
 }
 
 /** TS mirror of the SQL `has_access`. Keep both in sync (the SQL one is the source of truth). */
-export function hasAccess(ent: Pick<EntitlementRow, 'tier' | 'status' | 'current_period_end' | 'past_due_since'> | null | undefined, feature = 'basic', now = new Date()): boolean {
+export function hasAccess(ent: Pick<EntitlementRow, 'tier' | 'status' | 'current_period_end' | 'past_due_since'> | null | undefined, feature: Feature | 'basic' = 'basic', now = new Date()): boolean {
   if (!ent || ent.tier === 'none' || !ent.current_period_end) return false;
   if (new Date(ent.current_period_end) <= now) return false;
   const statusOk =
     ent.status === 'active' || ent.status === 'trialing' ||
     (ent.status === 'past_due' && !!ent.past_due_since && now.getTime() < new Date(ent.past_due_since).getTime() + PAST_DUE_GRACE_DAYS * 86_400_000);
   if (!statusOk) return false;
-  return feature === 'basic' || ent.tier === 'pro' || ent.tier === 'elite';
+  return feature === 'basic' || (feature in FEATURE_MIN_TIER ? tierIncludes(ent.tier, feature) : ent.tier === 'pro' || ent.tier === 'elite');
 }
