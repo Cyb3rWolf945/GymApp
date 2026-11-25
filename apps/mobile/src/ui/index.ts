@@ -3,6 +3,7 @@ export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { Chip, ChipGroup } from './Chip';
 export { EmptyState } from './EmptyState';
+export { LineChart } from './LineChart';
 export { ListItem } from './ListItem';
 export { ProgressBar } from './ProgressBar';
 export { Slider } from './Slider';
