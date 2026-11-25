@@ -6,3 +6,5 @@ export function greet(name: string): string {
 export * from './catalog';
 export * from './db';
 export * from './ai/index.ts';
+export * from './onboarding/index.ts';
+export * from './calc/index.ts';

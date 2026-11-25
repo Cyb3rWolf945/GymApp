@@ -9,3 +9,4 @@ export { Slider } from './Slider';
 export { StatTile } from './StatTile';
 export { Text } from './Text';
 export { ToastProvider, useToast } from './Toast';
+export { TextField } from './TextField';

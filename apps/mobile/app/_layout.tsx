@@ -1,11 +1,17 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
+import { OnboardingProvider } from '../src/onboarding/OnboardingProvider';
+import { useSaveOnboarding } from '../src/onboarding/useSaveOnboarding';
 import { ThemeProvider, colors } from '../src/theme';
 import { ToastProvider } from '../src/ui';
 
+// Signed-out visitors start in onboarding.
+export const unstable_settings = { initialRouteName: 'onboarding' };
+
 function RootStack() {
   const { session, loading } = useAuth();
+  useSaveOnboarding();
   if (loading) return null;
   return (
     <Stack
@@ -18,6 +24,7 @@ function RootStack() {
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
@@ -29,8 +36,10 @@ export default function RootLayout() {
     <ThemeProvider scheme="dark">
       <ToastProvider>
         <AuthProvider>
-          <StatusBar style="light" />
-          <RootStack />
+          <OnboardingProvider>
+            <StatusBar style="light" />
+            <RootStack />
+          </OnboardingProvider>
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
