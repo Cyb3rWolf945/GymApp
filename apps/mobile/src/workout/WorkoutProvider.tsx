@@ -32,6 +32,10 @@ interface Ctx {
   hydrated: boolean;
   /** Items still waiting to reach the server. */
   pending: number;
+  /** The queued writes themselves (History shows corrections made offline before they are sent). */
+  outbox: readonly OutboxItem[];
+  /** Queue a write or delete and send it as soon as there is a connection (corrections made in History). */
+  queue: (item: OutboxItem) => void;
   start: (input: StartInput) => Promise<void>;
   logSet: (set: { slug: string; weightKg: number; reps: number; rpe?: number }) => void;
   undoLast: () => void;
@@ -91,8 +95,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     try {
       const sent = new Set<string>();
       await flushOutbox(outboxRef.current, async (item) => {
-        // Client-generated ids make this an idempotent upsert.
-        const { error } = await supabase.from(item.table).upsert(item.row as never, { onConflict: 'id' });
+        // Client-generated ids make a write an idempotent upsert; a delete of a row that is already gone is also fine.
+        const { error } = item.op === 'delete' ? await supabase.from(item.table).delete().eq('id', item.id) : await supabase.from(item.table).upsert(item.row as never, { onConflict: 'id' });
         if (!error) sent.add(`${item.table}:${item.id}`);
         return !error;
       });
@@ -216,9 +220,17 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   const close = useCallback(() => updateActive(null), [updateActive]);
 
+  const queue = useCallback(
+    (item: OutboxItem) => {
+      push(item);
+      void flush();
+    },
+    [push, flush],
+  );
+
   const value = useMemo<Ctx>(
-    () => ({ active, hydrated, pending: outbox.length, start, logSet, undoLast, finish, close }),
-    [active, hydrated, outbox.length, start, logSet, undoLast, finish, close],
+    () => ({ active, hydrated, pending: outbox.length, outbox, queue, start, logSet, undoLast, finish, close }),
+    [active, hydrated, outbox, queue, start, logSet, undoLast, finish, close],
   );
   return <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>;
 }
