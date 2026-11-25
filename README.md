@@ -30,3 +30,12 @@ In the cloud agent environment, set `SUPABASE_ACCESS_TOKEN=proxy-injected` and r
 - Every OpenRouter call is logged to `ai_call_logs` (role, model, tokens, cost, latency, QA result, retry, escalated, refusal). Never the prompt or the output.
 - Guardrail events are counted in `guardrail_events`. The user's text is kept only for blocked or dropped input (the review queue) and removed after 30 days or once reviewed. Schedule the `daily-maintenance` function daily to purge it.
 - Views for the admin dashboards (service role only): `analytics_funnel_daily`, `ai_usage_daily`, `guardrail_daily`, `revenue_net_daily`.
+
+## Admin backoffice (`apps/admin`)
+
+Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it with `pnpm --filter admin dev` (port 3001) after copying `apps/admin/.env.example` to `.env.local`.
+
+- **Access:** sign in with Supabase email and password, then the account must be in the `admins` table and must verify a TOTP code in the current session (first login enrols an authenticator app). Add an admin with `insert into public.admins (user_id) values ('<auth user id>');`. Turn on TOTP in the Supabase dashboard (Auth, Multi-factor) for the hosted project; `supabase/config.toml` covers local.
+- **Service role:** only in `src/lib/supabase/admin.ts`, which imports `server-only`. Every page, action and route handler starts with `requireAdmin()`; the proxy only refreshes cookies.
+- **Audit:** `admin_audit_log` gets a row for each login, each 2FA step, the user list and every view of a user's health data (the row is written before the data is read; if it fails the page shows nothing).
+- **Vercel:** create a project with root directory `apps/admin` (it picks up `apps/admin/vercel.json`), set the three env vars from `.env.example`, and add the domain `admin.<domain>` in the project settings.
