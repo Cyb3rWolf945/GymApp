@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
 import { signedInWithPlan } from '../support/app';
+import { ownViewports } from '../support/projects';
 
 const TABS = [en.home.tabs.today, en.home.tabs.plan, en.home.tabs.nutrition, en.home.tabs.progress, en.home.tabs.settings];
 const WIDTHS = [320, 390, 600, 768, 1024, 1366, 1920];
@@ -8,6 +9,8 @@ const WIDTHS = [320, 390, 600, 768, 1024, 1366, 1920];
 const openTab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true }).click();
 /** The page must not scroll sideways: nothing wider than the window. */
 const overflowX = (page: Page) => page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+
+ownViewports();
 
 test.describe('responsive main tabs', () => {
   test('no horizontal scrolling on any tab from 320 to 1920 px', async ({ page }) => {

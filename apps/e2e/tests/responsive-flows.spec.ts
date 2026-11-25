@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
 import { MIN_TAP_TARGET } from '../../mobile/src/theme/tokens';
 import { button, shown, signedInWithPlan, start } from '../support/app';
+import { ownViewports } from '../support/projects';
 
 const WIDTHS = [320, 375, 600, 768, 1024, 1440, 1920];
 /** The page must not scroll sideways: nothing wider than the window. */
@@ -16,6 +17,8 @@ async function noSidewaysScroll(page: Page, route: string, ready: () => Promise<
     expect(await overflowX(page), `${route} at ${width}px`).toBeLessThanOrEqual(0);
   }
 }
+
+ownViewports();
 
 test.describe('responsive flows', () => {
   test('signed-out screens never scroll sideways, 320 to 1920 px', async ({ page }) => {
