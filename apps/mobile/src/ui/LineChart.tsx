@@ -18,11 +18,11 @@ interface Props {
 /** A small line chart: no axes, just the shape of the trend. The numbers are shown in text next to it. */
 export function LineChart({ values, dots, label }: Props) {
   const { colors } = useTheme();
-  // Dots and line share one scale so they line up.
+  // The line and the dots share the y-scale (so they line up) but each spreads over the full width on its own.
   const all = [...values, ...(dots ?? [])];
-  const scaled = scaleSeries(all, W, H);
-  const line = scaled.slice(0, values.length);
-  const raw = scaled.slice(values.length);
+  const range = all.length ? { min: Math.min(...all), max: Math.max(...all) } : undefined;
+  const line = scaleSeries(values, W, H, 8, range);
+  const raw = scaleSeries(dots ?? [], W, H, 8, range);
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label}>
       <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
