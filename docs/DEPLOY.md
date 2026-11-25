@@ -53,6 +53,7 @@ supabase secrets set --project-ref <ref> \
 | `META_PIXEL_ID`, `META_CAPI_TOKEN` | track-event, stripe-webhook | optional until ads start |
 
 Schedule two daily calls with the service-role key as bearer token: `stripe-reconcile` and `daily-maintenance`.
+Schedule `send-reminders` **hourly** the same way (it sends each device's workout-day reminder in that device's local reminder hour; optional secret `EXPO_ACCESS_TOKEN` if you enable Expo push security).
 
 ## 3. Web (Owner: Vercel account and domain)
 
@@ -93,7 +94,7 @@ Do this only after you have asked for and given approval in the "MVP status" iss
 
 - [ ] Migrations applied, no table without RLS, seed counts right (step 1)
 - [ ] All functions deployed, secrets set, `APP_ENV=production` and `MODEL_PROFILE=prod` together (step 2)
-- [ ] `stripe-reconcile` and `daily-maintenance` scheduled (step 2)
+- [ ] `stripe-reconcile` and `daily-maintenance` scheduled daily, `send-reminders` hourly (step 2)
 - [ ] Web and admin deployed on their domains; auth redirect URLs set; first admin added with TOTP (step 3)
 - [ ] AI smoke test: prod profile `6/6 passed` (step 4)
 - [ ] Legal text replaced by lawyer-approved text, company and DPO details filled in, versions bumped (`packages/shared/src/legal/docs.ts`)

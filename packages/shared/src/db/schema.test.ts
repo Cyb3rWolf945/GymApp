@@ -25,7 +25,7 @@ beforeAll(async () => {
 afterAll(() => db.close());
 
 const userTables = ['workout_plans','workout_days','planned_exercises','workout_sessions','set_logs',
-  'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps','consent_records'];
+  'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps','consent_records','push_tokens'];
 const adminTables = ['ai_call_logs','guardrail_events','analytics_events','admins','admin_audit_log',
   'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily','stripe_events'];
 const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients','plan_prices'];

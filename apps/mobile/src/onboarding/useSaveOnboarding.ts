@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { type PartialAnswers, consentRows, isComplete, toProfileUpdate } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { getAttribution, getTrackingChoice, marketingIds } from '../marketing/tracking';
+import { enablePush } from '../push/register';
 import { supabase } from '../supabase';
 import { useOnboarding } from './OnboardingProvider';
 
@@ -44,7 +45,11 @@ export function useSaveOnboarding(): void {
     if (!userId || !hydrated || !isComplete(answers)) return;
     void saveProfileOnce(userId, answers).then((ok) => {
       // On failure keep the local copy: the next launch tries again.
-      if (ok) void clear();
+      if (ok) {
+        // The reminders consent given in onboarding: register this device now (asks the OS for permission).
+        if (answers.consents?.notifications) void enablePush(userId);
+        void clear();
+      }
     });
   }, [userId, hydrated, answers, clear]);
 }

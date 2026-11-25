@@ -8,6 +8,7 @@ import { signOut } from '../../../src/auth/authService';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { authCopy } from '../../../src/auth/copy';
 import { en } from '../../../src/copy/en';
+import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
 import { BottomSheet, Button, Card, ListItem, Text, useToast } from '../../../src/ui';
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const toast = useToast();
+  const push = usePushReminders();
   const [exporting, setExporting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -58,6 +60,18 @@ export default function SettingsScreen() {
         <Card style={{ gap: spacing.sm }}>
           <Text variant="small" tone="muted">{t.account}</Text>
           <Text variant="bodyStrong">{user?.email ?? ''}</Text>
+        </Card>
+
+        <Card style={{ gap: spacing.sm }}>
+          <Text variant="heading">{t.reminders.title}</Text>
+          <Text tone="muted">{push.supported ? t.reminders.body : t.reminders.webNote}</Text>
+          {push.supported ? (
+            <>
+              {push.enabled ? <Text variant="small" tone="accent">{t.reminders.enabledNote}</Text> : null}
+              <Button label={push.enabled ? t.reminders.off : t.reminders.on} variant="secondary" loading={push.busy} onPress={() => void push.toggle()} />
+              {push.error ? <Text tone="danger" accessibilityRole="alert">{push.error === 'denied' ? t.reminders.denied : t.reminders.error}</Text> : null}
+            </>
+          ) : null}
         </Card>
 
         <Card style={{ gap: spacing.xs }}>

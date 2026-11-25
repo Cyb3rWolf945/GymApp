@@ -196,6 +196,16 @@ export const en = {
       error: "Couldn't update your plan. Try again in a minute.",
       upgrade: 'Updating your plan is part of a paid plan.',
     },
+    reminders: {
+      title: 'Reminders',
+      body: 'A nudge on your workout days, at 5 pm. One a day, never on rest days.',
+      on: 'Turn on reminders',
+      off: 'Turn off reminders',
+      enabledNote: 'Reminders are on.',
+      webNote: 'Reminders work in the mobile app.',
+      denied: 'Notifications are off for Fuelift. Turn them on in your phone settings, then try again.',
+      error: "Couldn't change your reminders. Check your connection and try again.",
+    },
     memory: {
       link: 'What the AI knows about me',
       title: 'What the AI knows about me',
