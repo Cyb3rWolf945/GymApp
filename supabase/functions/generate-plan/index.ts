@@ -11,15 +11,10 @@ import {
   extractFreeText,
   runGuardrails,
   callStructured,
-  decideGeneration,
-  startOfMonthUtc,
   expandEquipment,
   runPipeline,
-  knownSwapSignals,
   formatUserHistory,
-  adaptWeek,
   UserHistorySchema,
-  buildUpdateSummary,
   getRuntimeModelProfile,
   aiCallRow,
   guardrailRow,
@@ -30,6 +25,10 @@ import {
   sweepStaleJobs,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
+import { decideGeneration, startOfMonthUtc } from '../../../packages/shared/src/payments/gating.ts';
+import { knownSwapSignals } from '../../../packages/shared/src/plan/swaps.ts';
+import { adaptWeek } from '../../../packages/shared/src/plan/weeklyAdapt.ts';
+import { buildUpdateSummary } from '../../../packages/shared/src/plan/diff.ts';
 import { EXPO_PUSH_URL, EXPO_TOKEN_PATTERN, pushMessage } from '../../../packages/shared/src/notifications/index.ts';
 import { originsFromEnv, resolveCaller, withCors } from '../../../packages/shared/src/http/index.ts';
 
