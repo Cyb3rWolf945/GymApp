@@ -15,7 +15,7 @@ The owner explicitly authorized merging PRs that pass review with green CI. Neve
 The body of issue #49 holds exactly two lines: `owner: <A|B>` and `heartbeat: <ISO-8601 UTC>`.
 
 **Before every job and every watchdog run**, read issue #49:
-- **`owner` is your team:** run the usage check below first. If you're under 90%, set `heartbeat` to now (keep `owner`), then do the job. While you work, refresh `heartbeat` at least every 20 minutes: after every push, every CI wait and every message you send. Refresh it again when the job ends.
+- **`owner` is your team:** run the usage check below first. If you're under 65%, set `heartbeat` to now (keep `owner`), then do the job. While you work, refresh `heartbeat` at least every 20 minutes: after every push, every CI wait and every message you send. Refresh it again when the job ends.
 - **`owner` is the other team and `heartbeat` is less than 45 minutes old:** the other team is working. Do nothing and stop.
 - **`owner` is the other team and `heartbeat` is 45 minutes old or more:** that team has stalled, probably because its account ran out of usage. **Take over**:
   1. Set `owner` to your team and `heartbeat` to now.
@@ -24,14 +24,14 @@ The body of issue #49 holds exactly two lines: `owner: <A|B>` and `heartbeat: <I
 
 **Lost the lock?** Re-read issue #49 before every push, merge and message you send. If `owner` is no longer your team, the other team has taken over: push your work in progress to its branch, comment where you stopped on the issue or PR, and stop. Never take the lock back while the other team's heartbeat is fresh.
 
-### Usage handoff at 90%
+### Usage handoff at 65%
 Each team hands over the shift **before** its account runs out, so the other team can start at its next watchdog run without waiting for the stale-lock takeover.
 
-**Usage check.** Call `get_session` with no `session_id` to get your own session ID. Then call `list_events` on that ID with `kinds: ["rate_limit_event"]` and `limit: 100`. Read `unifiedWindows.five_hour.utilization` from the newest event. It's account-wide, so it covers both runners of your team. If no event is returned, treat usage as under 90%.
+**Usage check.** Call `get_session` with no `session_id` to get your own session ID. Then call `list_events` on that ID with `kinds: ["rate_limit_event"]` and `limit: 100`. Read `unifiedWindows.five_hour.utilization` from the newest event. It's account-wide, so it covers both runners of your team. If no event is returned, treat usage as under 65%.
 
 **When to check:** before every job, at every watchdog run, and after every push.
 
-**At 90% or more** (`utilization >= 0.9`), or if `five_hour.status` isn't `allowed`, while your team holds the lock:
+**At 65% or more** (`utilization >= 0.65`), or if `five_hour.status` isn't `allowed`, while your team holds the lock:
 1. Stop where you are. Push any work in progress to its branch, even if checks fail, and don't open a new PR.
 2. Comment on the issue or PR you're working on: "Handoff from team <X> at <time> (5-hour usage <n>%). Branch `<branch>`. Done: … Next step: …". This note is what the other team resumes from.
 3. Set issue #49 to `owner: <other team>` and `heartbeat: <now>`.
@@ -40,9 +40,9 @@ Each team hands over the shift **before** its account runs out, so the other tea
 
 **When the lock is handed to you** (`owner` is your team, but your team didn't hold it before), resume as in step 3 of "Take over" above. Read the latest "Handoff from team …" comment first.
 
-**If your own usage is also 90% or more** when the lock is yours, don't hand it back. Do nothing, don't refresh the heartbeat, and stop. Whichever team has usage left takes over once the heartbeat is 45 minutes old.
+**If your own usage is also 65% or more** when the lock is yours, don't hand it back. Do nothing, don't refresh the heartbeat, and stop. Whichever team has usage left takes over once the heartbeat is 45 minutes old.
 
-The 45-minute takeover rule is the fallback for a team that runs out without handing over, for example when one long job uses up the last 10%.
+The 45-minute takeover rule is the fallback for a team that runs out without handing over, for example when its account is also used outside the pipeline.
 
 Only the REVIEWER of the owning team edits #36's "Progress" section.
 
@@ -91,11 +91,36 @@ Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status boa
    - scope creep.
 3. Merge the PR branch onto current `main` locally and run lint, typecheck and tests.
 4. **If it passes:**
-   1. Squash-merge with the title `<PR title> (#<p>)`.
+   1. Squash-merge as described in "Merging" below.
    2. Close the issue as completed and label it `status:done`.
    3. Update the "Progress" section of #36: closed x/35, last merged, next issue, blocked, needs owner.
    4. Pick the next eligible issue and send the IMPLEMENTER: `NEXT <n>`. Stop.
 5. **If it fails:** post one PR comment listing the concrete required changes, then send the IMPLEMENTER: `FIX PR #<p> issue #<n>: <one-line summary>`. Stop.
+
+## Merging
+Every PR is squash-merged, including docs PRs and PRs opened by humans. Never use a merge commit, a rebase merge or GitHub's default squash message. Merge through the API so the message is exactly this:
+
+```
+gh api -X PUT repos/Cyb3rWolf945/GymApp/pulls/<p>/merge \
+  -f merge_method=squash -f sha=<PR head sha> \
+  -f commit_title='<PR title> (#<p>)' -f commit_message="$BODY"
+```
+
+`$BODY` follows this template:
+
+```
+<Summary: 1–4 lines on what changed and why, and any decision a later reader needs.>
+
+Commits:
+- <subject of each commit in the PR, oldest first>
+
+Closes #<n>
+```
+
+- **Summary:** always write it. For a one-commit PR whose subject says it all, one line is enough.
+- **Commits:** list each commit's subject line only, without bodies or `Co-Authored-By`/`Claude-Session` trailers. Leave out merges of `main` into the branch.
+- **Closes:** leave the line out for PRs without an issue.
+- **Trailers:** end the body with one `Co-Authored-By` line and your own `Claude-Session` line.
 
 ## Hourly watchdog (scheduled task on each runner)
 0. Apply the shift-lock rules above first, including the usage check. If the other team holds a fresh lock, or you just handed it over, stop.
