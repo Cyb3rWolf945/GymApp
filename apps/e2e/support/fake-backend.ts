@@ -34,7 +34,7 @@ export interface Backend {
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
   functionCalls: string[];
-  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown>; /** One workout whose sets can be corrected and deleted (History). Writes to `set_logs` / `workout_sessions` change it. */ editable: ReturnType<typeof editableWorkout> | null; /** Writes to the tables fail (no connection); reads still work. */ offline: boolean };
+  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown>; /** One workout whose sets can be corrected and deleted (History). Writes to `set_logs` / `workout_sessions` change it. */ editable: ReturnType<typeof editableWorkout> | null; /** Writes to the tables fail (no connection); reads still work. */ offline: boolean; /** Weekly check-ins already sent (`weekly-checkin` adds one). */ checkins: { week_start: string }[] };
   /** What the Stripe webhook would do after a successful payment. */
   completeCheckout(): void;
   writesTo(path: string): Recorded[];
@@ -79,7 +79,7 @@ export function applyFilters(rows: unknown[], params: URLSearchParams): unknown[
 }
 
 export async function installFakeBackend(page: Page, opts: { checkoutUrl: string }): Promise<Backend> {
-  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {}, editable: null, offline: false };
+  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {}, editable: null, offline: false, checkins: [] };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
   const auth: AuthState = { confirmEmails: false, accounts: new Map(), identities: ['email'], mailbox: [] };
@@ -108,6 +108,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     plan_prices: () => PLAN_PRICES,
     shopping_list_items: () => state.checked.map((label) => ({ label, checked: true })),
     body_metrics: () => (state.history ? weightHistory(state.history) : []),
+    weekly_checkins: () => state.checkins,
     set_logs: () => (state.editable ? state.editable.sets : state.history ? setLogHistory(state.history) : []),
     workout_sessions: () => (state.editable ? [state.editable.session] : state.history ? sessionHistory(state.history) : []),
   };
@@ -192,6 +193,11 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
         return json(route, { jobId: 'job' }, 202);
       }
       if (name === 'stripe-checkout') return json(route, { url: opts.checkoutUrl });
+      if (name === 'weekly-checkin') {
+        const sent = parseBody(req) as { weekStart: string };
+        state.checkins = [{ week_start: sent.weekStart }];
+        return json(route, { ok: true, noteKept: true });
+      }
       if (name === 'track-event') return route.fulfill({ status: 204, headers: CORS });
       return json(route, {});
     }

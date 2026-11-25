@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { WEEKDAY_LABELS, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
+import { WEEKDAY_LABELS, WorkoutPlanSchema, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
 import { PastDueBanner } from '../../../src/billing/PastDueBanner';
+import { WeeklyCheckinCard } from '../../../src/checkin/WeeklyCheckinCard';
 import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
@@ -31,6 +32,10 @@ function Today({ data }: { data: PlanData }) {
     [data, now],
   );
   const { workout, meals } = view;
+  const plannedDays = useMemo(() => {
+    const w = WorkoutPlanSchema.safeParse((data.workoutResult as { plan?: unknown } | null)?.plan);
+    return w.success ? w.data.days.length : 0;
+  }, [data]);
   const target = meals ? data.targets?.[meals.dayType]?.kcal : undefined;
   const progress = meals ? mealProgress(meals, eaten, target) : null;
   const n = (v: number) => String(Math.round(v));
@@ -45,6 +50,7 @@ function Today({ data }: { data: PlanData }) {
       <Text variant="display">{t.title}</Text>
       <PastDueBanner />
       <PlanOutdatedCard />
+      <WeeklyCheckinCard workoutDays={plannedDays} preferredDays={data.preferredDays} />
       {/* Workout and meals side by side from `medium` up, stacked on phones. */}
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
         <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>

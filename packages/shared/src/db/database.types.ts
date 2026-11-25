@@ -726,6 +726,33 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['stripe_events']['Insert']>;
       };
+      weekly_checkins: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          weight_kg: number | null;
+          energy: number;
+          sleep: number;
+          workouts_done: number;
+          workouts_planned: number;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          week_start: string;
+          weight_kg?: number | null;
+          energy: number;
+          sleep: number;
+          workouts_done: number;
+          workouts_planned?: number;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['weekly_checkins']['Insert']>;
+      };
       workout_days: {
         Row: {
           id: string;

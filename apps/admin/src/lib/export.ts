@@ -1,7 +1,7 @@
 // What goes in a user's data export. A copy of `EXPORT_TABLES` in packages/shared (the admin app does not import the
 // shared package); a test fails if the two lists differ.
 export const EXPORT_TABLES = [
-  'profiles', 'entitlements', 'consent_records', 'body_metrics',
+  'profiles', 'entitlements', 'consent_records', 'body_metrics', 'weekly_checkins',
   'workout_plans', 'workout_days', 'planned_exercises', 'workout_sessions', 'set_logs', 'plan_swaps',
   'nutrition_plans', 'meals', 'meal_swaps', 'shopping_list_items',
   'generation_jobs', 'memory_facts', 'push_tokens', 'guardrail_events', 'analytics_events', 'ai_call_logs',

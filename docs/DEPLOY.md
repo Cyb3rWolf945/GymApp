@@ -46,8 +46,8 @@ supabase secrets set --project-ref <ref> \
 
 | Secret | Used by | Notes |
 |---|---|---|
-| `APP_ENV`, `MODEL_PROFILE` | generate-plan, workout-feedback | `production` and `prod`, together |
-| `OPENROUTER_API_KEY` | generate-plan, workout-feedback | set a spend limit in OpenRouter |
+| `APP_ENV`, `MODEL_PROFILE` | generate-plan, workout-feedback, weekly-checkin | `production` and `prod`, together |
+| `OPENROUTER_API_KEY` | generate-plan, workout-feedback, weekly-checkin | set a spend limit in OpenRouter |
 | `APP_URL`, `ALLOWED_ORIGINS` | checkout, portal, CORS | the web origin, no trailing slash |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | stripe-*, delete-account | test keys until step 5 |
 | `META_PIXEL_ID`, `META_CAPI_TOKEN` | track-event, stripe-webhook | optional until ads start |

@@ -15,6 +15,19 @@ export const UserHistorySchema = z.object({
   e1rm: z.array(z.object({ name: z.string(), first: z.number(), last: z.number() })).default([]),
   swapped_exercises: z.array(Named).default([]),
   swapped_meals: z.array(Named).default([]),
+  checkins: z
+    .array(
+      z.object({
+        week: z.string(),
+        weight_kg: z.number().nullable().default(null),
+        energy: z.number(),
+        sleep: z.number(),
+        done: z.number().default(0),
+        planned: z.number().default(0),
+        note: z.string().nullable().default(null),
+      }),
+    )
+    .default([]),
   facts: z.array(z.string()).default([]),
 });
 export type UserHistory = z.infer<typeof UserHistorySchema>;
@@ -48,6 +61,19 @@ export function formatUserHistory(raw: unknown): string {
   }
   const swaps = [...h.swapped_exercises, ...h.swapped_meals];
   if (swaps.length > 0) lines.push(`Swapped out: ${swaps.map((s) => `${s.name} ×${s.times}`).join(', ')}.`);
+  if (h.checkins.length > 0) {
+    // Newest first, at most 4. The note was cleared by the guardrails before it was stored.
+    lines.push(
+      `Weekly check-ins (newest first):\n${h.checkins
+        .slice(0, 4)
+        .map(
+          (c) =>
+            `- Week of ${c.week}: energy ${c.energy}/5, sleep ${c.sleep}/5, ${c.done} of ${c.planned} workouts` +
+            `${c.weight_kg === null ? '' : `, ${num(c.weight_kg)} kg`}${c.note ? `, note: "${c.note.replace(/\s+/g, ' ').trim()}"` : ''}.`,
+        )
+        .join('\n')}`,
+    );
+  }
   if (h.facts.length > 0) lines.push(`Known about the user:\n${h.facts.map((f) => `- ${f}`).join('\n')}`);
   return escapeTags(lines.join('\n'));
 }
