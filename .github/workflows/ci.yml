@@ -121,6 +121,8 @@ jobs:
         with:
           name: e2e-web-build
           path: apps/e2e/.web
+          # `.web` is a hidden folder, which upload-artifact@v4 leaves out unless told otherwise.
+          include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
 
