@@ -85,6 +85,7 @@ export type Database = {
           latency_ms: number | null;
           status: string | null;
           created_at: string;
+          role: string | null;
         };
         Insert: {
           id?: string;
@@ -98,6 +99,7 @@ export type Database = {
           latency_ms?: number | null;
           status?: string | null;
           created_at?: string;
+          role?: string | null;
         };
         Update: Partial<Database['public']['Tables']['ai_call_logs']['Insert']>;
       };
@@ -234,6 +236,7 @@ export type Database = {
           error: string | null;
           created_at: string;
           finished_at: string | null;
+          needs_review: boolean;
         };
         Insert: {
           id?: string;
@@ -245,6 +248,7 @@ export type Database = {
           error?: string | null;
           created_at?: string;
           finished_at?: string | null;
+          needs_review?: boolean;
         };
         Update: Partial<Database['public']['Tables']['generation_jobs']['Insert']>;
       };

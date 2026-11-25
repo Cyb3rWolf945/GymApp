@@ -1,2 +1,2 @@
-export * from './calc';
-export * from './units';
+export * from './calc.ts';
+export * from './units.ts';
