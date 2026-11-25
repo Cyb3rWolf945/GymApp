@@ -31,7 +31,7 @@ export function Button({ label, variant = 'primary', loading = false, disabled, 
       ]}
       {...rest}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <Text variant="bodyStrong" style={{ color: fg }}>{label}</Text>}
+      {loading ? <ActivityIndicator color={fg} /> : <Text variant="bodyStrong" style={{ color: fg, textAlign: 'center' }}>{label}</Text>}
     </Pressable>
   );
 }

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
-import { button, completeQuiz, shown, signUpWithMagicLink, start } from '../support/app';
+import { button, completeQuiz, shown, signUpWithPassword, start } from '../support/app';
 
 test('landing → quiz → account → plan generated → preview → paywall → checkout → Home shows the plan', async ({ page, context }) => {
   const backend = await start(page);
@@ -17,11 +17,13 @@ test('landing → quiz → account → plan generated → preview → paywall �
   await button(page, en.landing.cta).click();
 
   await completeQuiz(page);
-  await signUpWithMagicLink(page);
+  await signUpWithPassword(page);
 
   // The profile is saved with the ad attribution and the consents, then the plan is generated (the fake is instant).
   await expect.poll(() => backend.functionCalls.filter((f) => f === 'generate-plan').length).toBe(2); // workout + meals
-  const profile = backend.writesTo('/profiles')[0]?.body as { attribution?: Record<string, string>; goal?: string } | undefined;
+  // Signing in also creates an empty profile row (`ensureProfile`); the one with the quiz answers is the one with `attribution`.
+  await expect.poll(() => backend.writesTo('/profiles').some((w) => (w.body as { attribution?: unknown })?.attribution)).toBe(true);
+  const profile = backend.writesTo('/profiles').map((w) => w.body as { attribution?: Record<string, string>; goal?: string }).find((b) => b?.attribution);
   expect(profile?.attribution).toMatchObject({ utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'e2e' });
   expect(profile?.attribution?.fbc).toBeUndefined(); // tracking was rejected: no Facebook ids are kept
   const consents = backend.writesTo('/consent_records')[0]?.body as { kind: string; accepted: boolean }[];

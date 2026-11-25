@@ -68,21 +68,15 @@ export async function completeQuiz(page: Page): Promise<void> {
   await button(page, en.plan.generating.accountCta).click();
 }
 
-/**
- * Sign up by magic link: ask for the link (answered by the fake backend), then "open" it by giving the browser the
- * session the link would have created.
- */
-export async function signUpWithMagicLink(page: Page): Promise<void> {
-  await page.getByPlaceholder(authCopy.emailPlaceholder).fill('e2e-user@example.test');
-  await page.getByText(authCopy.sendLink, { exact: true }).click();
-  await expect(shown(page, authCopy.checkInbox)).toBeVisible();
-  await page.evaluate(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
-  await page.goto('/');
+/** The Create account form with a synthetic email and password. With "Confirm email" off in the fake, you are signed in at once. */
+export async function signUpWithPassword(page: Page, email = 'e2e-user@example.test', password = 'e2e-password-1'): Promise<void> {
+  await page.getByLabel(authCopy.emailLabel, { exact: true }).fill(email);
+  await page.getByLabel(authCopy.passwordLabel, { exact: true }).fill(password);
+  await page.getByRole('button', { name: authCopy.createAccount, exact: true }).click();
 }
 
-/** A signed-in Pro user whose plan is already generated, on Home. */
-export async function signedInWithPlan(page: Page): Promise<Backend> {
-  const backend = await start(page);
+/** Give the fake backend a generated plan, a profile and a paid plan: what a returning user has. */
+export function seedPlan(backend: Backend): void {
   backend.completeCheckout();
   const job = (id: string, kind: 'workout_plan' | 'nutrition_plan', plan: unknown) => ({ id, kind, status: 'done', created_at: new Date().toISOString(), result: { plan } });
   backend.state.jobs = [
@@ -90,6 +84,12 @@ export async function signedInWithPlan(page: Page): Promise<Backend> {
     job('20000000-0000-4000-8000-000000000002', 'nutrition_plan', NUTRITION_PLAN),
   ];
   backend.state.profile = { user_id: 'u', onboarding: { preferredDays: ['mon', 'thu'], equipment: ['full_gym'], contraindications: [] }, experience: 'beginner' };
+}
+
+/** A signed-in Pro user whose plan is already generated, on Home. */
+export async function signedInWithPlan(page: Page): Promise<Backend> {
+  const backend = await start(page);
+  seedPlan(backend);
   await page.addInitScript(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
   await page.goto('/');
   return backend;

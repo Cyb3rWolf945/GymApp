@@ -61,7 +61,7 @@ export default function OnboardingStep() {
       header={id !== 'welcome' ? <ProgressBar step={n} total={total} label={t.progress(n, total)} /> : null}
       footer={
         id === 'welcome' ? (
-          <Button label={t.haveAccount} variant="ghost" onPress={() => router.replace('/sign-in')} />
+          <Button label={t.haveAccount} variant="ghost" onPress={() => router.replace('/sign-in?mode=login')} />
         ) : (
           <>
             <Button label={text.cta ?? en.common.continue} onPress={onContinue} />
