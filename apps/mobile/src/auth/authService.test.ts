@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  appleDisplayName,
+  canUnlink,
   ensureProfile,
   exchangeCode,
   isValidEmail,
+  linkProvider,
+  linkedMethods,
+  saveAppleName,
+  signInWithGoogleToken,
+  unlinkProvider,
   resendConfirmation,
   sendEmailCode,
   sendPasswordReset,
@@ -32,6 +39,9 @@ function mockClient(overrides: Record<string, unknown> = {}) {
     resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
     updateUser: vi.fn().mockResolvedValue({ error: null }),
     verifyOtp: vi.fn().mockResolvedValue({ error: null }),
+    getUserIdentities: vi.fn().mockResolvedValue({ data: { identities: [] }, error: null }),
+    linkIdentity: vi.fn().mockResolvedValue({ data: { url: null }, error: null }),
+    unlinkIdentity: vi.fn().mockResolvedValue({ error: null }),
     ...overrides,
   };
   const client = { auth, from: vi.fn(() => ({ upsert })) };
@@ -95,12 +105,93 @@ describe('signInWithOAuth', () => {
 describe('signInWithAppleToken', () => {
   it('exchanges the identity token', async () => {
     const { client, auth } = mockClient();
-    expect(await signInWithAppleToken(client, 'tok')).toEqual({ ok: true });
-    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'apple', token: 'tok' });
+    expect(await signInWithAppleToken(client, 'tok', 'raw-nonce')).toEqual({ ok: true });
+    // The raw nonce goes to Supabase (the hash of it went to Apple).
+    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'apple', token: 'tok', nonce: 'raw-nonce' });
   });
-  it('fails without a token', async () => {
+  it('fails without a token or a nonce', async () => {
+    const { client, auth } = mockClient();
+    expect((await signInWithAppleToken(client, null, 'n')).ok).toBe(false);
+    expect((await signInWithAppleToken(client, 'tok', '')).ok).toBe(false);
+    expect(auth.signInWithIdToken).not.toHaveBeenCalled();
+  });
+  it('tells the person which way to log in when the email already has an account', async () => {
+    const { client } = mockClient({ signInWithIdToken: vi.fn().mockResolvedValue({ error: { code: 'email_exists', message: 'x' } }) });
+    expect(await signInWithAppleToken(client, 'tok', 'n')).toEqual({ ok: false, error: authCopy.errors.otherMethod, kind: 'other_method' });
+  });
+});
+
+describe('signInWithGoogleToken', () => {
+  it('exchanges the ID token, with no nonce (the Google library cannot set one)', async () => {
+    const { client, auth } = mockClient();
+    expect(await signInWithGoogleToken(client, 'g-tok')).toEqual({ ok: true });
+    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'google', token: 'g-tok' });
+  });
+  it('fails without a token and maps errors', async () => {
+    const { client } = mockClient({ signInWithIdToken: vi.fn().mockResolvedValue({ error: { code: 'provider_disabled', message: 'x' } }) });
+    expect((await signInWithGoogleToken(client, null)).ok).toBe(false);
+    expect(await signInWithGoogleToken(client, 'g')).toMatchObject({ ok: false, kind: 'provider_disabled' });
+  });
+});
+
+describe('Apple name (sent once)', () => {
+  it('builds "Given Family" and drops empty parts', () => {
+    expect(appleDisplayName({ givenName: ' Ana ', familyName: 'Silva' })).toBe('Ana Silva');
+    expect(appleDisplayName({ givenName: 'Ana', familyName: null })).toBe('Ana');
+    expect(appleDisplayName({ givenName: '', familyName: ' ' })).toBeNull();
+    expect(appleDisplayName(null)).toBeNull();
+  });
+  it('saves it to the profile only when the profile has no name yet', async () => {
+    const is = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn(() => ({ is }));
+    const update = vi.fn(() => ({ eq }));
     const { client } = mockClient();
-    expect((await signInWithAppleToken(client, null)).ok).toBe(false);
+    (client as unknown as { from: unknown }).from = vi.fn(() => ({ update }));
+    expect(await saveAppleName(client, 'u1', { givenName: 'Ana', familyName: 'Silva' })).toBe(true);
+    expect(update).toHaveBeenCalledWith({ display_name: 'Ana Silva' });
+    expect(eq).toHaveBeenCalledWith('user_id', 'u1');
+    expect(is).toHaveBeenCalledWith('display_name', null);
+  });
+  it('does nothing when Apple sent no name, and never throws', async () => {
+    const { client } = mockClient();
+    expect(await saveAppleName(client, 'u1', null)).toBe(false);
+    (client as unknown as { from: unknown }).from = vi.fn(() => { throw new Error('offline'); });
+    await expect(saveAppleName(client, 'u1', { givenName: 'Ana' })).resolves.toBe(true);
+  });
+});
+
+describe('sign-in methods', () => {
+  it('lists the methods an account has, in a fixed order, ignoring others', () => {
+    expect(linkedMethods([{ provider: 'apple' }, { provider: 'email' }, { provider: 'phone' }])).toEqual(['email', 'apple']);
+    expect(linkedMethods(null)).toEqual([]);
+  });
+  it('never allows unlinking the last identity', () => {
+    expect(canUnlink([{ provider: 'email' }])).toBe(false);
+    expect(canUnlink([{ provider: 'email' }, { provider: 'google' }])).toBe(true);
+  });
+  it('unlinks a provider when another identity remains', async () => {
+    const google = { provider: 'google', id: 'g' };
+    const { client, auth } = mockClient({
+      getUserIdentities: vi.fn().mockResolvedValue({ data: { identities: [{ provider: 'email' }, google] }, error: null }),
+      unlinkIdentity: vi.fn().mockResolvedValue({ error: null }),
+    });
+    expect(await unlinkProvider(client, 'google')).toEqual({ ok: true });
+    expect(auth.unlinkIdentity).toHaveBeenCalledWith(google);
+  });
+  it('refuses to unlink the last method', async () => {
+    const { client, auth } = mockClient({
+      getUserIdentities: vi.fn().mockResolvedValue({ data: { identities: [{ provider: 'google' }] }, error: null }),
+      unlinkIdentity: vi.fn(),
+    });
+    expect(await unlinkProvider(client, 'google')).toMatchObject({ ok: false, error: authCopy.methods.lastMethod });
+    expect(auth.unlinkIdentity).not.toHaveBeenCalled();
+  });
+  it('links on web with a redirect and maps "already linked elsewhere"', async () => {
+    const { client, auth } = mockClient({ linkIdentity: vi.fn().mockResolvedValue({ data: { url: 'https://idp' }, error: null }) });
+    expect(await linkProvider(client, 'apple', 'https://app/auth')).toEqual({ ok: true });
+    expect(auth.linkIdentity).toHaveBeenCalledWith({ provider: 'apple', options: { redirectTo: 'https://app/auth', skipBrowserRedirect: false } });
+    const { client: c2 } = mockClient({ linkIdentity: vi.fn().mockResolvedValue({ data: null, error: { code: 'identity_already_exists', message: 'x' } }) });
+    expect(await linkProvider(c2, 'google', 'r')).toMatchObject({ ok: false, kind: 'identity_in_use' });
   });
 });
 

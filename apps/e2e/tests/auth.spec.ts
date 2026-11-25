@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { authCopy } from '../../mobile/src/auth/copy';
 import { en } from '../../mobile/src/copy/en';
 import { FAKE_EMAIL_CODE } from '../support/fake-backend';
-import { button, seedPlan, shown, start } from '../support/app';
+import { button, completeQuiz, seedPlan, shown, start } from '../support/app';
+import { SESSION_STORAGE_KEY, fakeSession } from '../support/fixtures';
 
 // Account creation and log-in against the fake backend: it stands in for Supabase Auth and records the "emails" it
 // would send (the role Mailpit plays against a local Supabase). Synthetic addresses and passwords only.
@@ -134,10 +135,48 @@ test('a link that failed shows a plain message and a way back', async ({ page })
   await expect(page).toHaveURL(/\/sign-in/);
 });
 
-test('Google and Apple stay hidden until the owner switches them on', async ({ page }) => {
+test('Google and Apple are offered when the owner has switched them on (the e2e build sets both flags)', async ({ page }) => {
   await start(page);
   await page.goto('/sign-in');
   await expect(button(page, authCopy.createAccount)).toBeVisible();
-  await expect(page.getByText(authCopy.google)).toHaveCount(0);
-  await expect(page.getByText(authCopy.apple)).toHaveCount(0);
+  await expect(button(page, authCopy.google)).toBeVisible();
+  await expect(button(page, authCopy.apple)).toBeVisible();
+});
+
+test('Continue with Google: out to the provider and back with a code, signed in, and the quiz answers are saved', async ({ page }) => {
+  const backend = await start(page);
+  await page.goto('/');
+  await button(page, en.tracking.reject).click();
+  await button(page, en.landing.cta).click();
+  await completeQuiz(page);
+  // The account modal offers Google; one tap creates the account (or logs in).
+  await button(page, authCopy.google).click();
+  // ...the fake provider sends the browser back to /auth?code=…, which signs in and opens the app.
+  await expect.poll(() => backend.functionCalls.filter((f) => f === 'generate-plan').length).toBe(2);
+  await expect(page).toHaveURL(/\/preview/);
+  // The answers given before signing in (nothing re-entered) were saved to the new account.
+  await expect.poll(() => backend.writesTo('/profiles').some((w) => (w.body as { attribution?: unknown })?.attribution)).toBe(true);
+  const profile = backend.writesTo('/profiles').map((w) => w.body as { goal?: string }).find((b) => b?.goal);
+  expect(profile?.goal).toBeTruthy();
+  expect(backend.auth.identities).toContain('google');
+});
+
+test('an email that already has an account another way gets a message that says how to log in', async ({ page }) => {
+  await start(page);
+  await page.goto('/auth#error=access_denied&error_code=email_exists&error_description=Email+already+registered');
+  await expect(shown(page, authCopy.errors.otherMethod)).toBeVisible();
+  await button(page, authCopy.modes.logIn).click();
+  await expect(page).toHaveURL(/\/sign-in/);
+});
+
+test('Settings lists the sign-in methods; the only one cannot be unlinked, a second one can be offered', async ({ page }) => {
+  const backend = await start(page);
+  seedPlan(backend);
+  await page.addInitScript(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
+  await page.goto('/');
+  await page.getByRole('tab', { name: en.home.tabs.settings, exact: true }).click();
+  await expect(shown(page, authCopy.methods.title)).toBeVisible();
+  await expect(shown(page, authCopy.methods.lastMethod)).toBeVisible(); // email is the only method
+  await expect(button(page, authCopy.methods.link(authCopy.methods.names.google))).toBeVisible();
+  await expect(button(page, authCopy.methods.link(authCopy.methods.names.apple))).toBeVisible();
 });

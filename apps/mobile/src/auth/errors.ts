@@ -13,6 +13,9 @@ export type AuthErrorKind =
   | 'invalid_code'
   | 'link_expired'
   | 'same_password'
+  | 'other_method'
+  | 'identity_in_use'
+  | 'linking_off'
   | 'network'
   | 'unknown';
 
@@ -41,6 +44,9 @@ const MESSAGES: Record<AuthErrorKind, string> = {
   invalid_code: authCopy.errors.invalidCode,
   link_expired: authCopy.errors.linkExpired,
   same_password: authCopy.errors.samePassword,
+  other_method: authCopy.errors.otherMethod,
+  identity_in_use: authCopy.errors.identityInUse,
+  linking_off: authCopy.errors.linkingOff,
   network: authCopy.errors.network,
   unknown: authCopy.genericError,
 };
@@ -96,6 +102,19 @@ function classify(error: AuthErrorLike | null | undefined): AuthErrorKind {
   for (const [re, kind] of BY_MESSAGE) if (re.test(message)) return kind;
   if (error.status === 429) return 'rate_limit';
   return 'unknown';
+}
+
+/**
+ * Errors from Google, Apple and linking. An email that already has an account made another way, or an identity that
+ * belongs to someone else, gets its own message that says which way to log in. Everything else is `mapAuthError`.
+ */
+export function mapOAuthError(error: AuthErrorLike | null | undefined): MappedAuthError {
+  const code = error?.code ?? '';
+  const message = error?.message ?? '';
+  if (code === 'identity_already_exists' || /identity.*already.*(linked|exists)/i.test(message)) return { kind: 'identity_in_use', message: MESSAGES.identity_in_use };
+  if (code === 'email_exists' || code === 'user_already_exists' || /already (registered|exists)|already been registered/i.test(message)) return { kind: 'other_method', message: MESSAGES.other_method };
+  if (code === 'manual_linking_disabled' || /manual linking is disabled/i.test(message)) return { kind: 'linking_off', message: MESSAGES.linking_off };
+  return mapAuthError(error);
 }
 
 /** A wrong or expired 6-digit code reads better than "link expired". */

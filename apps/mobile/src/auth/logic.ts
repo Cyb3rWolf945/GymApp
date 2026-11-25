@@ -53,3 +53,16 @@ export function parseAuthCallback(url: string | null | undefined): AuthCallback 
   if (type) result.type = type;
   return result;
 }
+
+export interface OAuthFlags {
+  google: boolean;
+  apple: boolean;
+}
+
+/**
+ * Which buttons to show. App Store rule: on iOS, when Google is offered, Apple is offered too, so a Google flag on
+ * iOS turns Apple on (equal prominence). Elsewhere the flags are used as set.
+ */
+export function visibleProviders(flags: OAuthFlags, platform: string): OAuthFlags {
+  return platform === 'ios' && flags.google ? { google: true, apple: true } : flags;
+}

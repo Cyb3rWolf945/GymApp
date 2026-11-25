@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { authCopy } from './copy';
-import { type AuthErrorKind, mapAuthError, mapCodeError } from './errors';
+import { type AuthErrorKind, mapAuthError, mapCodeError, mapOAuthError } from './errors';
 import { cleanCode, isValidCode, isValidEmail, isValidPassword, normalizeEmail } from './logic';
 
 /** `kind` tells the screen what to offer next (resend the email, switch to Log in, ...). */
@@ -12,6 +12,11 @@ export { isValidEmail };
 
 const failure = (error: Parameters<typeof mapAuthError>[0]) => {
   const m = mapAuthError(error);
+  return { ok: false as const, error: m.message, kind: m.kind };
+};
+/** Failures of Google, Apple and linking: same shape, with the "log in another way" messages. */
+const oauthFailure = (error: Parameters<typeof mapOAuthError>[0]) => {
+  const m = mapOAuthError(error);
   return { ok: false as const, error: m.message, kind: m.kind };
 };
 const invalid = (error: string, kind: AuthErrorKind = 'unknown') => ({ ok: false as const, error, kind });
@@ -114,7 +119,7 @@ export async function signInWithOAuth(
     provider,
     options: { redirectTo, skipBrowserRedirect: native },
   });
-  if (error) return failure(error);
+  if (error) return oauthFailure(error);
   if (!native || !data?.url) return { ok: true };
   const resultUrl = await openAuthSession!(data.url, redirectTo);
   if (!resultUrl) return { ok: false, error: authCopy.genericError };
@@ -123,14 +128,105 @@ export async function signInWithOAuth(
   return exchangeCode(client, code);
 }
 
-/** Native iOS: Sign in with Apple identity token -> Supabase session. */
+/**
+ * Native iOS: Sign in with Apple identity token -> Supabase session. `rawNonce` is the un-hashed nonce whose SHA-256
+ * was given to Apple; Supabase checks the two match.
+ */
 export async function signInWithAppleToken(
   client: SupabaseClient,
   identityToken: string | null | undefined,
+  rawNonce: string,
 ): Promise<AuthResult> {
-  if (!identityToken) return { ok: false, error: authCopy.genericError };
-  const { error } = await client.auth.signInWithIdToken({ provider: 'apple', token: identityToken });
-  return error ? failure(error) : { ok: true };
+  if (!identityToken || !rawNonce) return { ok: false, error: authCopy.genericError };
+  const { error } = await client.auth.signInWithIdToken({ provider: 'apple', token: identityToken, nonce: rawNonce });
+  return error ? oauthFailure(error) : { ok: true };
+}
+
+/**
+ * Native iOS/Android: Google ID token -> Supabase session. The Google Sign-In library cannot set a nonce, so none is
+ * sent; "Skip nonce checks" must be on for the Google provider in Supabase (owner step in #89).
+ */
+export async function signInWithGoogleToken(client: SupabaseClient, idToken: string | null | undefined): Promise<AuthResult> {
+  if (!idToken) return { ok: false, error: authCopy.genericError };
+  const { error } = await client.auth.signInWithIdToken({ provider: 'google', token: idToken });
+  return error ? oauthFailure(error) : { ok: true };
+}
+
+/** What Apple returns for the name, on the first sign-in only. */
+export interface AppleFullName {
+  givenName?: string | null;
+  middleName?: string | null;
+  familyName?: string | null;
+}
+
+/** "Given Family" from Apple's name parts, or null when Apple sent none (every sign-in after the first). */
+export function appleDisplayName(name: AppleFullName | null | undefined): string | null {
+  const full = [name?.givenName, name?.familyName].map((p) => (p ?? '').trim()).filter(Boolean).join(' ');
+  return full ? full.slice(0, 80) : null;
+}
+
+/**
+ * Apple sends the name once, so keep it now: write it to the profile unless the profile already has one. Returns
+ * whether a name was sent. Never throws: a failed save must not block signing in.
+ */
+export async function saveAppleName(client: SupabaseClient, userId: string, name: AppleFullName | null | undefined): Promise<boolean> {
+  const display = appleDisplayName(name);
+  if (!display) return false;
+  try {
+    await client.from('profiles').update({ display_name: display } as never).eq('user_id', userId).is('display_name', null);
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+export type SignInMethodId = 'email' | OAuthProvider;
+export const SIGN_IN_METHODS: readonly SignInMethodId[] = ['email', 'google', 'apple'];
+
+interface IdentityLike {
+  provider: string;
+}
+
+/** Which sign-in methods the account has, in a fixed order. Providers we don't offer (e.g. phone) are ignored. */
+export function linkedMethods(identities: readonly IdentityLike[] | null | undefined): SignInMethodId[] {
+  const have = new Set((identities ?? []).map((i) => i.provider));
+  return SIGN_IN_METHODS.filter((m) => have.has(m));
+}
+
+/** Unlinking is never allowed for the last way to log in (counting every identity, offered or not). */
+export const canUnlink = (identities: readonly IdentityLike[] | null | undefined): boolean => (identities?.length ?? 0) > 1;
+
+export async function fetchIdentities(client: SupabaseClient) {
+  const { data, error } = await client.auth.getUserIdentities();
+  if (error) throw error;
+  return data?.identities ?? [];
+}
+
+/** Link Google or Apple to the signed-in account. Same redirect/native handling as signing in. */
+export async function linkProvider(
+  client: SupabaseClient,
+  provider: OAuthProvider,
+  redirectTo: string,
+  openAuthSession?: (url: string, redirectTo: string) => Promise<string | null>,
+): Promise<AuthResult> {
+  const native = Boolean(openAuthSession);
+  const { data, error } = await client.auth.linkIdentity({ provider, options: { redirectTo, skipBrowserRedirect: native } });
+  if (error) return oauthFailure(error);
+  if (!native || !data?.url) return { ok: true };
+  const resultUrl = await openAuthSession!(data.url, redirectTo);
+  if (!resultUrl) return { ok: false, error: authCopy.genericError };
+  const code = new URL(resultUrl).searchParams.get('code');
+  return code ? exchangeCode(client, code) : { ok: false, error: authCopy.genericError };
+}
+
+/** Unlink a provider, unless it is the last identity. */
+export async function unlinkProvider(client: SupabaseClient, provider: OAuthProvider): Promise<AuthResult> {
+  const identities = await fetchIdentities(client);
+  const identity = identities.find((i) => i.provider === provider);
+  if (!identity) return { ok: true };
+  if (!canUnlink(identities)) return { ok: false, error: authCopy.methods.lastMethod, kind: 'unknown' };
+  const { error } = await client.auth.unlinkIdentity(identity);
+  return error ? oauthFailure(error) : { ok: true };
 }
 
 /** Belt and braces: the DB trigger creates the row; this covers users created before it existed. */
