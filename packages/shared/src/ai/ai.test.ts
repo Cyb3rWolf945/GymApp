@@ -114,6 +114,49 @@ describe('openrouter client', () => {
     ]);
     expect(JSON.stringify(logs)).not.toContain('usr');
   });
+  it('latency is the real wall time: it includes reading the body, not only the headers', async () => {
+    const logs: AiCallLog[] = [];
+    let t = 0;
+    await callStructured(
+      {
+        profile: MODEL_PROFILES.dev,
+        apiKey: 'k',
+        log: (l) => void logs.push(l),
+        // The headers arrive at once, the answer 30 s later.
+        fetchImpl: async () => {
+          const r = okResponse(workoutPlan);
+          const json = r.json.bind(r);
+          r.json = async () => {
+            t += 30_000;
+            return json();
+          };
+          return r;
+        },
+        now: () => t,
+      },
+      makeCall(),
+    );
+    expect(logs[0].latencyMs).toBe(30_000);
+  });
+  it('a call can be given a timeout: it is passed to fetch, and an abort is logged and thrown as an HTTP error', async () => {
+    const logs: AiCallLog[] = [];
+    let signal: AbortSignal | null | undefined;
+    const aborted = callStructured(
+      {
+        profile: MODEL_PROFILES.dev,
+        apiKey: 'k',
+        log: (l) => void logs.push(l),
+        fetchImpl: async (_url, init) => {
+          signal = init?.signal;
+          throw new DOMException('The operation timed out.', 'TimeoutError');
+        },
+      },
+      makeCall({ timeoutMs: 5_000 }),
+    );
+    await expect(aborted).rejects.toMatchObject({ code: 'HTTP_ERROR' });
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(logs.map((l) => l.status)).toEqual(['http_error']);
+  });
   it('logs and throws on HTTP errors and invalid output', async () => {
     const logs: AiCallLog[] = [];
     const cfg = (fetchImpl: typeof fetch) => ({ profile: MODEL_PROFILES.dev, apiKey: 'k', log: (l: AiCallLog) => void logs.push(l), fetchImpl });

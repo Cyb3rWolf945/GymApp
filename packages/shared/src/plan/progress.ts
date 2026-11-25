@@ -16,8 +16,8 @@ export interface JobRow {
   adapt_week?: string | null;
 }
 
-/** Longest we wait before showing the retry state. Free dev models can be slow; paid ones take seconds. */
-export const GENERATION_TIMEOUT_MS = 150_000;
+/** Longest we wait before showing the retry state (3 minutes). The server ends every job well before that, so this is the last resort. */
+export const GENERATION_TIMEOUT_MS = 180_000;
 export const POLL_INTERVAL_MS = 2_000;
 
 export type GenerationStepId = 'calories' | 'exercises' | 'meals';

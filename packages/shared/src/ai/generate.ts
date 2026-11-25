@@ -30,7 +30,27 @@ export interface ProfileRow {
   coach_style?: string | null;
 }
 
-export class PlanInputError extends Error {}
+/** The profile cannot make a plan. `fields` names what is missing (column names only, never values). */
+export class PlanInputError extends Error {
+  constructor(
+    message: string,
+    public readonly fields: string[] = [],
+  ) {
+    super(message);
+    this.name = 'PlanInputError';
+  }
+}
+
+/** The columns a plan cannot be built without that are not usable yet. Empty when the profile is complete. */
+export function missingProfileFields(row: Pick<ProfileRow, 'sex' | 'birth_date' | 'height_cm' | 'weight_kg'> | null | undefined): string[] {
+  if (!row) return ['profile'];
+  const missing: string[] = [];
+  if (row.sex !== 'male' && row.sex !== 'female') missing.push('sex');
+  if (!row.birth_date) missing.push('birth_date');
+  if (!row.height_cm) missing.push('height_cm');
+  if (!row.weight_kg) missing.push('weight_kg');
+  return missing;
+}
 
 export function ageFromBirthDate(birthDate: string, today: Date): number {
   const b = new Date(birthDate);
@@ -48,9 +68,8 @@ export interface PlanInputOptions {
 }
 
 export function buildPlanInputs(row: ProfileRow, today = new Date(), opts: PlanInputOptions = {}): PlanInputs {
-  if ((row.sex !== 'male' && row.sex !== 'female') || !row.birth_date || !row.height_cm || !row.weight_kg) {
-    throw new PlanInputError('Profile is incomplete.');
-  }
+  const missing = missingProfileFields(row);
+  if (missing.length > 0 || (row.sex !== 'male' && row.sex !== 'female') || !row.birth_date) throw new PlanInputError('Profile is incomplete.', missing);
   const ob = OnboardingSchema.parse(row.onboarding ?? {});
   const flags = [...new Set([...(ob.flags as RiskFlag[]), ...(opts.extraFlags ?? [])])];
   const conservative = opts.conservative === true || flags.length > 0;

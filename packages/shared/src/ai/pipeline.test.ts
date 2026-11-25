@@ -11,8 +11,12 @@ import {
   type RecipeCandidate,
   type StructuredCall,
   type WorkoutPlan,
+  GENERATION_BUDGET_MS,
+  MIN_ATTEMPT_MS,
+  PlanInputError,
   buildPlanInputs,
   estimateSessionMinutes,
+  missingProfileFields,
   expandEquipment,
   nutritionTemplate,
   runPipeline,
@@ -221,6 +225,76 @@ describe('runPipeline', () => {
   it('rethrows unexpected errors', async () => {
     const { call } = fakeCall(() => new TypeError('boom'));
     await expect(runPipeline({ ...base, inputs: inputs(), call, canEscalate: false })).rejects.toThrow('boom');
+  });
+});
+
+describe('time budget and dev profile (a job must always finish)', () => {
+  it('the budget is under the Edge Function wall-clock limit, and the dev profile is quick: one retry, no QA', () => {
+    expect(GENERATION_BUDGET_MS).toBeLessThan(120_000);
+    expect(MODEL_PROFILES.dev).toMatchObject({ maxRetries: 1, qa: 'skip' });
+    expect(MODEL_PROFILES.prod).toMatchObject({ maxRetries: 2, qa: 'enforce' });
+  });
+  it('out of time before the first attempt: no model call at all, the template is returned flagged for review', async () => {
+    const { call, seen } = fakeCall(() => goodWorkout);
+    const now = () => 1_000_000;
+    const r = await runPipeline({ ...base, inputs: inputs(), call, canEscalate: true, now, deadlineAt: now() + MIN_ATTEMPT_MS - 1 });
+    expect(seen).toHaveLength(0);
+    expect(r).toMatchObject({ source: 'template', needsReview: true, qa: null });
+    expect(r.attempts.map((a) => a.outcome)).toContain('budget_exceeded');
+    expect(validateWorkout(r.plan as WorkoutPlan, inputs(), library)).toEqual([]);
+  });
+  it('stops retrying when the time runs out between attempts, instead of starting one that cannot finish', async () => {
+    let clock = 0;
+    const { call, seen } = fakeCall(() => {
+      clock += 60_000; // each call is slow
+      return new AiCallError('HTTP_ERROR', 'timed out');
+    });
+    const r = await runPipeline({ ...base, inputs: inputs(), call, canEscalate: true, now: () => clock, deadlineAt: 100_000 });
+    expect(seen).toHaveLength(2); // 0 s and 60 s: only 40 s then, then nothing is left for a third
+    expect(r.source).toBe('template');
+    expect(r.needsReview).toBe(true);
+  });
+  it('keeps a plan that passed the checks when only QA ran out of time, and says a human should look', async () => {
+    let clock = 0;
+    const { call, seen } = fakeCall((c) => {
+      clock += 90_000;
+      return c.role === 'qa' ? qa() : goodWorkout;
+    });
+    const r = await runPipeline({ ...base, inputs: inputs(), call, canEscalate: false, now: () => clock, deadlineAt: 100_000 });
+    expect(seen.map((s) => s.role)).toEqual(['planner']);
+    expect(r).toMatchObject({ source: 'planner', needsReview: true, qa: null });
+  });
+  it('qa "skip" (dev): the validator alone accepts the plan, with no QA call', async () => {
+    const { call, seen } = fakeCall(() => goodWorkout);
+    const r = await runPipeline({ ...base, inputs: inputs(), call, canEscalate: false, qa: 'skip' });
+    expect(seen.map((s) => s.role)).toEqual(['planner']);
+    expect(r).toMatchObject({ source: 'planner', needsReview: false, qa: null });
+  });
+  it('maxRetries 1 (dev): two planner attempts, then the template', async () => {
+    const { call, seen } = fakeCall(() => new AiCallError('INVALID_OUTPUT', 'x'));
+    const r = await runPipeline({ ...base, inputs: inputs(), call, canEscalate: false, maxRetries: 1 });
+    expect(seen).toHaveLength(2);
+    expect(r.source).toBe('template');
+  });
+});
+
+describe('missingProfileFields', () => {
+  const full = { sex: 'female', birth_date: '1990-01-01', height_cm: 170, weight_kg: 65 } as never;
+  it('is empty for a complete profile', () => {
+    expect(missingProfileFields(full)).toEqual([]);
+  });
+  it('names only what is really missing (column names, never values)', () => {
+    expect(missingProfileFields({ sex: null, birth_date: null, height_cm: 170, weight_kg: null } as never)).toEqual(['sex', 'birth_date', 'weight_kg']);
+    expect(missingProfileFields(null)).toEqual(['profile']);
+  });
+  it('buildPlanInputs reports the same fields on the error', () => {
+    try {
+      buildPlanInputs({ sex: null, birth_date: '1990-01-01', height_cm: 170, weight_kg: 65, onboarding: {} } as never);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(PlanInputError);
+      expect((e as PlanInputError).fields).toEqual(['sex']);
+    }
   });
 });
 

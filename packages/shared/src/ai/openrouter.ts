@@ -42,6 +42,8 @@ export interface StructuredCall<T> {
   retry?: number;
   /** QA calls: turn the parsed verdict into the logged result. */
   qaResult?: (parsed: T) => 'pass' | 'fail';
+  /** Give up after this many ms (the request is aborted): a slow model must not eat the whole time budget. */
+  timeoutMs?: number;
 }
 
 export interface OpenRouterConfig {
@@ -107,23 +109,32 @@ export async function callStructured<T>(cfg: OpenRouterConfig, call: StructuredC
   const started = now();
   const base = { userId: call.userId, jobId: call.jobId ?? null, role: call.role, retry: call.retry ?? 0, escalated: !!call.escalate };
 
-  const res = await doFetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  type Reply = {
+    model?: string;
+    choices?: { message?: { content?: string; refusal?: string | null }; finish_reason?: string }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
+  };
+  let res: Response;
+  let json: Reply = {};
+  try {
+    res = await doFetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      ...(call.timeoutMs !== undefined ? { signal: AbortSignal.timeout(Math.max(1, call.timeoutMs)) } : {}),
+    });
+    // The wall time includes reading the body: a slow provider can send the headers long before the answer.
+    if (res.ok) json = (await res.json()) as Reply;
+  } catch {
+    await cfg.log({ ...base, model: body.model, tokensIn: null, tokensOut: null, costUsd: null, latencyMs: now() - started, status: 'http_error' });
+    throw new AiCallError('HTTP_ERROR', 'The request failed or timed out.');
+  }
   const latencyMs = now() - started;
 
   if (!res.ok) {
     await cfg.log({ ...base, model: body.model, tokensIn: null, tokensOut: null, costUsd: null, latencyMs, status: 'http_error' });
     throw new AiCallError('HTTP_ERROR', `OpenRouter returned ${res.status}.`);
   }
-
-  const json = (await res.json()) as {
-    model?: string;
-    choices?: { message?: { content?: string; refusal?: string | null }; finish_reason?: string }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
-  };
   const entry: AiCallLog = {
     ...base,
     model: json.model ?? body.model,

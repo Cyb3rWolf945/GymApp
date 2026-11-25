@@ -23,6 +23,12 @@ describe('deriveProgress', () => {
   it('fails when either job fails', () => {
     expect(deriveProgress([job('workout_plan', 'failed'), job('nutrition_plan', 'running')], T0, T0).phase).toBe('failed');
   });
+  it('waits about 3 minutes at most, so the retry state always comes, and a failed job shows at once', () => {
+    expect(GENERATION_TIMEOUT_MS).toBe(180_000);
+    // Failed right away, whatever the clock says: no waiting out the timeout on a job the server already ended.
+    expect(deriveProgress([job('workout_plan', 'failed'), job('nutrition_plan', 'running')], T0, T0 + 1).phase).toBe('failed');
+    expect(deriveProgress([job('workout_plan', 'running'), job('nutrition_plan', 'failed')], T0, T0 + 1).phase).toBe('failed');
+  });
   it('times out after the limit, but never once done', () => {
     expect(deriveProgress([job('workout_plan', 'running')], T0, T0 + GENERATION_TIMEOUT_MS).phase).toBe('running');
     expect(deriveProgress([job('workout_plan', 'running')], T0, T0 + GENERATION_TIMEOUT_MS + 1).phase).toBe('timeout');

@@ -23,6 +23,11 @@ import {
   getRuntimeModelProfile,
   aiCallRow,
   guardrailRow,
+  GENERATION_BUDGET_MS,
+  STALE_JOB_MS,
+  STALE_JOB_ERROR,
+  missingProfileFields,
+  sweepStaleJobs,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
 import { EXPO_PUSH_URL, EXPO_TOKEN_PATTERN, pushMessage } from '../../../packages/shared/src/notifications/index.ts';
@@ -31,7 +36,12 @@ import { originsFromEnv, resolveCaller, withCors } from '../../../packages/share
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
-const STALE_JOB_MS = 5 * 60 * 1000;
+/** The whole run is cut off here, under the Edge Function's wall-clock limit (about 120 s), so a job always ends. */
+const HARD_LIMIT_MS = 110_000;
+/** One model call never runs longer than this (a free model can take 30 s or more). */
+const CALL_TIMEOUT_MS = 40_000;
+/** The cheap guardrail classifier gets less: if it is slow the field is dropped (fail closed). */
+const LIGHT_TIMEOUT_MS = 15_000;
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -57,6 +67,9 @@ Deno.serve(withCors(async (req) => {
 
   const kind = body?.kind as PlanKind;
   if (!PLAN_KINDS.includes(kind)) return json(400, { error: 'Unknown plan kind.' });
+
+  // No job stays `running` forever: anything queued or running for over 5 minutes died with its function, so close it.
+  await sweepStaleJobs(admin as never);
 
   // Access is always checked server-side. Entitled users always; everyone else gets one free
   // generation per kind (failed jobs do not count), so the plan preview can come before the paywall.
@@ -114,7 +127,30 @@ Deno.serve(withCors(async (req) => {
   return json(202, { jobId: job.id });
 }, () => originsFromEnv((k) => Deno.env.get(k))));
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Runs one generation and always ends the job: done, or failed with a plain reason. The work races a hard time limit
+ * under the runtime's own, so an overrun is recorded instead of leaving the job `running` until the function is killed.
+ */
 async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
+  const failJob = (error: string) =>
+    admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId).neq('status', 'done');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), HARD_LIMIT_MS);
+  });
+  try {
+    const outcome = await Promise.race([generate(admin, userId, jobId, kind, update, adaptOfWeek).then(() => 'finished' as const), limit]);
+    if (outcome === 'timeout') await failJob(STALE_JOB_ERROR);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function generate(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
+  const startedAt = Date.now();
+  const deadlineAt = startedAt + GENERATION_BUDGET_MS;
   const fail = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId);
   try {
@@ -130,11 +166,23 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       },
     };
 
-    const { data: row } = await admin.from('profiles').select('*').eq('user_id', userId).maybeSingle();
-    if (!row) return await fail('Profile is incomplete.');
+    // The app saves the profile just before asking for a plan; if the row is not complete yet, give that save a moment.
+    let row: Record<string, unknown> | null = null;
+    for (let i = 0; i < 4; i++) {
+      ({ data: row } = await admin.from('profiles').select('*').eq('user_id', userId).maybeSingle());
+      if (missingProfileFields(row as never).length === 0) break;
+      if (i < 3) await sleep(800);
+    }
+    // Say what is actually missing (column names only, never values).
+    const missing = missingProfileFields(row as never);
+    if (missing.length > 0) return await fail(`Profile is incomplete: ${missing.join(', ')}.`);
+    if (!row) return;
 
     // Guardrails first: limit, classify (rules, then the light model), sanitise, log.
-    const call = (c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c);
+    // Every model call has a timeout that also respects what is left of the budget, so no single slow call can eat it all.
+    const timed = (c: Parameters<typeof callStructured>[1]) =>
+      callStructured(cfg, { ...c, timeoutMs: Math.max(1_000, Math.min(c.role === 'light' ? LIGHT_TIMEOUT_MS : CALL_TIMEOUT_MS, deadlineAt - Date.now() - 2_000)) });
+    const call = timed;
     const guard = await runGuardrails({ call: call as never, fields: extractFreeText(row.onboarding), userId, jobId });
     if (guard.events.length > 0) {
       // Text is kept only for the review queue and purged after the retention window (see guardrailRow).
@@ -172,7 +220,10 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary, history },
       library: candidates, // already filtered in SQL; the validator re-checks every item
       canEscalate: profile.escalation !== null,
-      call: (c) => callStructured(cfg, c),
+      maxRetries: profile.maxRetries,
+      qa: profile.qa,
+      deadlineAt,
+      call: (c) => timed(c),
     });
 
     // "Update my plan": a diff against the previous plan, with one line of why per change.
@@ -210,7 +261,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
           historyText: history,
           goal: inputs.goal,
           coachStyle: inputs.coachStyle,
-          call: ((c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c)) as never,
+          call: timed as never,
           userId,
           jobId,
         });
@@ -230,7 +281,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
     if (adaptOfWeek) await notifyWeekly(admin, userId, adaptOfWeek);
   } catch (e) {
     // Keep errors generic: they can echo model output.
-    await fail(e instanceof PlanInputError ? 'Profile is incomplete.' : 'Generation failed. Try again.');
+    await fail(e instanceof PlanInputError ? `Profile is incomplete${e.fields.length ? `: ${e.fields.join(', ')}` : ''}.` : 'Generation failed. Try again.');
   }
 }
 
