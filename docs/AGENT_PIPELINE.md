@@ -57,8 +57,11 @@ Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status boa
 1. Read issue #n and its comments. Label it `status:in-progress`.
 2. Work on branch `feat/<n>-<slug>`, created from `main`. Ship, don't plan.
 3. Run `pnpm install && pnpm lint && pnpm typecheck && pnpm test` until they all pass.
+   - **If the issue has the `model:haiku` label,** give steps 2 and 3 to a subagent started with `model: "haiku"`. Its prompt includes the issue text, its acceptance criteria, the contents of `CLAUDE.md`, the branch name, and the checks to run. Tell it to commit on that branch, not to open a PR and not to send messages. You review its diff against the acceptance criteria, then carry on with step 4 yourself: you open the PR and message the REVIEWER.
+   - **If the subagent can't get the checks to pass after two attempts,** finish the issue yourself (on Sonnet, on the same branch) and say so in the PR description.
+   - Issues labelled `model:sonnet` (or with no model label) are done by you directly.
 4. Run `git merge origin/main` and re-run the checks, so the PR doesn't open with conflicts.
-5. Open a PR to `main` with `Closes #<n>`, then label the issue `status:review`.
+5. Open a PR to `main` with `Closes #<n>`, then label the issue `status:review`. In the PR description, say which model did the work: "Implemented by: Sonnet", "Implemented by: Haiku subagent", or "Haiku subagent failed the checks twice; finished on Sonnet".
 6. Send the REVIEWER: `REVIEW PR #<p> issue #<n>`. Stop.
 
 **On `FIX PR #<p> issue #<n>: …`:**
@@ -71,6 +74,8 @@ Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status boa
 2. Pick the next eligible issue yourself (rules below) and start it.
 
 ## REVIEWER runner
+The review always runs on Sonnet, whatever the issue's `model:` label says, so review quality doesn't drop on small issues.
+
 **On `REVIEW PR #<p> issue #<n>`:**
 0. Read the PR's `mergeable_state`. If it is `unknown`, read it again after about 1 minute.
    - `clean` or `unstable`: continue with the normal review.
@@ -135,6 +140,11 @@ Closes #<n>
    - the REVIEWER reviews any open PR, or sends `NEXT <n>`;
    - the IMPLEMENTER resumes an unfinished `status:in-progress` issue of its own.
 3. Otherwise do nothing and stop. Keep this cheap.
+
+## Choosing the model label
+Every issue carries one label:
+- `model:haiku`: copy and text changes, docs, config, and small bug fixes that touch about 3 files or fewer, with **no** migrations, auth, payments or guardrail logic.
+- `model:sonnet`: everything else.
 
 ## Next eligible issue
 - Open, and every `Depends on: E-xx` issue is closed.
