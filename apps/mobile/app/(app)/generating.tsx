@@ -1,0 +1,53 @@
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { en } from '../../src/copy/en';
+import { GenerationSteps } from '../../src/plan/GenerationSteps';
+import { useGeneration } from '../../src/plan/useGeneration';
+import { useTheme } from '../../src/theme';
+import { Button, Text } from '../../src/ui';
+
+const t = en.plan.generating;
+
+/** Screen 14: starts the plan jobs and shows real progress until both are done. */
+export default function Generating() {
+  const { view, retry } = useGeneration();
+  const router = useRouter();
+  const { colors, spacing } = useTheme();
+
+  useEffect(() => {
+    if (view.kind === 'done') router.replace('/preview');
+    if (view.kind === 'needs_trial') router.replace('/paywall');
+  }, [view.kind, router]);
+
+  const steps =
+    view.kind === 'running'
+      ? view.progress.steps
+      : [{ id: 'calories' as const, state: 'done' as const }, { id: 'exercises' as const, state: view.kind === 'starting' ? ('active' as const) : ('pending' as const) }, { id: 'meals' as const, state: 'pending' as const }];
+
+  const error =
+    view.kind === 'error'
+      ? view.reason === 'timeout'
+        ? t.timeout
+        : view.reason === 'profile'
+          ? en.onboarding.errors.saveProfile
+          : en.errors.generatePlan
+      : null;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, padding: spacing.xl, gap: spacing.xxl, justifyContent: 'center' }}>
+        <Text variant="display">{t.title}</Text>
+        {error ? (
+          <View style={{ gap: spacing.lg }}>
+            <Text tone="danger" accessibilityRole="alert">{error}</Text>
+            <Button label={t.retry} onPress={retry} />
+          </View>
+        ) : (
+          <GenerationSteps steps={steps} />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}

@@ -45,7 +45,7 @@ export default function OnboardingStep() {
     if (next) router.replace(`/onboarding/${next}`);
     else {
       trackOnboarding('onboarding_finished', id);
-      router.replace('/sign-in');
+      router.replace('/onboarding/generating');
     }
   };
   const onContinue = () => {
