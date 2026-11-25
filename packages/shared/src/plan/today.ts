@@ -46,7 +46,7 @@ export interface TodayWorkout {
   kind: 'workout';
   dayName: string;
   minutes: number;
-  exercises: { slug: string; name: string; sets: number; reps: string }[];
+  exercises: { slug: string; name: string; sets: number; reps: string; repsMin: number; repsMax: number; restSeconds: number }[];
 }
 export interface TodayRest {
   kind: 'rest';
@@ -100,6 +100,9 @@ export function buildToday(args: {
           name: args.exerciseNames.get(e.exerciseSlug) ?? e.exerciseSlug,
           sets: e.sets,
           reps: reps(e.repsMin, e.repsMax),
+          repsMin: e.repsMin,
+          repsMax: e.repsMax,
+          restSeconds: e.restSeconds,
         })),
       };
     } else {

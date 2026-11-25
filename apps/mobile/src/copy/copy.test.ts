@@ -5,7 +5,7 @@ import { en } from './en';
 /** Every plain string in the copy tree, with its key path. Function entries are called with sample args. */
 function strings(node: unknown, path = ''): [string, string][] {
   if (typeof node === 'string') return [[path, node]];
-  if (typeof node === 'function') return [[path, (node as (...a: unknown[]) => string)(1, 4)]].map(([p, v]) => [p as string, String(v)] as [string, string]);
+  if (typeof node === 'function') return [[path, (node as (...a: unknown[]) => string)(1, 4, 1000)]].map(([p, v]) => [p as string, String(v)] as [string, string]);
   if (node && typeof node === 'object') return Object.entries(node).flatMap(([k, v]) => strings(v, path ? `${path}.${k}` : k));
   return [];
 }

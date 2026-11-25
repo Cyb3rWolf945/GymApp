@@ -603,6 +603,8 @@ export type Database = {
           started_at: string;
           finished_at: string | null;
           notes: string | null;
+          day_name: string | null;
+          rating: unknown | null;
         };
         Insert: {
           id?: string;
@@ -611,6 +613,8 @@ export type Database = {
           started_at?: string;
           finished_at?: string | null;
           notes?: string | null;
+          day_name?: string | null;
+          rating?: unknown | null;
         };
         Update: Partial<Database['public']['Tables']['workout_sessions']['Insert']>;
       };
