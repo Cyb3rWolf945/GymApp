@@ -1,12 +1,11 @@
 import { trackEvent } from '../../src/analytics/track';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatRest, nextPosition, prefillSet, setLine } from '@gymapp/shared';
 import { en } from '../../src/copy/en';
-import { useTheme } from '../../src/theme';
-import { Button, Card, ChipGroup, ListItem, Stepper, Text } from '../../src/ui';
+import { useBreakpoint, useTheme } from '../../src/theme';
+import { Button, Card, ChipGroup, ListItem, Screen, Stepper, Text } from '../../src/ui';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout;
@@ -16,7 +15,8 @@ const RPE_OPTIONS = ['6', '7', '8', '9', '10'].map((v) => ({ value: v, label: v 
 export default function WorkoutScreen() {
   const { active, hydrated, logSet, undoLast, finish } = useWorkout();
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
+  const wide = useBreakpoint() === 'expanded';
 
   const pos = useMemo(() => (active ? nextPosition(active.planned, active.logged) : null), [active]);
   const exercise = active && pos ? active.planned[pos.exercise] : null;
@@ -62,10 +62,12 @@ export default function WorkoutScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
+    <Screen variant={wide ? 'dashboard' : 'reading'}>
         <Text variant="small" tone="muted">{active.dayName}</Text>
 
+        {/* On wide screens: the set and rest-timer panel on the left, the logged sets on the right. */}
+        <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
+        <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>
         {exercise && pos ? (
           <>
             <Text variant="display">{exercise.name}</Text>
@@ -95,8 +97,10 @@ export default function WorkoutScreen() {
             <Button label={t.finish} onPress={onFinish} />
           </View>
         )}
+        </View>
 
         {active.logged.length > 0 ? (
+          <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%' }}>
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{t.loggedTitle}</Text>
             {active.logged.map((s) => (
@@ -108,10 +112,11 @@ export default function WorkoutScreen() {
             ))}
             <Button label={t.undo} variant="ghost" onPress={undoLast} />
           </Card>
+          </View>
         ) : null}
+        </View>
 
         {exercise ? <Button label={t.finish} variant="ghost" onPress={onFinish} /> : null}
-      </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

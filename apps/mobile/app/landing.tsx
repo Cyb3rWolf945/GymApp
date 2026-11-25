@@ -1,13 +1,12 @@
 import { useEffect } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { utmProps } from '@gymapp/shared';
 import { trackEvent } from '../src/analytics/track';
 import { en } from '../src/copy/en';
 import { captureAttribution } from '../src/marketing/tracking';
-import { useTheme } from '../src/theme';
-import { Button, Card, Text } from '../src/ui';
+import { useBreakpoint, useTheme } from '../src/theme';
+import { Button, Card, Screen, Text } from '../src/ui';
 
 const t = en.landing;
 // The router can mount this screen twice on a first visit (anchor route plus the resolved one): count the visit once.
@@ -16,7 +15,8 @@ let visitCounted = false;
 /** Web landing page for ads and search. Signed-out visitors on iOS and Android go straight to the quiz. */
 export default function Landing() {
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
+  const wide = useBreakpoint() === 'expanded';
 
   useEffect(() => {
     if (Platform.OS !== 'web' || visitCounted) return;
@@ -26,30 +26,46 @@ export default function Landing() {
   }, []);
 
   if (Platform.OS !== 'web') return <Redirect href="/onboarding" />;
+  const hero = (
+    <View style={{ gap: spacing.xl }}>
+      <View style={{ gap: spacing.md }}>
+        <Text variant="display" accessibilityRole="header">{t.hero}</Text>
+        <Text tone="muted">{t.sub}</Text>
+      </View>
+      <Button label={t.cta} onPress={() => router.push('/onboarding')} />
+      <Text variant="small" tone="muted">{t.quizNote}</Text>
+    </View>
+  );
+  const points = (
+    <View style={{ gap: spacing.md }}>
+      {t.points.map((p) => (
+        <Card key={p.title} style={{ gap: spacing.xs }}>
+          <Text variant="heading">{p.title}</Text>
+          <Text tone="muted">{p.body}</Text>
+        </Card>
+      ))}
+    </View>
+  );
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl, flexGrow: 1, justifyContent: 'center', maxWidth: 720, alignSelf: 'center', width: '100%' }}>
-        <View style={{ gap: spacing.md }}>
-          <Text variant="display" accessibilityRole="header">{t.hero}</Text>
-          <Text tone="muted">{t.sub}</Text>
+    <Screen variant={wide ? 'dashboard' : 'reading'} center>
+      {/* Two columns on wide screens: the pitch and the button on the left, the benefits on the right. */}
+      {wide ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xxxl }}>
+          <View style={{ flex: 1 }}>{hero}</View>
+          <View style={{ flex: 1 }}>{points}</View>
         </View>
-        <Button label={t.cta} onPress={() => router.push('/onboarding')} />
-        <Text variant="small" tone="muted">{t.quizNote}</Text>
-        <View style={{ gap: spacing.md }}>
-          {t.points.map((p) => (
-            <Card key={p.title} style={{ gap: spacing.xs }}>
-              <Text variant="heading">{p.title}</Text>
-              <Text tone="muted">{p.body}</Text>
-            </Card>
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {(['terms', 'privacy', 'health'] as const).map((k) => (
-            <Button key={k} label={en.home.legal[k]} variant="ghost" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: k } })} />
-          ))}
-        </View>
-        <Button label={t.signIn} variant="secondary" onPress={() => router.push('/sign-in')} />
-      </ScrollView>
-    </SafeAreaView>
+      ) : (
+        <>
+          {hero}
+          {points}
+        </>
+      )}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+        {(['terms', 'privacy', 'health'] as const).map((k) => (
+          <Button key={k} label={en.home.legal[k]} variant="ghost" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: k } })} />
+        ))}
+      </View>
+      <Button label={t.signIn} variant="secondary" onPress={() => router.push('/sign-in')} />
+    </Screen>
   );
 }

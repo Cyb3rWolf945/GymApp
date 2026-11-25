@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { FOUNDING_COUPON, PAID_TIERS, type PaidTier, TRIAL_DAYS, annualSavingsPercent, formatUsd, perDayUsd } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { trackEvent } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
 import { type PaywallData, fetchPaywall, startCheckout } from '../../src/plan/api';
-import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, Text } from '../../src/ui';
+import { useBreakpoint, useTheme } from '../../src/theme';
+import { Button, Card, EmptyState, ResponsiveGrid, Screen, Text } from '../../src/ui';
 
 const t = en.paywall;
 
@@ -17,6 +16,8 @@ export default function Paywall() {
   const router = useRouter();
   const { user } = useAuth();
   const { colors, radius, spacing } = useTheme();
+  // Three narrow cards side by side on tablets: a smaller price keeps "/year" on one line.
+  const priceVariant = useBreakpoint() === 'medium' ? 'heading' : 'display';
   const [data, setData] = useState<PaywallData | null>(null);
   const [failed, setFailed] = useState(false);
   const [interval, setIntervalChoice] = useState<'month' | 'year'>('year');
@@ -59,6 +60,8 @@ export default function Paywall() {
           <Button label={t.monthly} variant={interval === 'month' ? 'primary' : 'secondary'} onPress={() => setIntervalChoice('month')} />
           <Button label={t.annual} variant={interval === 'year' ? 'primary' : 'secondary'} onPress={() => setIntervalChoice('year')} />
         </View>
+        {/* Tiers side by side from `medium`, stacked on phones. */}
+        <ResponsiveGrid gap={spacing.lg} columns={{ medium: 3, expanded: 3 }}>
         {PAID_TIERS.map((tier) => {
           const p = price(tier, interval);
           const monthly = price(tier, 'month');
@@ -70,7 +73,7 @@ export default function Paywall() {
                 <Text variant="heading">{t.plans[tier].name}</Text>
                 {tier === 'pro' ? <Text variant="small" tone="accent">{t.popular}</Text> : null}
               </View>
-              <Text variant="display">{interval === 'month' ? t.perMonth(formatUsd(p.cents)) : t.perYear(formatUsd(p.cents))}</Text>
+              <Text variant={priceVariant}>{interval === 'month' ? t.perMonth(formatUsd(p.cents)) : t.perYear(formatUsd(p.cents))}</Text>
               <Text tone="muted">{t.perDay(perDayUsd(p.cents, interval))}{savings > 0 ? ` · ${t.savings(savings)}` : ''}</Text>
               {tier === 'elite' ? <Text tone="accent">{t.eliteHighlight}</Text> : null}
               {t.plans[tier].features.map((f) => (
@@ -83,6 +86,7 @@ export default function Paywall() {
             </Card>
           );
         })}
+        </ResponsiveGrid>
         {!web ? <Text tone="muted">{t.webOnly}</Text> : null}
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
       </>
@@ -90,13 +94,11 @@ export default function Paywall() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}>
-        <Text variant="display">{t.title}</Text>
-        <Text tone="muted">{t.body}</Text>
-        {body()}
-        <Button label={en.common.continue} variant="secondary" onPress={() => router.replace('/')} />
-      </ScrollView>
-    </SafeAreaView>
+    <Screen variant="dashboard" style={{ gap: spacing.lg }}>
+      <Text variant="display">{t.title}</Text>
+      <Text tone="muted">{t.body}</Text>
+      {body()}
+      <Button label={en.common.continue} variant="secondary" onPress={() => router.replace('/')} />
+    </Screen>
   );
 }

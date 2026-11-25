@@ -13,6 +13,7 @@ import {
 } from '../../src/auth/authService';
 import { isSupabaseConfigured, supabase } from '../../src/supabase';
 import { colors } from '../../src/theme';
+import { Screen } from '../../src/ui';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -72,6 +73,7 @@ export default function SignIn() {
       : onOAuth('apple');
 
   return (
+    <Screen center framed keyboardTaps>
     <View style={styles.container}>
       <Text style={styles.title}>{authCopy.title}</Text>
       <Text style={styles.subtitle}>{authCopy.subtitle}</Text>
@@ -107,11 +109,12 @@ export default function SignIn() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12, backgroundColor: colors.background, maxWidth: 420, width: '100%', alignSelf: 'center' },
+  container: { gap: 12 },
   title: { color: colors.accent, fontSize: 28, fontWeight: '700' },
   subtitle: { color: colors.muted, fontSize: 16, marginBottom: 12 },
   input: { backgroundColor: colors.surface, color: colors.text, padding: 14, borderRadius: 8, fontSize: 16 },

@@ -1,10 +1,9 @@
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { legalDoc } from '@gymapp/shared';
 import { en } from '../../src/copy/en';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, Text } from '../../src/ui';
+import { Button, Card, EmptyState, Screen, Text } from '../../src/ui';
 
 const t = en.home.legal;
 
@@ -17,8 +16,7 @@ export default function LegalScreen() {
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}>
+    <Screen>
         {page ? (
           <>
             <Text variant="display">{page.title}</Text>
@@ -38,7 +36,6 @@ export default function LegalScreen() {
           <EmptyState title={t.missing} />
         )}
         <Button label={t.back} variant="secondary" onPress={back} />
-      </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

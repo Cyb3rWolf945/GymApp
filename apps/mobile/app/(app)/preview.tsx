@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, StatTile, Text } from '../../src/ui';
+import { Button, Card, EmptyState, ListItem, Screen, StatTile, Text } from '../../src/ui';
 
 const t = en.plan.preview;
 
@@ -48,21 +47,20 @@ export default function Preview() {
   }, [user]);
 
   if (state.kind === 'loading') {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center' }}><ActivityIndicator color={colors.accent} /></SafeAreaView>;
+    return <Screen center><ActivityIndicator color={colors.accent} /></Screen>;
   }
   if (state.kind === 'error') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center' }}>
+      <Screen center>
         <EmptyState title={t.missing} actionLabel={en.plan.generating.retry} onAction={() => router.replace('/generating')} />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   const { workout, meals, disclaimer } = state.preview;
   const n = (v: number) => String(Math.round(v));
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
+    <Screen footer={<Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />}>
         <Text variant="display">{t.title}</Text>
 
         <Card style={{ gap: spacing.sm }}>
@@ -95,10 +93,6 @@ export default function Preview() {
             <Text variant="small">{disclaimer}</Text>
           </Card>
         ) : null}
-      </ScrollView>
-      <View style={{ padding: spacing.xl }}>
-        <Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
