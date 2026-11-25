@@ -298,6 +298,29 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['ingredients']['Insert']>;
       };
+      meal_swaps: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          meal_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: string;
+          day_index: number;
+          meal_index: number;
+          from_slug: string;
+          to_slug: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['meal_swaps']['Insert']>;
+      };
       meals: {
         Row: {
           id: string;

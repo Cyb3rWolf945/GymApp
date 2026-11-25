@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  type Macros, type RecipeCandidate, type SwapRow, type Weekday, WorkoutPlanSchema, applySwaps, buildPlanInputs, latestJobs,
+  type Allergen, type Diet, type MealSwapRow, type Macros, NutritionPlanSchema, applyMealSwaps, type RecipeCandidate, type SwapRow, type Weekday, WorkoutPlanSchema, applySwaps, buildPlanInputs, latestJobs,
 } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { fetchCatalogNames, fetchJobs } from '../plan/api';
@@ -18,6 +18,10 @@ export interface PlanData {
   workoutJobId: string;
   /** What the swap candidates must respect. */
   swapProfile: { equipment: string[]; contraindications: string[]; level: string };
+  /** The nutrition job the meal plan comes from (meal swaps are recorded against it). */
+  nutritionJobId: string;
+  /** Hard constraints for meal swaps. */
+  mealProfile: { diet: Diet; allergens: Allergen[] };
 }
 
 export type PlanState =
@@ -62,9 +66,15 @@ export function PlanDataProvider({ children }: { children: ReactNode }) {
           ? { ...(jobs.workout_plan.result as object), plan: applySwaps(parsedPlan.data, (swapRows ?? []) as SwapRow[]) }
           : jobs.workout_plan.result;
 
+        const { data: mealSwapRows } = await supabase.from('meal_swaps').select('day_index,meal_index,from_slug,to_slug,created_at').eq('job_id', jobs.nutrition_plan.id);
+        const parsedNutrition = NutritionPlanSchema.safeParse((jobs.nutrition_plan.result as { plan?: unknown } | null)?.plan);
+        const nutritionResult = parsedNutrition.success
+          ? { ...(jobs.nutrition_plan.result as object), plan: applyMealSwaps(parsedNutrition.data, (mealSwapRows ?? []) as MealSwapRow[]) }
+          : jobs.nutrition_plan.result;
+
         const exerciseSlugs = slugsOf(workoutResult, (p) =>
           ((p.days as { exercises?: { exerciseSlug: string }[] }[]) ?? []).flatMap((d) => (d.exercises ?? []).map((e) => e.exerciseSlug)));
-        const recipeSlugs = slugsOf(jobs.nutrition_plan.result, (p) =>
+        const recipeSlugs = slugsOf(nutritionResult, (p) =>
           ((p.days as { meals?: { recipeSlug: string }[] }[]) ?? []).flatMap((d) => (d.meals ?? []).map((m) => m.recipeSlug)));
         const [{ exerciseNames, recipes }, profile] = await Promise.all([
           fetchCatalogNames([...new Set(exerciseSlugs)], [...new Set(recipeSlugs)]),
@@ -74,19 +84,22 @@ export function PlanDataProvider({ children }: { children: ReactNode }) {
         let targets: PlanData['targets'] = null;
         let preferredDays: Weekday[] = [];
         const swapProfile: PlanData['swapProfile'] = { equipment: ['bodyweight'], contraindications: [], level: 'beginner' };
+        const mealProfile: PlanData['mealProfile'] = { diet: 'omnivore', allergens: [] };
         if (profile.data) {
           try {
             targets = buildPlanInputs(profile.data as never).targets;
           } catch {
             targets = null;
           }
-          const ob = (profile.data.onboarding ?? {}) as { preferredDays?: Weekday[]; equipment?: string[]; contraindications?: string[] };
+          const ob = (profile.data.onboarding ?? {}) as { preferredDays?: Weekday[]; equipment?: string[]; contraindications?: string[]; diet?: Diet; allergens?: Allergen[] };
           if (Array.isArray(ob.preferredDays)) preferredDays = ob.preferredDays;
           if (Array.isArray(ob.equipment) && ob.equipment.length) swapProfile.equipment = ob.equipment;
           if (Array.isArray(ob.contraindications)) swapProfile.contraindications = ob.contraindications;
+          if (ob.diet) mealProfile.diet = ob.diet;
+          if (Array.isArray(ob.allergens)) mealProfile.allergens = ob.allergens;
           if (profile.data.experience) swapProfile.level = profile.data.experience as string;
         }
-        if (active) setState({ status: 'ready', data: { workoutResult, nutritionResult: jobs.nutrition_plan.result, exerciseNames, recipes, preferredDays, targets, workoutJobId: jobs.workout_plan.id, swapProfile } });
+        if (active) setState({ status: 'ready', data: { workoutResult, nutritionResult, exerciseNames, recipes, preferredDays, targets, workoutJobId: jobs.workout_plan.id, swapProfile, nutritionJobId: jobs.nutrition_plan.id, mealProfile } });
       } catch {
         if (active) setState({ status: 'error' });
       }

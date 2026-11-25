@@ -1,43 +1,154 @@
-import { useMemo } from 'react';
-import { ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NutritionPlanSchema, nutritionDayTotals } from '@gymapp/shared';
+import {
+  NutritionPlanSchema, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays,
+} from '@gymapp/shared';
+import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
-import type { PlanData } from '../../../src/home/usePlanData';
+import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
+import { fetchEntitled, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
-import { Card, ListItem, Text } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, ListItem, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
+const n = en.nutrition;
+
+interface Target {
+  dayIndex: number;
+  mealIndex: number;
+  slug: string;
+  name: string;
+  portions: number;
+}
 
 function Nutrition({ data }: { data: PlanData }) {
   const { colors, spacing } = useTheme();
+  const { user } = useAuth();
+  const { reload } = usePlanData();
+  const router = useRouter();
+  const toast = useToast();
   const bySlug = useMemo(() => new Map(data.recipes.map((r) => [r.slug, r])), [data]);
-  const parsed = useMemo(() => NutritionPlanSchema.safeParse((data.nutritionResult as { plan?: unknown } | null)?.plan), [data]);
-  const plan = parsed.success ? parsed.data : null;
+  const plan = useMemo(() => {
+    const p = NutritionPlanSchema.safeParse((data.nutritionResult as { plan?: unknown } | null)?.plan);
+    return p.success ? p.data : null;
+  }, [data]);
+  const workoutDays = useMemo(() => {
+    const p = WorkoutPlanSchema.safeParse((data.workoutResult as { plan?: unknown } | null)?.plan);
+    return p.success ? p.data.days.length : 0;
+  }, [data]);
+
+  // Stub gate until the paywall (E-18). The server stays the source of truth for access.
+  const [entitled, setEntitled] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    void fetchEntitled(user.id).then(setEntitled, () => setEntitled(false));
+  }, [user]);
+
+  const [target, setTarget] = useState<Target | null>(null);
+  const [options, setOptions] = useState<RecipeCandidate[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  if (entitled === null) {
+    return <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}><ActivityIndicator color={colors.accent} /></SafeAreaView>;
+  }
+  if (!entitled) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
+        <EmptyState title={n.lockedTitle} body={n.lockedBody} actionLabel={n.lockedCta} onAction={() => router.push('/paywall')} />
+      </SafeAreaView>
+    );
+  }
+
+  // One card per weekday. Training weekdays use the "training" day of the plan, the rest use "rest".
+  const trainOn = new Set(trainingWeekdays(workoutDays, data.preferredDays));
+  const dayFor = (weekday: (typeof WEEKDAYS)[number]) => {
+    const type = trainOn.has(weekday) ? 'training' : 'rest';
+    const i = plan?.days.findIndex((d) => d.dayType === type) ?? -1;
+    return i >= 0 ? i : 0;
+  };
+
+  const openSwap = async (tg: Target) => {
+    setTarget(tg);
+    setOptions(null);
+    setError(null);
+    try {
+      const library = await fetchRecipeLibrary();
+      const inDay = plan?.days[tg.dayIndex].meals.map((m) => m.recipeSlug) ?? [];
+      setOptions(mealSwapCandidates({ slug: tg.slug, kcal: bySlug.get(tg.slug)?.kcal ?? null }, tg.portions, library, data.mealProfile, inDay));
+    } catch {
+      setError(n.swapLoadError);
+    }
+  };
+  const choose = async (o: RecipeCandidate) => {
+    if (!user || !target) return;
+    setSaving(true);
+    const ok = await recordMealSwap(user.id, data.nutritionJobId, target.dayIndex, target.mealIndex, target.slug, o.slug);
+    setSaving(false);
+    if (!ok) return setError(n.swapSaveError);
+    setTarget(null);
+    toast.show(n.swapDone(o.name), 'success');
+    reload();
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
         <Text variant="display">{t.nutritionTitle}</Text>
-        {plan?.days.map((d, i) => {
-          const totals = nutritionDayTotals(d, bySlug);
-          const target = data.targets?.[d.dayType];
-          return (
-            <Card key={`${d.dayType}-${i}`} style={{ gap: spacing.sm }}>
-              <Text variant="heading">{t.dayType[d.dayType]}</Text>
-              <Text tone="muted">
-                {Math.round(totals.kcal)} kcal · {Math.round(totals.proteinG)} g protein · {Math.round(totals.carbsG)} g carbs · {Math.round(totals.fatG)} g fat
-                {target ? ` (${t.target(target.kcal)})` : ''}
-              </Text>
-              {d.meals.map((m, j) => {
-                const r = bySlug.get(m.recipeSlug);
-                return <ListItem key={`${m.name}-${j}`} title={m.name} subtitle={`${r?.name ?? m.recipeSlug} · ${Math.round((r?.kcal ?? 0) * m.portions)} kcal`} />;
-              })}
-            </Card>
-          );
-        })}
+        {plan ? <Text tone="muted">{n.swapNote}</Text> : null}
+        {plan
+          ? WEEKDAYS.map((weekday) => {
+              const di = dayFor(weekday);
+              const d = plan.days[di];
+              const totals = nutritionDayTotals(d, bySlug);
+              const targets = data.targets?.[d.dayType];
+              return (
+                <Card key={weekday} style={{ gap: spacing.sm }}>
+                  <Text variant="small" tone="muted">{WEEKDAY_LABELS[weekday]} · {t.dayType[d.dayType]}</Text>
+                  <Text tone="muted">
+                    {Math.round(totals.kcal)} kcal · {Math.round(totals.proteinG)} g protein · {Math.round(totals.carbsG)} g carbs · {Math.round(totals.fatG)} g fat
+                    {targets ? ` (${t.target(targets.kcal)})` : ''}
+                  </Text>
+                  {d.meals.map((m, j) => {
+                    const r = bySlug.get(m.recipeSlug);
+                    return (
+                      <ListItem
+                        key={`${m.name}-${j}`}
+                        title={m.name}
+                        subtitle={`${r?.name ?? m.recipeSlug} · ${n.kcalMeal(Math.round((r?.kcal ?? 0) * m.portions))}`}
+                        onPress={() => router.push({ pathname: '/recipe/[slug]', params: { slug: m.recipeSlug, portions: String(m.portions) } })}
+                        trailing={
+                          <Text
+                            variant="small"
+                            tone="accent"
+                            accessibilityRole="button"
+                            onPress={() => void openSwap({ dayIndex: di, mealIndex: j, slug: m.recipeSlug, name: r?.name ?? m.recipeSlug, portions: m.portions })}
+                          >
+                            {n.swapMeal}
+                          </Text>
+                        }
+                      />
+                    );
+                  })}
+                </Card>
+              );
+            })
+          : null}
         {plan ? <Text tone="muted">{plan.rationale}</Text> : null}
       </ScrollView>
+
+      <BottomSheet visible={!!target} onClose={() => setTarget(null)} title={target ? n.swapTitle(target.name) : undefined} closeLabel={en.common.close}>
+        <Text tone="muted">{n.swapBody}</Text>
+        {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
+        {!options && !error ? <ActivityIndicator color={colors.accent} /> : null}
+        {options && options.length === 0 ? <Text>{n.swapNone}</Text> : null}
+        {options?.map((o) => (
+          <Button key={o.slug} label={n.swapPick(o.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />
+        ))}
+      </BottomSheet>
     </SafeAreaView>
   );
 }
