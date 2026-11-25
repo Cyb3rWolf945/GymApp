@@ -65,3 +65,9 @@ You are adding the QA runner to TEAM B of the GymApp MVP (repo Cyb3rWolf945/GymA
 ```
 
 After that, set the mode to **Auto** in "GymApp QA runner (team B)". Then add the QA test account as environment variables, so QA can log in. The owner gives you the email and password privately, never in a GitHub issue or PR.
+
+## SOCIAL runner (Instagram)
+Team B's account also runs a separate **SOCIAL runner** that manages Fuelift's Instagram by itself: the session "GymApp SOCIAL runner (Instagram)" and the scheduled task "GymApp SOCIAL daily (Instagram)". Its playbook is `docs/SOCIAL_RUNNER.md`, and every run is logged in issue #146. It skips its daily run when team B is building and usage is 50% or more.
+
+To switch publishing on: create an Instagram Professional account for Fuelift, connect it to a Meta developer app with the Instagram API (Instagram Login), generate a long-lived access token with `instagram_business_basic`, `instagram_business_content_publish`, `instagram_business_manage_comments` and `instagram_business_manage_insights`, and ask any session on this account to save it for `graph.instagram.com` through the secure credential form. Never paste it in chat. The runner detects it at its next run.
+
