@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { authCopy } from './copy';
 import {
   type AuthResult,
@@ -20,19 +19,13 @@ import type { AuthErrorKind } from './errors';
 import { cleanCode, visibleProviders } from './logic';
 import { nativeApple, nativeGoogle, googleNativeConfigured } from './nativeSignIn';
 import { ProviderButton } from './ProviderButton';
+import { openAuthSession } from './browser';
 import { authRedirect, oauthEnabled } from './redirects';
 import { useResendWait } from './useCountdown';
 import { isSupabaseConfigured, supabase } from '../supabase';
 import { Button, Text, TextField } from '../ui';
 
-WebBrowser.maybeCompleteAuthSession();
-
 const isWeb = Platform.OS === 'web';
-
-async function openAuthSession(url: string, returnUrl: string): Promise<string | null> {
-  const res = await WebBrowser.openAuthSessionAsync(url, returnUrl);
-  return res.type === 'success' ? res.url : null;
-}
 
 export type Mode = 'signUp' | 'logIn';
 /** form = email + password; confirm = "check your inbox"; code = email me a code; reset = forgot password. */

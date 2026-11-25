@@ -4,7 +4,7 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { exchangeCode } from '../src/auth/authService';
 import { authCopy } from '../src/auth/copy';
-import { mapAuthError } from '../src/auth/errors';
+import { mapOAuthError } from '../src/auth/errors';
 import { parseAuthCallback } from '../src/auth/logic';
 import { supabase } from '../src/supabase';
 import { useTheme } from '../src/theme';
@@ -27,7 +27,7 @@ export default function AuthCallback() {
     started.current = true;
     void (async () => {
       const callback = parseAuthCallback(href);
-      if (callback.error) return setError(mapAuthError({ code: callback.errorCode, message: callback.error }).message);
+      if (callback.error) return setError(mapOAuthError({ code: callback.errorCode, message: callback.error }).message);
       // On web the Supabase client may already have used the code (detectSessionInUrl): a session is then enough.
       const open = () => router.replace('/');
       if ((await supabase.auth.getSession()).data.session) return open();

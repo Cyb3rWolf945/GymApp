@@ -6,6 +6,7 @@ import { deleteAccount, deliverExport, fetchExport } from '../../../src/account/
 import { signOut } from '../../../src/auth/authService';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { authCopy } from '../../../src/auth/copy';
+import { SignInMethods } from '../../../src/auth/SignInMethods';
 import { en } from '../../../src/copy/en';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
@@ -71,6 +72,8 @@ export default function SettingsScreen() {
             </>
           ) : null}
         </Card>
+
+        <SignInMethods />
 
         <Card style={{ gap: spacing.xs }}>
           <ListItem title={t.profile.link} onPress={() => router.push('/profile')} />
