@@ -21,6 +21,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'off',
+    // The helpers freeze the clock for stable dates, which would freeze entrance animations half way: no motion here.
+    reducedMotion: 'reduce',
     isMobile: true,
     hasTouch: true,
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},

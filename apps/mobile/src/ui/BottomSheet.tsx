@@ -1,5 +1,6 @@
 import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
 import { AccessibilityInfo, Modal, Platform, Pressable, ScrollView, View, findNodeHandle } from 'react-native';
+import { useReducedMotion } from '../motion';
 import { useBreakpoint, useTheme } from '../theme';
 import { Text } from './Text';
 
@@ -41,6 +42,8 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
   const { colors, radius, spacing } = useTheme();
   const bp = useBreakpoint();
   const focusRef = useFocusOnOpen(visible);
+  // Slides up from the bottom, or only fades with reduced motion.
+  const sheetAnimation = useReducedMotion() ? 'fade' : 'slide';
   /** The dimmed area behind the sheet: a close button, or just a dim layer when tapping outside must do nothing. */
   const backdrop = (position: 'absolute' | 'fill') => {
     const style = position === 'absolute' ? ({ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay } as const) : { flex: 1, backgroundColor: colors.overlay };
@@ -70,7 +73,7 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
     );
   }
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={sheetAnimation} onRequestClose={onClose}>
       {backdrop('fill')}
       <View
         ref={focusRef}

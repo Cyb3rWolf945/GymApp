@@ -12,8 +12,9 @@ export const CHECKOUT_PATH = '/e2e-checkout';
 /** Fixed date: a Monday, so with preferred days Mon and Thu "Upper body" is today's workout. */
 export const FIXED_NOW = new Date('2026-11-23T10:00:00Z');
 
-export async function start(page: Page): Promise<Backend> {
-  await page.clock.setFixedTime(FIXED_NOW);
+export async function start(page: Page, { fixedTime = true } = {}): Promise<Backend> {
+  // A frozen clock keeps dates stable, but JS animations read `Date.now()` and would never advance: tests of motion turn it off.
+  if (fixedTime) await page.clock.setFixedTime(FIXED_NOW);
   // The fake "Stripe Checkout" page: Stripe's hosted page is not part of this suite.
   // On the context, not the page: Checkout opens in a new tab.
   await page.context().route(`**${CHECKOUT_PATH}**`, (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Stripe Checkout (test stub)</h1>' }));
