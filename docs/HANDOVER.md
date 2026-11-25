@@ -22,14 +22,16 @@ You are setting up runner TEAM B for the GymApp MVP (repo Cyb3rWolf945/GymApp). 
 2. Create two cloud sessions with create_session, both with source_url https://github.com/Cyb3rWolf945/GymApp, source_revision main, model sonnet:
    - title "GymApp IMPLEMENTER runner (team B)", tags ["gymapp-mvp","runner","implementer","team-b"]
    - title "GymApp REVIEWER runner (team B)", tags ["gymapp-mvp","runner","reviewer","team-b"]
+   - title "GymApp QA runner (team B)", tags ["gymapp-mvp","runner","qa","team-b"] (first prompt: "You are the QA runner of TEAM B…", same pattern, listing both other team B session IDs)
    Give each this first prompt (fill in the role and the other runner's session ID): "You are the <ROLE> runner of TEAM B for the GymApp MVP. Your team's other runner is <OTHER_SESSION_ID>. Follow docs/AGENT_PIPELINE.md from origin/main for every job, including the Shift lock rules (issue #49). Only message sessions of team B. For now reply 'team B <role> ready' and stop."
 
 3. Create two hourly scheduled tasks with create_trigger, each with persistent_session_id set to its runner:
    - "GymApp IMPLEMENTER watchdog (team B)", cron "15 * * * *"
    - "GymApp REVIEWER watchdog (team B)", cron "45 * * * *"
+   - "GymApp QA watchdog (team B)", cron "5 * * * *"
    Prompt for both: "Hourly watchdog: follow the 'Hourly watchdog' section of docs/AGENT_PIPELINE.md (from origin/main) as the <ROLE> runner of TEAM B, starting with the Shift lock rules. Keep it brief."
 
-4. Open a PR that fills in the two team B session IDs in the table in docs/AGENT_PIPELINE.md. Do not touch issue #49 (the lock).
+4. Open a PR that fills in the three team B session IDs in the table in docs/AGENT_PIPELINE.md. Do not touch issue #49 (the lock).
 
 5. Tell me the two session titles and remind me to set the mode to Auto in both.
 ```
