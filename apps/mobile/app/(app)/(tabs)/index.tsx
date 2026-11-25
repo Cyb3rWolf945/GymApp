@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { WEEKDAY_LABELS, WorkoutPlanSchema, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
+import { WEEKDAY_LABELS, WorkoutPlanSchema, buildToday, dateKey, mealProgress, pickLine, seedOf, toggleEaten } from '@gymapp/shared';
+import { useCoachStyle } from '../../../src/coach/useCoachStyle';
 import { PastDueBanner } from '../../../src/billing/PastDueBanner';
 import { WeeklyCheckinCard } from '../../../src/checkin/WeeklyCheckinCard';
 import { WeeklyChangesCard } from '../../../src/plan/WeeklyChangesCard';
@@ -21,6 +22,7 @@ function Today({ data }: { data: PlanData }) {
   const router = useRouter();
   const wide = useBreakpoint() !== 'compact';
   const { active, start } = useWorkout();
+  const { style } = useCoachStyle();
   const now = useMemo(() => new Date(), []);
   const day = dateKey(now);
   const [eaten, setEaten] = useState<number[]>([]);
@@ -49,6 +51,7 @@ function Today({ data }: { data: PlanData }) {
   return (
     <Screen variant="dashboard">
       <Text variant="display">{t.title}</Text>
+      <Text tone="muted">{pickLine(en.coach.greeting, style, seedOf(day))}</Text>
       <PastDueBanner />
       <PlanOutdatedCard />
       <WeeklyChangesCard />

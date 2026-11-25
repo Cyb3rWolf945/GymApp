@@ -158,6 +158,11 @@ export const en = {
         cookingMinutes: (m: number) => `${m} min`,
         skip: 'Skip this',
       },
+      coachStyle: {
+        title: 'How should your coach sound?',
+        body: 'Optional. You can change it any time in Settings.',
+        skip: 'Skip this',
+      },
       consents: {
         title: 'Last step',
         body: 'We need your OK to build your plan.',
@@ -398,6 +403,34 @@ export const en = {
       deleteConfirm: 'Delete my account',
       deleteCancel: 'Keep my account',
       deleteError: "Couldn't delete your account. Check your connection and try again.",
+    },
+  },
+  // E-55: coach styles. Tone only. Variants per style; `pickLine` falls back to Calm. Same writing guide for all three:
+  // 2nd person, no guilt or shame, no medical claims.
+  coach: {
+    settingsTitle: 'Coach style',
+    settingsBody: 'Changes how we talk to you. Your plan stays the same.',
+    saved: 'Coach style saved.',
+    error: "Couldn't save your coach style. Check your connection and try again.",
+    styles: {
+      calm: { label: 'Calm', example: '"Nice and steady. Each set adds up."' },
+      direct: { label: 'Direct', example: '"Three sets. Add weight when every rep is clean."' },
+      hype: { label: 'Hype', example: "\"Big week! Let's go get those sets!\"" },
+    },
+    greeting: {
+      calm: ['Take it one step at a time today.', 'Start small. Every set counts.', 'Easy does it. You know the plan.'],
+      direct: ['Your plan is ready. Go.', 'Today: train, eat, rest.', 'Show up and do the work.'],
+      hype: ["Let's make today count!", "Ready to go? Let's do this!", 'Today is your day to shine!'],
+    },
+    summaryTitle: {
+      calm: ['Workout done.', 'Nicely done. That is a wrap.'],
+      direct: ['Workout done.', 'Done. Good work.'],
+      hype: ['Workout done! 🔥', 'You crushed it!'],
+    },
+    prCheer: {
+      calm: ['A new best. Your steady work is showing.', 'Quiet progress, and it adds up.'],
+      direct: ['New best.', 'Stronger than last time.'],
+      hype: ['New record! Huge!', "You're getting stronger every week!"],
     },
   },
   workout: {

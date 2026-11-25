@@ -14,12 +14,12 @@ const full: PartialAnswers = {
 };
 
 describe('steps', () => {
-  it('has the 13 screens of the spec in order', () => {
-    expect(ONBOARDING_STEPS.map((s) => s.screen)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  it('has the 14 screens in order (the 13 of the spec, plus the optional coach style before consents)', () => {
+    expect(ONBOARDING_STEPS.map((s) => s.screen)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual([...STEP_IDS]);
   });
-  it('marks target, injuries and budget as skippable (and only those)', () => {
-    expect(ONBOARDING_STEPS.filter((s) => s.skippable).map((s) => s.id)).toEqual(['target', 'injuries', 'budget']);
+  it('marks target, injuries, budget and coach style as skippable (and only those)', () => {
+    expect(ONBOARDING_STEPS.filter((s) => s.skippable).map((s) => s.id)).toEqual(['target', 'injuries', 'budget', 'coachStyle']);
   });
   it('shows the target screen only for weight goals', () => {
     expect(visibleSteps({ goalType: 'cut' }).map((s) => s.id)).toContain('target');
@@ -35,8 +35,8 @@ describe('steps', () => {
     expect(nextStepId({}, 'consents')).toBeNull();
   });
   it('reports progress over the visible steps', () => {
-    expect(progressOf({ goalType: 'recomp' }, 'welcome')).toEqual({ step: 1, total: 12 });
-    expect(progressOf({ goalType: 'cut' }, 'consents')).toEqual({ step: 13, total: 13 });
+    expect(progressOf({ goalType: 'recomp' }, 'welcome')).toEqual({ step: 1, total: 13 });
+    expect(progressOf({ goalType: 'cut' }, 'consents')).toEqual({ step: 14, total: 14 });
   });
 });
 
@@ -50,7 +50,7 @@ describe('validation', () => {
     expect(validateStep('equipment', { location: 'home', equipment: [] }).ok).toBe(false);
   });
   it('lets skippable screens pass empty', () => {
-    for (const id of ['target', 'injuries', 'budget'] as const) expect(validateStep(id, {}).ok).toBe(true);
+    for (const id of ['target', 'injuries', 'budget', 'coachStyle'] as const) expect(validateStep(id, {}).ok).toBe(true);
   });
   it('limits the injury note to 280 chars', () => {
     expect(validateStep('injuries', { injuryNote: 'a'.repeat(280) }).ok).toBe(true);

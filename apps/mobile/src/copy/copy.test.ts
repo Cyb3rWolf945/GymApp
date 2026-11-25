@@ -54,4 +54,26 @@ describe('copy', () => {
     expect(getCopy('pt-PT')).toBe(en);
     expect(getCopy()).toBe(en);
   });
+
+  describe('coach styles (E-55)', () => {
+    const styles = ['calm', 'direct', 'hype'] as const;
+    const sets = { greeting: en.coach.greeting, summaryTitle: en.coach.summaryTitle, prCheer: en.coach.prCheer };
+    it('every style has at least two variants of each encouragement line', () => {
+      for (const [name, set] of Object.entries(sets)) for (const st of styles) expect(set[st].length, `${name}.${st}`).toBeGreaterThanOrEqual(2);
+    });
+    it('every style has a label and a one-line example', () => {
+      for (const st of styles) {
+        expect(en.coach.styles[st].label).toMatch(/^[A-Z][a-z]+$/);
+        expect(en.coach.styles[st].example.split('\n')).toHaveLength(1);
+      }
+    });
+    it('Direct stays short and plain; Hype keeps to one exclamation mark per sentence', () => {
+      for (const set of Object.values(sets)) for (const line of set.direct) expect(line, line).not.toContain('!');
+      for (const set of Object.values(sets)) for (const line of set.hype) for (const sentence of line.split(/(?<=[.!?])\s+/)) expect((sentence.match(/!/g) ?? []).length, sentence).toBeLessThanOrEqual(1);
+    });
+    it('all style copy is 2nd person at most, with no guilt, shame or medical claims', () => {
+      const text = [...Object.values(sets).flatMap((s) => styles.flatMap((st) => s[st])), ...styles.map((st) => en.coach.styles[st].example)].join('\n');
+      expect(text).not.toMatch(/\b(lazy|fail\w*|shame\w*|guilt\w*|disappoint\w*|excuses?|cure[sd]?|treat(s|ment)?|diagnos\w+|heal\w*)\b/i);
+    });
+  });
 });

@@ -6,13 +6,13 @@ import { OnboardingAnswersSchema, type PartialAnswers } from './schema.ts';
 // file holds the rules around them: which rows exist, how the stored answers come back, and which changes make the
 // plan out of date. Pure, so it is unit-tested.
 
-/** The rows of "Your profile", in order: every onboarding step that asks a question, except consents (they have their own screens). */
+/** The rows of "Your profile", in order: every onboarding step that asks a question, except consents (own screens) and the coach style (Settings). */
 export function profileRows(answers: PartialAnswers): StepId[] {
-  return ONBOARDING_STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'consents' && (s.visible?.(answers) ?? true)).map((s) => s.id);
+  return ONBOARDING_STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'consents' && s.id !== 'coachStyle' && (s.visible?.(answers) ?? true)).map((s) => s.id);
 }
 
 /** Rows a person may edit: the same set, regardless of the current answers (used to check a route param). */
-export const EDITABLE_STEPS: readonly StepId[] = ONBOARDING_STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'consents').map((s) => s.id);
+export const EDITABLE_STEPS: readonly StepId[] = ONBOARDING_STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'consents' && s.id !== 'coachStyle').map((s) => s.id);
 export const isEditableStep = (v: unknown): v is StepId => typeof v === 'string' && (EDITABLE_STEPS as readonly string[]).includes(v);
 
 /** The answers stored in `profiles.onboarding`, ready for the step components. Anything that is not a valid answer is dropped. */
