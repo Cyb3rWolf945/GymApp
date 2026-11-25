@@ -9,21 +9,41 @@
     "backgroundColor": "#0B0B0F",
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#0B0B0F",
+          "imageWidth": 200
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "ios": {
       "usesAppleSignIn": true,
-      "bundleIdentifier": "app.fuelift.mobile"
+      "bundleIdentifier": "app.fuelift.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "app.fuelift.mobile"
-    }
+      "package": "app.fuelift.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0B0F"
+      },
+      "permissions": []
+    },
+    "icon": "./assets/icon.png",
+    "description": "Workouts and meals in one plan. Adapts every week."
   }
 }

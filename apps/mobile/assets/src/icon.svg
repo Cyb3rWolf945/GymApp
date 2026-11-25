@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Placeholder app icon. Replace with the designer's logo; keep the 1024 x 1024 size and no transparency. -->
+  <rect width="1024" height="1024" fill="#0B0B0F"/>
+  <rect x="232" y="232" width="560" height="560" rx="140" fill="#C6FF3D"/>
+  <path d="M410 340 H640 V412 H486 V470 H610 V540 H486 V684 H410 Z" fill="#0B0B0F"/>
+</svg>

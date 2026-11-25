@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Android adaptive icon foreground (transparent). Keep the mark inside the central 66%: the launcher crops the rest. -->
+  <rect x="302" y="302" width="420" height="420" rx="105" fill="#C6FF3D"/>
+  <path d="M434 392 H606 V446 H490 V490 H583 V542 H490 V632 H434 Z" fill="#0B0B0F"/>
+</svg>

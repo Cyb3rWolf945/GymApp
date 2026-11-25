@@ -1,5 +1,5 @@
 import type { Page, Request, Route } from '@playwright/test';
-import { EXERCISES, NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN } from './fixtures';
+import { EXERCISES, NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, sessionHistory, setLogHistory, weightHistory } from './fixtures';
 
 // A small in-memory stand-in for Supabase (auth, PostgREST tables, RPC and the Edge Functions the app calls).
 // It answers by table and ignores row filters: there is one synthetic user. It records every write so tests can
@@ -18,7 +18,7 @@ export interface Backend {
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
   functionCalls: string[];
-  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[] };
+  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null };
   /** What the Stripe webhook would do after a successful payment. */
   completeCheckout(): void;
   writesTo(path: string): Recorded[];
@@ -46,8 +46,24 @@ function parseBody(req: Request): unknown {
 
 const now = () => new Date().toISOString();
 
+const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns']);
+
+/** The `col=eq.x` and `col=in.(a,b)` filters PostgREST applies. A filter on a column the fixture row doesn't have is ignored. */
+export function applyFilters(rows: unknown[], params: URLSearchParams): unknown[] {
+  let out = rows as Record<string, unknown>[];
+  for (const [col, expr] of params) {
+    if (RESERVED.has(col)) continue;
+    const eq = /^eq\.(.*)$/.exec(expr);
+    const inn = /^in\.\((.*)\)$/.exec(expr);
+    if (!eq && !inn) continue;
+    const wanted = eq ? [eq[1]] : inn![1].split(',').map((v) => v.replace(/^"|"$/g, ''));
+    out = out.filter((r) => !(col in r) || wanted.includes(String(r[col])));
+  }
+  return out;
+}
+
 export async function installFakeBackend(page: Page, opts: { checkoutUrl: string }): Promise<Backend> {
-  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [] };
+  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
 
@@ -70,6 +86,9 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     recipes: () => RECIPES,
     plan_prices: () => PLAN_PRICES,
     shopping_list_items: () => state.checked.map((label) => ({ label, checked: true })),
+    body_metrics: () => (state.history ? weightHistory(state.history) : []),
+    set_logs: () => (state.history ? setLogHistory(state.history) : []),
+    workout_sessions: () => (state.history ? sessionHistory(state.history) : []),
   };
 
   await page.route(/localhost:54321/, async (route) => {
@@ -109,7 +128,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     // ---- Tables
     if (path.startsWith('/rest/v1/')) {
       const table = path.replace('/rest/v1/', '');
-      if (method === 'GET' || method === 'HEAD') return json(route, (tables[table] ?? (() => []))());
+      if (method === 'GET' || method === 'HEAD') return json(route, applyFilters((tables[table] ?? (() => []))(), url.searchParams));
       const body = parseBody(req);
       writes.push({ method, path, body });
       if (table === 'profiles' && body && !Array.isArray(body)) state.profile = { ...(state.profile ?? {}), ...(body as object) };
