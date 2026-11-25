@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
+import { AccessibilityInfo, Modal, Platform, Pressable, ScrollView, View, findNodeHandle } from 'react-native';
 import { useBreakpoint, useTheme } from '../theme';
 import { Text } from './Text';
 
@@ -9,24 +9,61 @@ interface Props {
   title?: string;
   /** Accessible name of the close area (tap outside the sheet). */
   closeLabel?: string;
+  /** Tapping outside closes the sheet (default). Off for sheets that must be answered, or closed on purpose (Escape / back). */
+  dismissOnBackdrop?: boolean;
+  /** From which width the sheet becomes a centred dialog: `expanded` (1024 px, default) or `medium` (600 px). */
+  dialogFrom?: 'medium' | 'expanded';
+  /** Widest the centred dialog gets (px). */
+  dialogMaxWidth?: number;
   children: ReactNode;
 }
 
-export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', children }: Props) {
+/** Move focus into the sheet when it opens: the keyboard cursor on the web, the screen reader's focus on the phone. */
+function useFocusOnOpen(visible: boolean) {
+  const ref = useRef<ComponentRef<typeof View>>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const id = setTimeout(() => {
+      const node = ref.current;
+      if (!node) return;
+      if (Platform.OS === 'web') (node as unknown as { focus?: () => void }).focus?.();
+      else {
+        const tag = findNodeHandle(node);
+        if (tag) AccessibilityInfo.setAccessibilityFocus(tag);
+      }
+    }, 50); // after the modal has mounted its content
+    return () => clearTimeout(id);
+  }, [visible]);
+  return ref;
+}
+
+export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dismissOnBackdrop = true, dialogFrom = 'expanded', dialogMaxWidth = 520, children }: Props) {
   const { colors, radius, spacing } = useTheme();
-  const dialog = useBreakpoint() === 'expanded';
+  const bp = useBreakpoint();
+  const focusRef = useFocusOnOpen(visible);
+  /** The dimmed area behind the sheet: a close button, or just a dim layer when tapping outside must do nothing. */
+  const backdrop = (position: 'absolute' | 'fill') => {
+    const style = position === 'absolute' ? ({ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay } as const) : { flex: 1, backgroundColor: colors.overlay };
+    return dismissOnBackdrop ? <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={style} /> : <View style={style} />;
+  };
+  const dialog = dialogFrom === 'medium' ? bp !== 'compact' : bp === 'expanded';
   if (dialog) {
     // Wide screens: a centred dialog with a capped width instead of a sheet stuck to the bottom edge.
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} />
+          {backdrop('absolute')}
           <View
+            ref={focusRef}
+            tabIndex={-1}
             accessibilityViewIsModal
-            style={{ width: '100%', maxWidth: 520, maxHeight: '90%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.lg }}
+            role="dialog"
+            aria-modal
+            aria-label={title}
+            style={{ width: '100%', maxWidth: dialogMaxWidth, maxHeight: '90%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.lg }}
           >
-            {title ? <Text variant="heading">{title}</Text> : null}
-            {children}
+            {title ? <Text variant="heading" accessibilityRole="header">{title}</Text> : null}
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
           </View>
         </View>
       </Modal>
@@ -34,10 +71,16 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', chi
   }
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={{ flex: 1, backgroundColor: colors.overlay }} />
+      {backdrop('fill')}
       <View
+        ref={focusRef}
+        tabIndex={-1}
         accessibilityViewIsModal
+        role="dialog"
+        aria-modal
+        aria-label={title}
         style={{
+          maxHeight: '90%',
           backgroundColor: colors.surface,
           borderTopLeftRadius: radius.lg,
           borderTopRightRadius: radius.lg,
@@ -47,8 +90,8 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', chi
         }}
       >
         <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
-        {title ? <Text variant="heading">{title}</Text> : null}
-        {children}
+        {title ? <Text variant="heading" accessibilityRole="header">{title}</Text> : null}
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
       </View>
     </Modal>
   );
