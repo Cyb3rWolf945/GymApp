@@ -149,6 +149,25 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['body_metrics']['Insert']>;
       };
+      consent_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: string;
+          version: string;
+          accepted: boolean;
+          accepted_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          kind: string;
+          version: string;
+          accepted: boolean;
+          accepted_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['consent_records']['Insert']>;
+      };
       cost_entries: {
         Row: {
           id: string;
