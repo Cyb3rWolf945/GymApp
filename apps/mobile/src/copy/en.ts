@@ -407,6 +407,11 @@ export const en = {
   },
   // E-55: coach styles. Tone only. Variants per style; `pickLine` falls back to Calm. Same writing guide for all three:
   // 2nd person, no guilt or shame, no medical claims.
+  appearance: {
+    title: 'Appearance',
+    body: 'System follows your phone or browser.',
+    options: { system: 'System', dark: 'Dark', light: 'Light' },
+  },
   plateSettings: {
     title: 'Bar and plates',
     body: 'Used by the plate calculator and warm-up sets. Saved on this device.',

@@ -13,7 +13,7 @@ import { usePlateConfig } from '../../../src/workout/plateSettings';
 import { useWeeklyAdaptSetting } from '../../../src/plan/weekly';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
-import { useTheme } from '../../../src/theme';
+import { THEME_PREFERENCES, type ThemePreference, useTheme, useThemePreference } from '../../../src/theme';
 import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
@@ -27,6 +27,7 @@ export default function SettingsScreen() {
   const push = usePushReminders();
   const weekly = useWeeklyAdaptSetting();
   const coach = useCoachStyle();
+  const appearance = useThemePreference();
   const plates = usePlateConfig();
   const [barText, setBarText] = useState<string | null>(null);
   const [pickedPlates, setPickedPlates] = useState<string[] | null>(null);
@@ -69,6 +70,16 @@ export default function SettingsScreen() {
         <Card style={{ gap: spacing.sm }}>
           <Text variant="small" tone="muted">{t.account}</Text>
           <Text variant="bodyStrong">{user?.email ?? ''}</Text>
+        </Card>
+
+        <Card style={{ gap: spacing.sm }}>
+          <Text variant="heading">{en.appearance.title}</Text>
+          <Text tone="muted">{en.appearance.body}</Text>
+          <ChipGroup
+            options={THEME_PREFERENCES.map((v) => ({ value: v, label: en.appearance.options[v] }))}
+            value={[appearance.preference]}
+            onChange={(v) => v[0] && appearance.setPreference(v[0] as ThemePreference)}
+          />
         </Card>
 
         <Card style={{ gap: spacing.sm }}>

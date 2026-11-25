@@ -38,10 +38,10 @@ export const palettes: Record<Scheme, Palette> = {
     border: '#D4D4DC',
     text: '#0B0B0F',
     muted: '#585866',
-    accent: '#4D7C0F',
+    accent: '#3F6212',
     onAccent: '#FFFFFF',
     danger: '#B91C1C',
-    success: '#15803D',
+    success: '#166534',
     overlay: 'rgba(0,0,0,0.4)',
   },
 };

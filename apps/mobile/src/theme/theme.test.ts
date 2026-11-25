@@ -29,3 +29,33 @@ describe('theme tokens', () => {
     expect(typography.caption.fontSize).toBeGreaterThanOrEqual(12);
   });
 });
+
+// E-57: every pair the UI actually draws, in both schemes (WCAG AA: 4.5:1 for text, 3:1 for control edges).
+describe.each(['dark', 'light'] as const)('%s palette: every text and control pair', (scheme) => {
+  const c = palettes[scheme];
+  const surfaces = [c.background, c.surface, c.surfaceAlt];
+  it('text, muted text, the accent used as text, danger and success read on every surface', () => {
+    for (const bg of surfaces) {
+      for (const [name, fg] of Object.entries({ text: c.text, muted: c.muted, accent: c.accent, danger: c.danger, success: c.success })) {
+        expect(contrastRatio(fg, bg), `${name} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+  it('text on the accent button and on the danger/success fills is readable', () => {
+    expect(contrastRatio(c.onAccent, c.accent)).toBeGreaterThanOrEqual(4.5);
+  });
+  it('the edge of a control (borders, inputs) is visible against the page and cards', () => {
+    for (const bg of [c.background, c.surface]) expect(contrastRatio(c.muted, bg), `muted edge on ${bg}`).toBeGreaterThanOrEqual(3);
+  });
+  it('the overlay is a translucent black that dims the page', () => {
+    expect(c.overlay).toMatch(/^rgba\(0,\s*0,\s*0,\s*0\.\d+\)$/);
+  });
+});
+
+it('the dark and light palettes are different looks, each with a clear step between page, card and raised card', () => {
+  expect(palettes.dark.background).not.toBe(palettes.light.background);
+  for (const scheme of ['dark', 'light'] as const) {
+    const c = palettes[scheme];
+    expect(new Set([c.background, c.surface, c.surfaceAlt]).size).toBe(3);
+  }
+});
