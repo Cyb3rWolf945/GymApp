@@ -24,7 +24,8 @@ export default function TabsLayout() {
           tabBarStyle: side
             ? { backgroundColor: colors.surface, borderRightColor: colors.border, borderRightWidth: 1, width: SIDE_NAV_WIDTH[bp], paddingTop: spacing.xl }
             : { backgroundColor: colors.surface, borderTopColor: colors.border, height: minTapTarget + 16 },
-          tabBarLabelStyle: side ? { fontSize: 16, fontWeight: '600', textAlign: 'left' } : { fontSize: 12, fontWeight: '600' },
+          // In the rail the label is the tap target: line height plus padding makes it at least `minTapTarget` tall.
+          tabBarLabelStyle: side ? { fontSize: 16, lineHeight: 24, paddingVertical: (minTapTarget - 24) / 2, fontWeight: '600', textAlign: 'left' } : { fontSize: 12, fontWeight: '600' },
           tabBarIconStyle: { display: 'none' },
           tabBarItemStyle: side
             ? { justifyContent: 'center', alignItems: 'flex-start', minHeight: minTapTarget, paddingHorizontal: spacing.lg }
