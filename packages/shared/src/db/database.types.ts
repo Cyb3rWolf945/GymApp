@@ -589,6 +589,7 @@ export type Database = {
           label: string;
           grams: number | null;
           checked: boolean;
+          job_id: string | null;
         };
         Insert: {
           id?: string;
@@ -598,6 +599,7 @@ export type Database = {
           label: string;
           grams?: number | null;
           checked?: boolean;
+          job_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['shopping_list_items']['Insert']>;
       };

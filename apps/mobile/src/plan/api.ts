@@ -1,4 +1,4 @@
-import { type Allergen, type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment, isEntitled } from '@gymapp/shared';
+import { type Allergen, type JobRow, type ShoppingRecipe, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment, isEntitled } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
@@ -116,5 +116,43 @@ export async function fetchRecipeDetail(slug: string): Promise<RecipeDetail | nu
 /** Record a meal swap (own row, RLS). It is the signal for memory; the plan view applies it on top of the generated plan. */
 export async function recordMealSwap(userId: string, jobId: string, dayIndex: number, mealIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
   const { error } = await supabase.from('meal_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, meal_index: mealIndex, from_slug: fromSlug, to_slug: toSlug } as never);
+  return !error;
+}
+
+/** Recipes with their ingredients (grams for the whole recipe), for the shopping list. */
+export async function fetchShoppingRecipes(slugs: string[]): Promise<Map<string, ShoppingRecipe>> {
+  if (!slugs.length) return new Map();
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,servings,recipe_ingredients(grams,ingredients(name,category))')
+    .in('slug', slugs);
+  if (error) throw error;
+  type Row = { slug: string; servings: number; recipe_ingredients: { grams: number; ingredients: { name: string; category: string | null } | null }[] };
+  return new Map(
+    ((data ?? []) as unknown as Row[]).map((r) => [
+      r.slug,
+      {
+        servings: r.servings,
+        ingredients: (r.recipe_ingredients ?? []).filter((i) => i.ingredients).map((i) => ({ name: i.ingredients!.name, category: i.ingredients!.category, grams: Number(i.grams) })),
+      },
+    ]),
+  );
+}
+
+export async function fetchCheckedItems(jobId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('shopping_list_items').select('label').eq('job_id', jobId).eq('checked', true);
+  if (error) throw error;
+  return ((data ?? []) as { label: string }[]).map((r) => r.label);
+}
+
+export async function setItemChecked(userId: string, jobId: string, label: string, grams: number, checked: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('shopping_list_items')
+    .upsert({ user_id: userId, job_id: jobId, label, grams, checked } as never, { onConflict: 'user_id,job_id,label' });
+  return !error;
+}
+
+export async function clearCheckedItems(jobId: string): Promise<boolean> {
+  const { error } = await supabase.from('shopping_list_items').update({ checked: false } as never).eq('job_id', jobId).eq('checked', true);
   return !error;
 }

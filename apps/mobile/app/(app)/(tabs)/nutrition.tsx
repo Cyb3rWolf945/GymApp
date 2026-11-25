@@ -99,6 +99,7 @@ function Nutrition({ data }: { data: PlanData }) {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
         <Text variant="display">{t.nutritionTitle}</Text>
         {plan ? <Text tone="muted">{n.swapNote}</Text> : null}
+        {plan ? <Button label={n.shoppingList} variant="secondary" onPress={() => router.push('/shopping')} /> : null}
         {plan
           ? WEEKDAYS.map((weekday) => {
               const di = dayFor(weekday);
