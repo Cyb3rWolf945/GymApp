@@ -1,6 +1,6 @@
 # Setting up runner team B (collaborator account)
 
-Team B is a copy of the runner pipeline running on a second person's Claude account. Both teams stay switched on, and the shift lock in issue #49 makes sure only one of them works at a time (see `docs/AGENT_PIPELINE.md` → "Shift lock"). When team A reaches 90% of its 5-hour usage limit, it hands the lock to team B, which starts at its next watchdog run (within about 35 minutes). The other way round works the same. If a team stops without handing over, the other team takes over once the lock is 45 minutes old.
+Team B is a copy of the runner pipeline running on a second person's Claude account. Both teams stay switched on, and the shift lock in issue #49 makes sure only one of them works at a time (see `docs/AGENT_PIPELINE.md` → "Shift lock"). When team A reaches 90% of its 5-hour usage limit, it hands the lock to team B, which starts at its next watchdog run (within about 30 minutes). The other way round works the same. If a team stops without handing over, the other team takes over once the lock is 45 minutes old.
 
 ## 1. Prerequisites (about 5 minutes)
 1. **GitHub:** the repo owner adds you as a collaborator on `Cyb3rWolf945/GymApp` (Settings → Collaborators). Accept the invite.
@@ -26,7 +26,7 @@ You are setting up runner TEAM B for the GymApp MVP (repo Cyb3rWolf945/GymApp). 
 
 3. Create two hourly scheduled tasks with create_trigger, each with persistent_session_id set to its runner:
    - "GymApp IMPLEMENTER watchdog (team B)", cron "15 * * * *"
-   - "GymApp REVIEWER watchdog (team B)", cron "50 * * * *"
+   - "GymApp REVIEWER watchdog (team B)", cron "45 * * * *"
    Prompt for both: "Hourly watchdog: follow the 'Hourly watchdog' section of docs/AGENT_PIPELINE.md (from origin/main) as the <ROLE> runner of TEAM B, starting with the Shift lock rules. Keep it brief."
 
 4. Open a PR that fills in the two team B session IDs in the table in docs/AGENT_PIPELINE.md. Do not touch issue #49 (the lock).
