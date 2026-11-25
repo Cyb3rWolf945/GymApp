@@ -1,83 +1,190 @@
 name: CI
 
+# Parallel jobs, and only the work a change can affect:
+#   changes      which parts of the repo this change touches
+#   checks       lint, typecheck, unit tests            (any change except docs-only)
+#   admin-build  Next.js build of the admin             (apps/admin, packages/shared, lockfile)
+#   e2e-build    Expo web export, built once            (apps/mobile, apps/e2e, packages/shared, lockfile)
+#   e2e          Playwright, one job per screen size    (needs e2e-build; desktop is split in two)
+#   ci           one stable check that needs all of the above; skipped jobs count as passed
+# Branch protection should require the `ci` check only.
+
 on:
   pull_request:
   push:
     branches: [main]
 
+# A new push to a pull request cancels its older run. Runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  MODEL_PROFILE: dev
+
 jobs:
-  checks:
+  changes:
+    name: changes
     runs-on: ubuntu-latest
-    env:
-      MODEL_PROFILE: dev
+    outputs:
+      code: ${{ steps.code.outputs.code }}
+      admin: ${{ steps.parts.outputs.admin }}
+      e2e: ${{ steps.parts.outputs.e2e }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Detect workspace
-        id: detect
-        run: |
-          if [ -f package.json ]; then echo "has_pkg=true" >> "$GITHUB_OUTPUT"; else echo "has_pkg=false" >> "$GITHUB_OUTPUT"; fi
-
-      - uses: pnpm/action-setup@v4
-        if: steps.detect.outputs.has_pkg == 'true'
-
-      - uses: actions/setup-node@v4
-        if: steps.detect.outputs.has_pkg == 'true'
+      # Anything that is not documentation. `every`: a file must match `**` and none of the exclusions.
+      - uses: dorny/paths-filter@v3
+        id: code
         with:
-          node-version: 22
-          cache: pnpm
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.clinerules/**'
+      # Which app a change can affect. `some`: any listed path is enough.
+      - uses: dorny/paths-filter@v3
+        id: parts
+        with:
+          filters: |
+            admin:
+              - 'apps/admin/**'
+              - 'packages/shared/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.npmrc'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/**'
+            e2e:
+              - 'apps/mobile/**'
+              - 'apps/e2e/**'
+              - 'packages/shared/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.npmrc'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/**'
 
-      - name: Install
-        if: steps.detect.outputs.has_pkg == 'true'
-        run: pnpm install --frozen-lockfile
-
+  checks:
+    name: checks
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - name: Lint
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm lint
-
       - name: Typecheck
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm typecheck
-
       - name: Test
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm test
 
+  admin-build:
+    name: admin-build
+    needs: changes
+    if: needs.changes.outputs.admin == 'true'
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - name: Admin build
-        if: steps.detect.outputs.has_pkg == 'true'
-        env:
-          NEXT_TELEMETRY_DISABLED: '1'
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
         run: pnpm --filter admin build
 
+  e2e-build:
+    name: e2e-build
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # The web export with a fake Supabase URL. It also proves the app exports for the web, so there is no separate export step.
       - name: E2E build (fake Supabase URL)
-        if: steps.detect.outputs.has_pkg == 'true'
         env:
           EXPO_PUBLIC_SUPABASE_URL: http://localhost:54321
           EXPO_PUBLIC_SUPABASE_ANON_KEY: e2e-anon-key
         run: pnpm --filter e2e build:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web-build
+          path: apps/e2e/.web
+          retention-days: 1
+          if-no-files-found: error
 
+  e2e:
+    name: e2e (${{ matrix.name }})
+    needs: e2e-build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: phone, project: phone, shard: '' }
+          - { name: tablet, project: tablet, shard: '' }
+          # The desktop project also runs the width sweeps, so it is the long one: two halves of about the same length.
+          - { name: desktop 1/2, project: desktop, shard: '1/2' }
+          - { name: desktop 2/2, project: desktop, shard: '2/2' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-web-build
+          path: apps/e2e/.web
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm --filter e2e exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Playwright browser cache
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Playwright browser
-        if: steps.detect.outputs.has_pkg == 'true'
+        if: steps.browsers.outputs.cache-hit != 'true'
         run: pnpm --filter e2e exec playwright install --with-deps chromium
-
+      - name: Playwright system dependencies
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm --filter e2e exec playwright install-deps chromium
       - name: E2E (Playwright, web build, MODEL_PROFILE=dev)
-        if: steps.detect.outputs.has_pkg == 'true'
-        run: pnpm --filter e2e test
-
+        run: pnpm --filter e2e exec playwright test --project=${{ matrix.project }} ${{ matrix.shard != '' && format('--shard={0}', matrix.shard) || '' }} --trace off
       - name: Upload E2E report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}-${{ strategy.job-index }}
           path: apps/e2e/playwright-report
+          if-no-files-found: ignore
 
-      - name: Web export
-        if: steps.detect.outputs.has_pkg == 'true'
-        run: pnpm --filter mobile exec expo export --platform web
-
-      - name: No workspace yet
-        if: steps.detect.outputs.has_pkg != 'true'
-        run: echo "No package.json yet — scaffold arrives with issue 1."
+  # The one check to require in branch protection. Jobs that were skipped (docs-only changes, parts a change can't
+  # affect) count as passed; a failed or cancelled job fails it.
+  ci:
+    name: ci
+    if: always()
+    needs: [changes, checks, admin-build, e2e-build, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs passed or were skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "A job did not pass: $r"
+              exit 1
+            fi
+          done
