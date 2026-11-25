@@ -60,7 +60,7 @@ test.describe('responsive navigation', () => {
     expect(new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(5);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(1);
+    await expect.poll(async () => new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(1);
     expect(reloads).toBe(0);
 
     // Navigation still works in the rail and shows where you are.
