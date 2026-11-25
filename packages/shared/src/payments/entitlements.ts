@@ -14,6 +14,8 @@ export interface EntitlementRow {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   past_due_since: string | null;
+  /** Stripe lookup key of the price, e.g. `pro_annual`. Lets the admin tell monthly from annual (MRR). */
+  price_key: string | null;
 }
 export type EntitlementPatch = Partial<Omit<EntitlementRow, 'user_id'>>;
 
@@ -52,6 +54,7 @@ export function patchFromSubscription(sub: StripeSubscription, current?: Pick<En
     cancel_at_period_end: !!sub.cancel_at_period_end,
     stripe_customer_id: sub.customer,
     stripe_subscription_id: sub.id,
+    price_key: dead ? null : (item?.price?.lookup_key ?? null),
     // The grace window starts when payments first fail, not at every retry.
     past_due_since: status === 'past_due' ? (current?.status === 'past_due' && current.past_due_since ? current.past_due_since : iso(eventTime)) : null,
   };

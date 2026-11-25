@@ -328,3 +328,81 @@ describe('web funnel (E-22)', () => {
     expect(trackingAllowed(after)).toBe(true);
   });
 });
+
+describe('admin metrics views (E-31)', () => {
+  const A1 = '00000000-0000-0000-0000-0000000000c1';
+  const A2 = '00000000-0000-0000-0000-0000000000c2';
+
+  it('stitches a visitor across anonymous and signed-in events and attributes the source', async () => {
+    await db.exec(`insert into auth.users(id) values ('${A1}'), ('${A2}') on conflict do nothing;
+      insert into public.profiles(user_id, attribution) values ('${A1}', '{"utm_source":"meta","utm_campaign":"launch"}') on conflict (user_id) do update set attribution = excluded.attribution;
+      insert into public.profiles(user_id) values ('${A2}') on conflict do nothing;
+      insert into public.analytics_events(user_id, anon_id, name, props) values
+        (null, 'visitor-meta-1', 'landing_view', '{"utm_source":"meta","utm_campaign":"launch"}'),
+        (null, 'visitor-meta-1', 'quiz_start', '{}'),
+        (null, 'visitor-meta-1', 'onboarding_step_viewed', '{"step":"goal","screen":2,"version":1}'),
+        (null, 'visitor-meta-1', 'onboarding_step_viewed', '{"step":"basics","screen":3,"version":1}'),
+        ('${A1}', 'visitor-meta-1', 'paywall_view', '{}'),
+        ('${A1}', null, 'purchase', '{"tier":"pro","interval":"year","amount_usd":119.99,"reason":"subscription_cycle"}'),
+        (null, 'visitor-direct-2', 'quiz_start', '{}'),
+        (null, 'visitor-direct-2', 'onboarding_step_viewed', '{"step":"goal","screen":2,"version":1}'),
+        ('${A2}', null, 'signup', '{"method":"email"}')`);
+    const f = await db.query<{ source: string; name: string; visitors: number; events: number }>(`select source, name, visitors, events from public.funnel_by_source_daily where source in ('meta', '(direct)') order by source, name`);
+    const get = (source: string, name: string) => f.rows.find((r) => r.source === source && r.name === name);
+    // The purchase has only a user id, but belongs to the same visitor as the quiz: one visitor, source meta.
+    expect(get('meta', 'purchase')).toMatchObject({ visitors: 1 });
+    expect(get('meta', 'quiz_start')).toMatchObject({ visitors: 1 });
+    expect(get('meta', 'paywall_view')).toMatchObject({ visitors: 1 });
+    expect(get('(direct)', 'quiz_start')).toMatchObject({ visitors: 1 });
+    // One visitor, one journey: the signup (written by a trigger) and the purchase have only a user id, yet they join
+    // the anonymous quiz events of the same person and share their source.
+    const journey = await db.query<{ source: string; names: string[] }>(`select source, array_agg(distinct name order by name) as names from public.analytics_events_attributed where visitor = 'visitor-meta-1' group by source`);
+    expect(journey.rows).toEqual([{ source: 'meta', names: ['landing_view', 'onboarding_step_viewed', 'paywall_view', 'purchase', 'quiz_start', 'signup'] }]);
+
+    const screens = await db.query<{ source: string; screen: number; visitors: number }>(`select source, screen, visitors from public.onboarding_screens_daily order by source, screen`);
+    expect(screens.rows).toEqual([
+      { source: '(direct)', screen: 2, visitors: 1 },
+      { source: 'meta', screen: 2, visitors: 1 },
+      { source: 'meta', screen: 3, visitors: 1 },
+    ]);
+  });
+
+  it('summarises generations per day and flattens their attempts', async () => {
+    const snap = async () => (await db.query<Record<string, number>>(`select coalesce(sum(jobs),0)::int jobs, coalesce(sum(done),0)::int done, coalesce(sum(failed),0)::int failed, coalesce(sum(first_pass),0)::int first_pass, coalesce(sum(retried),0)::int retried, coalesce(sum(escalated),0)::int escalated, coalesce(sum(fallback),0)::int fallback, coalesce(sum(needs_review),0)::int needs_review from public.generation_daily`)).rows[0];
+    const before = await snap();
+    const result = (source: string, outcomes: string[]) => JSON.stringify({ source, attempts: outcomes.map((o) => ({ stage: 'planner', outcome: o, errors: o === 'validation_failed' ? ['Day 1: "x" contains nuts.'] : [] })) });
+    await db.exec(`insert into public.generation_jobs(user_id, kind, status, result, needs_review) values
+      ('${A1}', 'workout_plan', 'done', '${result('planner', ['passed'])}', false),
+      ('${A1}', 'nutrition_plan', 'done', '${result('planner', ['validation_failed', 'passed'])}', false),
+      ('${A2}', 'workout_plan', 'done', '${result('template', ['validation_failed', 'validation_failed', 'validation_failed'])}', true),
+      ('${A2}', 'nutrition_plan', 'failed', null, false),
+      ('${A2}', 'workout_plan', 'done', '${result('escalation', ['qa_failed', 'passed'])}', false)`);
+    const after = await snap();
+    const diff = Object.fromEntries(Object.keys(after).map((k) => [k, after[k] - before[k]]));
+    expect(diff).toEqual({ jobs: 5, done: 4, failed: 1, first_pass: 1, retried: 3, escalated: 1, fallback: 1, needs_review: 1 });
+
+    const outcomes = await db.query<{ outcome: string; n: number }>(`select outcome, count(*)::int as n from public.generation_attempts where job_id in (select id from public.generation_jobs where user_id = '${A2}' and result is not null) group by 1 order by 1`);
+    expect(outcomes.rows).toEqual([{ outcome: 'passed', n: 1 }, { outcome: 'qa_failed', n: 1 }, { outcome: 'validation_failed', n: 3 }]);
+    const errs = await db.query<{ n: number }>(`select count(*)::int as n from public.generation_attempts where errors @> '["Day 1: \\"x\\" contains nuts."]'::jsonb`);
+    expect(errs.rows[0].n).toBe(4); // 1 + 3 validation failures carry the message (QA failures and failed jobs have none)
+  });
+
+  it('computes latency percentiles per role', async () => {
+    await db.exec(`insert into public.ai_call_logs(user_id, role, model, latency_ms, status) values
+      ('${A1}', 'light', 'm', 100, 'ok'), ('${A1}', 'light', 'm', 200, 'ok'), ('${A1}', 'light', 'm', 300, 'ok'), ('${A1}', 'light', 'm', 400, 'ok'), ('${A1}', 'light', 'm', 1000, 'ok')`);
+    const r = await db.query<{ calls: number; p50_ms: number; p95_ms: number }>(`select calls, p50_ms, p95_ms from public.ai_latency_daily where role = 'light'`);
+    expect(r.rows[0]).toMatchObject({ calls: 5, p50_ms: 300 });
+    expect(r.rows[0].p95_ms).toBeGreaterThan(800);
+  });
+
+  it('only reveals what the underlying tables reveal to a signed-in user (the real database also revokes access)', async () => {
+    // Built on admin-only tables (RLS, no policy): empty for a signed-in user.
+    for (const v of ['analytics_events_attributed', 'funnel_by_source_daily', 'onboarding_screens_daily', 'ai_latency_daily']) {
+      const rows = await asUser(db, A1, async () => (await db.query(`select * from public.${v}`)).rows);
+      expect(rows, v).toEqual([]);
+    }
+    // Built on generation_jobs, whose own-row policy applies: a user only ever sees their own jobs, never another user's.
+    const mine = await asUser(db, A1, async () => (await db.query<{ n: number }>(`select coalesce(sum(jobs), 0)::int as n from public.generation_daily`)).rows[0].n);
+    expect(mine).toBe(2);
+  });
+});
