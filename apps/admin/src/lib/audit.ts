@@ -6,6 +6,13 @@ export const AUDIT_ACTIONS = [
   'mfa_verified',
   'view_user_list',
   'view_user_health',
+  'view_guardrail_queue',
+  'grant_comp',
+  'regenerate_plan',
+  'resend_magic_link',
+  'export_user_data',
+  'delete_user',
+  'review_guardrail',
   'admin_action',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

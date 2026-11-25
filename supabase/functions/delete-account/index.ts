@@ -6,7 +6,7 @@
 //  3. delete the auth user: every other table cascades from it.
 import { createClient } from '@supabase/supabase-js';
 import { stripeClient } from '../../../packages/shared/src/payments/index.ts';
-import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
+import { originsFromEnv, resolveCaller, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -15,11 +15,17 @@ Deno.serve(withCors(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); // server only
   const token = req.headers.get('Authorization')?.replace(/^Bearer /i, '');
-  const { data: auth } = token ? await admin.auth.getUser(token) : { data: { user: null } };
-  const user = auth.user;
+  const body = (await req.json().catch(() => null)) as { confirm?: string; userId?: unknown } | null;
+  // The user themselves (JWT), or the admin backoffice with the service-role key for a verified GDPR request.
+  const caller = resolveCaller(token, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), body?.userId);
+  if (caller.kind === 'invalid') return json(caller.status, { error: caller.message });
+  let user: { id: string } | null = caller.kind === 'service' ? { id: caller.userId } : null;
+  if (!user) {
+    const { data: auth } = token ? await admin.auth.getUser(token) : { data: { user: null } };
+    user = auth.user;
+  }
   if (!user) return json(401, { error: 'Sign in to continue.' });
 
-  const body = (await req.json().catch(() => null)) as { confirm?: string } | null;
   if (body?.confirm !== 'DELETE') return json(400, { error: 'Confirm to delete your account.' });
 
   const { data: ent } = await admin.from('entitlements').select('stripe_customer_id').eq('user_id', user.id).maybeSingle();

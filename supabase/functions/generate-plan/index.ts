@@ -21,7 +21,7 @@ import {
   guardrailRow,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
-import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
+import { originsFromEnv, resolveCaller, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
@@ -37,13 +37,19 @@ Deno.serve(withCors(async (req) => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); // server only
 
-  // Identify the caller from their JWT.
+  // Identify the caller: a signed-in user (JWT), or the admin backoffice acting for a user with the service-role key.
   const token = req.headers.get('Authorization')?.replace(/^Bearer /i, '');
-  const { data: auth } = token ? await admin.auth.getUser(token) : { data: { user: null } };
-  const user = auth.user;
+  const body = await req.json().catch(() => ({}));
+  const caller = resolveCaller(token, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), body?.userId);
+  if (caller.kind === 'invalid') return json(caller.status, { error: caller.message });
+  const adminOverride = caller.kind === 'service';
+  let user: { id: string } | null = adminOverride ? { id: caller.userId } : null;
+  if (!user) {
+    const { data: auth } = token ? await admin.auth.getUser(token) : { data: { user: null } };
+    user = auth.user;
+  }
   if (!user) return json(401, { error: 'Sign in to continue.' });
 
-  const body = await req.json().catch(() => ({}));
   const kind = body?.kind as PlanKind;
   if (!PLAN_KINDS.includes(kind)) return json(400, { error: 'Unknown plan kind.' });
 
@@ -74,7 +80,8 @@ Deno.serve(withCors(async (req) => {
   if (running) return json(202, { jobId: running.id });
 
   // Tier and quota rules (E-18): see decideGeneration. Everything is decided here, never in the app.
-  const decision = decideGeneration(ent as never, kind, jobs, month ?? []);
+  // An admin regenerating a plan for support is not held to the user's tier or quota (the action is audited there).
+  const decision = adminOverride ? ({ allow: true } as const) : decideGeneration(ent as never, kind, jobs, month ?? []);
   if (!decision.allow) {
     const error = {
       needs_trial: 'Start your trial to generate plans.',

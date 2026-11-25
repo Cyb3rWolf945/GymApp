@@ -294,6 +294,8 @@ export type Database = {
           input_text: string | null;
           job_id: string | null;
           reviewed_at: string | null;
+          review_decision: string | null;
+          reviewed_by: string | null;
         };
         Insert: {
           id?: string;
@@ -305,6 +307,8 @@ export type Database = {
           input_text?: string | null;
           job_id?: string | null;
           reviewed_at?: string | null;
+          review_decision?: string | null;
+          reviewed_by?: string | null;
         };
         Update: Partial<Database['public']['Tables']['guardrail_events']['Insert']>;
       };

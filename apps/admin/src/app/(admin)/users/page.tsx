@@ -1,31 +1,48 @@
 import Link from 'next/link';
 import { PageHeader, Table } from '@/components/page';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { userList } from '@/lib/data';
 import { audit, requireAdmin } from '@/lib/session';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { cleanSearch, maskEmail } from '@/lib/users';
 
 const PAGE_SIZE = 50;
+const date = (iso: string | null) => (iso ? iso.slice(0, 10) : '–');
 
-export default async function UsersPage() {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; deleted?: string }> }) {
   const admin = await requireAdmin();
-  const db = createAdminClient();
-  const { data } = await db.auth.admin.listUsers({ page: 1, perPage: PAGE_SIZE });
-  const users = data?.users ?? [];
-  const { data: ents } = await db.from('entitlements').select('user_id,tier,status').in('user_id', users.map((u) => u.id));
-  const byUser = new Map((ents ?? []).map((e) => [e.user_id as string, e]));
-  // Listing accounts is an admin action: record it (no health data is shown here).
-  await audit({ adminId: admin.id, action: 'view_user_list', target: '/users', details: { count: users.length } });
+  const params = await searchParams;
+  const q = cleanSearch(params.q);
+  const page = Math.max(0, Number.parseInt(params.page ?? '0', 10) || 0);
+  const users = await userList(q, page, PAGE_SIZE);
+  // Listing and searching accounts is an admin action. The search text is not logged (it can be an email), only its length.
+  await audit({ adminId: admin.id, action: 'view_user_list', target: '/users', details: { count: users.length, searched: q.length > 0, search_length: q.length, page } });
+
+  const href = (p: number) => `/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(p) })}`;
   return (
     <>
-      <PageHeader title="Users">Accounts and plans. Opening a user shows health data and is recorded in the audit log.</PageHeader>
+      <PageHeader title="Users">Emails are masked here. Opening a user shows health data and is recorded in the audit log.</PageHeader>
+      {params.deleted ? <p role="status" className="mb-4 rounded-md border border-emerald-800 bg-emerald-950 p-3 text-sm text-emerald-300">Account deleted.</p> : null}
+
+      <form method="get" className="mb-6 flex max-w-xl gap-3">
+        <Input name="q" defaultValue={q} placeholder="Search by email or user id" aria-label="Search by email or user id" />
+        <Button type="submit" variant="secondary">Search</Button>
+      </form>
+
       <Table
-        head={['Email', 'Joined', 'Plan', 'Status']}
+        head={['Email', 'Plan', 'Status', 'Signed up', 'Last active']}
         rows={users.map((u) => [
-          <Link key={u.id} href={`/users/${u.id}`} className="text-emerald-400 hover:underline">{u.email ?? u.id}</Link>,
-          u.created_at.slice(0, 10),
-          byUser.get(u.id)?.tier ?? 'none',
-          byUser.get(u.id)?.status ?? 'none',
+          <Link key={u.id} href={`/users/${u.id}`} className="text-emerald-400 hover:underline">{maskEmail(u.email)}</Link>,
+          u.tier,
+          u.status,
+          date(u.created_at),
+          date(u.last_active),
         ])}
       />
+      <nav aria-label="Pages" className="mt-4 flex gap-3 text-sm">
+        {page > 0 ? <Link href={href(page - 1)} className="text-emerald-400 hover:underline">Previous</Link> : null}
+        {users.length === PAGE_SIZE ? <Link href={href(page + 1)} className="text-emerald-400 hover:underline">Next</Link> : null}
+      </nav>
     </>
   );
 }
