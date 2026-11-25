@@ -6,6 +6,8 @@ export interface DerivedEvent<N extends AnalyticsEventName = AnalyticsEventName>
   userId: string;
   name: N;
   props: EventProps<N>;
+  /** Stripe object behind the event (subscription for a trial, invoice for a purchase): the dedup id for Meta. */
+  sourceId?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ export function analyticsFromStripeEvent(event: StripeEvent, outcome: EventOutco
   const obj = event.data.object;
   if (event.type === 'customer.subscription.created' && outcome.patch.status === 'trialing') {
     const tier = outcome.patch.tier;
-    return tier && tier !== 'none' ? { userId: outcome.userId, name: 'trial_start', props: { tier } } : null;
+    return tier && tier !== 'none' ? { userId: outcome.userId, name: 'trial_start', props: { tier }, sourceId: String(obj.id ?? '') || undefined } : null;
   }
   if (event.type === 'invoice.paid' && Number(obj.amount_paid) > 0) {
     const key = (obj.lines?.data as { price?: { lookup_key?: string | null } }[] | undefined)?.[0]?.price?.lookup_key;
@@ -29,6 +31,7 @@ export function analyticsFromStripeEvent(event: StripeEvent, outcome: EventOutco
       userId: outcome.userId,
       name: 'purchase',
       props: { tier: price.tier, interval: price.interval, amount_usd: Number(obj.amount_paid) / 100, reason: String(obj.billing_reason ?? 'unknown').slice(0, 40) },
+      sourceId: String(obj.id ?? '') || undefined,
     };
   }
   return null;

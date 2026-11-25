@@ -8,7 +8,10 @@ import { ONBOARDING_EVENTS } from '../onboarding/analytics.ts';
 const onboardingProps = z.object({ step: z.string().max(40), screen: z.number().int(), version: z.number().int() }).strict();
 const tierProp = z.enum(['basic', 'pro', 'elite']);
 
+const utm = z.string().max(80).optional();
+
 export const EVENT_PROPS = {
+  landing_view: z.object({ utm_source: utm, utm_medium: utm, utm_campaign: utm, utm_content: utm, utm_term: utm }).strict(),
   quiz_start: z.object({}).strict(),
   quiz_complete: z.object({}).strict(),
   signup: z.object({ method: z.enum(['apple', 'google', 'email', 'other']) }).strict(),
@@ -29,7 +32,7 @@ export type EventProps<N extends AnalyticsEventName> = z.infer<(typeof EVENT_PRO
 
 /** Events a browser or app may send through `track-event`. Everything else is written by the server only. */
 export const CLIENT_EVENTS = [
-  'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'plan_preview_view', 'paywall_view', 'checkout_start', 'workout_logged',
+  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'plan_preview_view', 'paywall_view', 'checkout_start', 'workout_logged',
 ] as const satisfies readonly AnalyticsEventName[];
 /** Money and identity events: written by webhooks and database triggers, so they can't be forged. */
 export const SERVER_EVENTS = ['signup', 'trial_start', 'purchase'] as const satisfies readonly AnalyticsEventName[];
@@ -42,6 +45,8 @@ export const ClientTrackSchema = z
     anonId: z.string().min(8).max(64),
     name: z.enum(CLIENT_EVENTS),
     props: z.record(z.string(), z.unknown()).default({}),
+    /** Only sent when the visitor accepted tracking: ids Meta needs to match a server-side Lead to the Pixel. */
+    marketing: z.object({ fbp: z.string().max(200).optional(), fbc: z.string().max(200).optional() }).strict().optional(),
   })
   .transform((v, ctx) => {
     const props = EVENT_PROPS[v.name].safeParse(v.props);
@@ -49,7 +54,7 @@ export const ClientTrackSchema = z
       ctx.addIssue({ code: 'custom', message: 'Invalid props for this event.' });
       return z.NEVER;
     }
-    return { anonId: v.anonId, name: v.name, props: props.data as Record<string, string | number | boolean> };
+    return { anonId: v.anonId, name: v.name, props: props.data as Record<string, string | number | boolean>, marketing: v.marketing };
   });
 
 export interface AnalyticsRow {

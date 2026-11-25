@@ -3,6 +3,7 @@
 // Deploy with --no-verify-jwt: Stripe has no Supabase JWT; the signature is the authentication.
 import { createClient } from '@supabase/supabase-js';
 import { analyticsFromStripeEvent } from '../../../packages/shared/src/analytics/index.ts';
+import { type Attribution, buildCapiEvent, dedupId, sendCapiEvents, trackingAllowed } from '../../../packages/shared/src/marketing/index.ts';
 import { type StripeEvent, type StripeSubscription, handleStripeEvent, stripeClient, verifyStripeSignature } from '../../../packages/shared/src/payments/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
@@ -43,7 +44,31 @@ Deno.serve(async (req) => {
     }
     // Money events (trial_start, purchase) for the funnel and the dashboards. A failure here must not fail the webhook.
     const derived = analyticsFromStripeEvent(event, outcome);
-    if (derived) await admin.from('analytics_events').insert({ user_id: derived.userId, name: derived.name, props: derived.props });
+    if (derived) {
+      await admin.from('analytics_events').insert({ user_id: derived.userId, name: derived.name, props: derived.props });
+      // Meta StartTrial and Purchase (server side), only for users who accepted tracking. Never fails the webhook.
+      try {
+        const { data: consents } = await admin.from('consent_records').select('kind,accepted,accepted_at').eq('user_id', derived.userId).eq('kind', 'marketing');
+        if (trackingAllowed(consents ?? [])) {
+          const [{ data: u }, { data: p }] = await Promise.all([
+            admin.auth.admin.getUserById(derived.userId),
+            admin.from('profiles').select('attribution').eq('user_id', derived.userId).maybeSingle(),
+          ]);
+          const attr = (p?.attribution ?? {}) as Attribution;
+          const trial = derived.name === 'trial_start';
+          const id = derived.sourceId ?? event.id;
+          const capi = await buildCapiEvent({
+            name: trial ? 'StartTrial' : 'Purchase',
+            eventId: trial ? dedupId.trial(id) : dedupId.purchase(id),
+            user: { email: u.user?.email, fbp: attr.fbp, fbc: attr.fbc },
+            value: trial ? undefined : { amount: Number((derived.props as { amount_usd: number }).amount_usd) },
+          });
+          await sendCapiEvents({ pixelId: Deno.env.get('META_PIXEL_ID'), accessToken: Deno.env.get('META_CAPI_TOKEN'), testEventCode: Deno.env.get('META_TEST_EVENT_CODE') }, [capi]);
+        }
+      } catch {
+        /* tracking must never break billing */
+      }
+    }
     return json(200, { ok: true, outcome: outcome.kind });
   } catch {
     // Let Stripe retry: forget the event so the next delivery is processed.

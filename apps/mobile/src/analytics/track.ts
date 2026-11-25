@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type AnalyticsEventName, type EventProps, type OnboardingEventName, type StepId, ONBOARDING_STEPS, ONBOARDING_VERSION, getStep, stepEvent } from '@gymapp/shared';
+import { dedupId } from '@gymapp/shared';
+import { marketingIds, pixelTrack } from '../marketing/tracking';
 import { isSupabaseConfigured, supabase } from '../supabase';
 
 const ANON_KEY = 'fuelift.anon_id';
@@ -30,7 +32,12 @@ export function trackEvent<N extends Exclude<AnalyticsEventName, 'signup' | 'tri
   if (!isSupabaseConfigured) return;
   void (async () => {
     try {
-      await supabase.functions.invoke('track-event', { body: { anonId: await getAnonId(), name, props } });
+      const anon = await getAnonId();
+      // Quiz done = Lead. Meta gets it from the browser (Pixel) and from the server, with the same event id so it
+      // counts once. Both only happen if the visitor accepted tracking.
+      const marketing = name === 'quiz_complete' ? await marketingIds() : null;
+      if (name === 'quiz_complete') void pixelTrack('Lead', dedupId.lead(anon));
+      await supabase.functions.invoke('track-event', { body: { anonId: anon, name, props, ...(marketing ? { marketing } : {}) } });
     } catch {
       /* ignore */
     }
