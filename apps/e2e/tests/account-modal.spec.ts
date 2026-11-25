@@ -81,7 +81,11 @@ test('bottom sheet on phones, a centred dialog of at most 420 px from 600 px', a
 test('signing up in the modal keeps the answers and moves on; the funnel events are recorded', async ({ page }) => {
   const backend = await toModal(page);
   await signUpWithPassword(page);
-  // Signed in: the answers (not re-entered) are saved and the plan is generated.
+  // Signed in: the modal turns into step 2 in place (same dialog, no navigation); "See my plan first" closes it.
+  await expect(page.getByRole('dialog', { name: t.planTitle })).toBeVisible();
+  await button(page, t.seePlan).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // The answers (not re-entered) are saved and the plan is generated.
   await expect.poll(() => backend.functionCalls.filter((f) => f === 'generate-plan').length).toBe(2);
   await expect(page).toHaveURL(/\/preview/);
 
