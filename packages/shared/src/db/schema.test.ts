@@ -25,7 +25,7 @@ afterAll(() => db.close());
 const userTables = ['workout_plans','workout_days','planned_exercises','workout_sessions','set_logs',
   'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps'];
 const adminTables = ['ai_call_logs','guardrail_events','analytics_events','admins','admin_audit_log',
-  'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily'];
+  'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily','stripe_events'];
 const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients'];
 
 describe('auth profile trigger', () => {
@@ -97,5 +97,53 @@ describe('generated types', () => {
   it('database.types.ts is up to date (run `pnpm gen:types`)', async () => {
     const file = readFileSync(join(__dirname, 'database.types.ts'), 'utf8');
     expect(file).toBe(await generateTypes(db));
+  });
+});
+
+describe('has_access (E-17)', () => {
+  const U = '00000000-0000-0000-0000-0000000000f1';
+  const set = async (tier: string, status: string, end: string, since = 'null') => {
+    await db.exec(`insert into auth.users(id) values ('${U}') on conflict do nothing;
+      insert into public.profiles(user_id) values ('${U}') on conflict do nothing;
+      insert into public.entitlements(user_id, tier, status, current_period_end, past_due_since)
+        values ('${U}', '${tier}', '${status}', ${end}, ${since})
+        on conflict (user_id) do update set tier = excluded.tier, status = excluded.status,
+          current_period_end = excluded.current_period_end, past_due_since = excluded.past_due_since`);
+  };
+  const access = async (feature = 'basic') => (await db.query<{ ok: boolean }>(`select public.has_access('${U}', '${feature}') as ok`)).rows[0].ok;
+
+  it('follows the access rules', async () => {
+    const future = "now() + interval '10 days'";
+    await set('pro', 'active', future);
+    expect(await access()).toBe(true);
+    await set('pro', 'trialing', future);
+    expect(await access('nutrition')).toBe(true);
+    await set('basic', 'active', future);
+    expect(await access()).toBe(true);
+    expect(await access('nutrition')).toBe(false);
+    await set('pro', 'active', "now() - interval '1 day'");
+    expect(await access()).toBe(false);
+    await set('pro', 'canceled', future);
+    expect(await access()).toBe(false);
+    await set('none', 'active', future);
+    expect(await access()).toBe(false);
+  });
+  it('keeps past_due users for 7 days from the first failure', async () => {
+    const future = "now() + interval '10 days'";
+    await set('pro', 'past_due', future, "now() - interval '3 days'");
+    expect(await access()).toBe(true);
+    await set('pro', 'past_due', future, "now() - interval '8 days'");
+    expect(await access()).toBe(false);
+    await set('pro', 'past_due', future);
+    expect(await access()).toBe(false);
+  });
+  it('returns false for unknown users', async () => {
+    expect((await db.query<{ ok: boolean }>(`select public.has_access('00000000-0000-0000-0000-0000000000ee') as ok`)).rows[0].ok).toBe(false);
+  });
+  it('my_access answers only for the caller', async () => {
+    await set('pro', 'active', "now() + interval '10 days'");
+    await asUser(db, U, async () => {
+      expect((await db.query<{ ok: boolean }>(`select public.my_access() as ok`)).rows[0].ok).toBe(true);
+    });
   });
 });
