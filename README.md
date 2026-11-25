@@ -47,3 +47,11 @@ Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it 
 - **Export:** the `export-data` function returns all of a user's data as JSON (`EXPORT_TABLES`; a test fails if a new table with a `user_id` is missing from it).
 - **Deletion:** the `delete-account` function deletes the Stripe customer (cancels billing), runs `erase_user_traces`, then deletes the auth user; every other table cascades. A test checks that no table keeps a row about a deleted user.
 - Deploy both functions with `supabase functions deploy export-data delete-account` (they need `STRIPE_SECRET_KEY`).
+
+## Web landing, quiz funnel and Meta tracking
+
+- **Flow (web):** `/` shows the landing page (`app/landing.tsx`) to signed-out visitors, then the quiz (the onboarding), plan preview, paywall and Stripe Checkout. On iOS and Android signed-out users go straight to the quiz.
+- **UTM capture:** the landing URL's `utm_*` tags and `fbclid` are read once on load (first touch wins), kept on the device, counted in the `landing_view` event, and saved to `profiles.attribution` at sign-up.
+- **Cookie banner:** web only, Accept and Reject are equal. Nothing loads from Meta and nothing is sent until the visitor accepts. The choice is stored as a `marketing` consent record at sign-up; the Facebook ids are dropped from the saved attribution unless they accepted.
+- **Meta events:** `Lead` (quiz done) from the browser Pixel and from `track-event` (Conversions API) with the same event id (`lead_<anonId>`); `StartTrial` and `Purchase` from `stripe-webhook` only for users with an accepted `marketing` consent, with ids `trial_<subscription>` and `purchase_<invoice>`. Emails are hashed with SHA-256; no health data is ever sent.
+- **Setup:** set `EXPO_PUBLIC_META_PIXEL_ID` for the web build, and `META_PIXEL_ID`, `META_CAPI_TOKEN` (and `META_TEST_EVENT_CODE` while testing) as Edge Function secrets. Set `ALLOWED_ORIGINS` (or `APP_URL`) so the browser may call the functions (CORS).

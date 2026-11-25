@@ -2,12 +2,13 @@
 // (GDPR access and portability). Only the caller's own rows; the table list is checked against the schema in tests.
 import { createClient } from '@supabase/supabase-js';
 import { EXPORT_TABLES, buildExport } from '../../../packages/shared/src/legal/index.ts';
+import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); // server only
   const token = req.headers.get('Authorization')?.replace(/^Bearer /i, '');
@@ -23,4 +24,4 @@ Deno.serve(async (req) => {
     tables[t] = data;
   }
   return json(200, buildExport(user.id, user.email ?? null, tables), { 'Cache-Control': 'no-store' });
-});
+}, () => originsFromEnv((k) => Deno.env.get(k))));

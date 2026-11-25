@@ -342,6 +342,25 @@ export const en = {
     disclaimer: "This isn't medical advice. Talk to a doctor if you're pregnant or have a health condition.",
     conservativeNote: "We kept this plan gentle. Check with a doctor or a registered dietitian before you start.",
   },
+  landing: {
+    hero: 'Workouts + meals in one plan. Adapts every week.',
+    sub: 'Answer a few questions and get a plan built around your goal, your gear and your food.',
+    cta: 'Start the quiz',
+    quizNote: 'It takes about a minute. See your plan before you pay.',
+    signIn: 'Sign in',
+    points: [
+      { title: 'One plan, two halves', body: 'Training and meals are built together, so your calories match your workouts.' },
+      { title: 'Made for you', body: 'Your equipment, your injuries, your allergies and your schedule shape every plan.' },
+      { title: 'Keeps up with you', body: 'Log your workouts and your plan adapts as you get stronger.' },
+    ],
+  },
+  tracking: {
+    title: 'Cookies and ad measurement',
+    body: 'We use a cookie from Meta to measure which ads bring people to Fuelift. Say no and nothing is sent to Meta. The app works the same either way.',
+    privacy: 'Read the privacy policy',
+    accept: 'Accept',
+    reject: 'Reject',
+  },
   paywall: {
     title: 'Unlock your full plan',
     body: 'Unlock your full meal plan and weekly adjustments.',

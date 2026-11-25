@@ -2,11 +2,12 @@
 // Prices are resolved by lookup_key (see packages/shared/src/payments/pricing.ts); the trial applies to annual plans only.
 import { createClient } from '@supabase/supabase-js';
 import { FOUNDING_COUPON, type PlanPriceRow, priceByKey, resolvePrices, stripeClient } from '../../../packages/shared/src/payments/index.ts';
+import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); // server only
   const token = req.headers.get('Authorization')?.replace(/^Bearer /i, '');
@@ -52,4 +53,4 @@ Deno.serve(async (req) => {
     cancel_url: `${appUrl}/paywall`,
   });
   return json(200, { url: session.url });
-});
+}, () => originsFromEnv((k) => Deno.env.get(k))));

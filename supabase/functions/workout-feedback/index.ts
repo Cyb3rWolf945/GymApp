@@ -12,13 +12,14 @@ import {
   getModelProfile,
   runGuardrails,
 } from '../../../packages/shared/src/ai/index.ts';
+import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed.' });
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); // server only
@@ -63,4 +64,4 @@ Deno.serve(async (req) => {
     }
   }
   return json(200, { ok: true, remembered });
-});
+}, () => originsFromEnv((k) => Deno.env.get(k))));

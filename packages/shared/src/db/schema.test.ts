@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EXPORT_TABLES } from '../legal/export';
+import { trackingAllowed } from '../marketing/capi';
 import { generateTypes } from './gen-types';
 import { asUser, createDb } from './harness';
 
@@ -307,5 +308,23 @@ describe('GDPR (E-21)', () => {
 
   it('only the service role can erase traces', async () => {
     await expect(asUser(db, U, () => db.query(`select public.erase_user_traces('${U}')`))).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe('web funnel (E-22)', () => {
+  const U = '00000000-0000-0000-0000-0000000000e1';
+  it('profiles keep first-touch attribution as JSON, empty by default', async () => {
+    await db.exec(`insert into auth.users(id) values ('${U}') on conflict do nothing; insert into public.profiles(user_id) values ('${U}') on conflict do nothing`);
+    expect((await db.query<{ attribution: object }>(`select attribution from public.profiles where user_id = '${U}'`)).rows[0].attribution).toEqual({});
+    await asUser(db, U, () => db.query(`update public.profiles set attribution = '{"utm_source":"meta"}' where user_id = '${U}'`));
+    expect((await db.query<{ attribution: { utm_source: string } }>(`select attribution from public.profiles where user_id = '${U}'`)).rows[0].attribution.utm_source).toBe('meta');
+  });
+  it('the tracking consent can be recorded, accepted or rejected, and trackingAllowed reads it', async () => {
+    await asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'marketing', '1', false)`));
+    const rows = await asUser(db, U, async () => (await db.query<{ kind: string; accepted: boolean; accepted_at: string }>(`select kind, accepted, accepted_at::text from public.consent_records where kind = 'marketing'`)).rows);
+    expect(trackingAllowed(rows)).toBe(false);
+    await asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted, accepted_at) values ('${U}', 'marketing', '2', true, now() + interval '1 minute')`));
+    const after = await asUser(db, U, async () => (await db.query<{ kind: string; accepted: boolean; accepted_at: string }>(`select kind, accepted, accepted_at::text from public.consent_records where kind = 'marketing'`)).rows);
+    expect(trackingAllowed(after)).toBe(true);
   });
 });

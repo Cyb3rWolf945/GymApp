@@ -41,6 +41,11 @@ describe('consentRows', () => {
     expect(new Set(rows.map((r) => r.accepted_at))).toEqual(new Set(['2026-12-01T10:00:00.000Z']));
     expect(rows.every((r) => r.user_id === 'u1')).toBe(true);
   });
+  it('records the tracking choice only when the visitor made one, accepted or not', () => {
+    expect(consentRows('u1', all, now).some((r) => r.kind === 'marketing')).toBe(false);
+    expect(consentRows('u1', all, now, true).at(-1)).toMatchObject({ kind: 'marketing', version: '1', accepted: true });
+    expect(consentRows('u1', all, now, false).at(-1)).toMatchObject({ kind: 'marketing', accepted: false });
+  });
   it('never records a required consent that was not given, but always records the notification choice', () => {
     const rows = consentRows('u1', { ...all, healthData: false, notifications: true }, now);
     expect(rows.map((r) => r.kind)).toEqual(['terms', 'privacy', 'disclaimer', 'notifications']);

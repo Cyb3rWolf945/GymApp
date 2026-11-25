@@ -509,6 +509,7 @@ export type Database = {
           onboarding: Json;
           created_at: string;
           updated_at: string;
+          attribution: Json;
         };
         Insert: {
           user_id: string;
@@ -524,6 +525,7 @@ export type Database = {
           onboarding?: Json;
           created_at?: string;
           updated_at?: string;
+          attribution?: Json;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };
