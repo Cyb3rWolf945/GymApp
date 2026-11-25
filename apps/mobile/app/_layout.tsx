@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
-import { colors } from '../src/theme';
+import { ThemeProvider, colors } from '../src/theme';
+import { ToastProvider } from '../src/ui';
 
 function RootStack() {
   const { session, loading } = useAuth();
@@ -25,9 +26,13 @@ function RootStack() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
-      <RootStack />
-    </AuthProvider>
+    <ThemeProvider scheme="dark">
+      <ToastProvider>
+        <AuthProvider>
+          <StatusBar style="light" />
+          <RootStack />
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
