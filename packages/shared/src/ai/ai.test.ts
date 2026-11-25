@@ -124,13 +124,8 @@ describe('openrouter client', () => {
         log: (l) => void logs.push(l),
         // The headers arrive at once, the answer 30 s later.
         fetchImpl: async () => {
-          const r = okResponse(workoutPlan);
-          const json = r.json.bind(r);
-          r.json = async () => {
-            t += 30_000;
-            return json();
-          };
-          return r;
+          const body = await okResponse(workoutPlan).json();
+          return { ok: true, status: 200, json: async () => ((t += 30_000), body) } as unknown as Response;
         },
         now: () => t,
       },
