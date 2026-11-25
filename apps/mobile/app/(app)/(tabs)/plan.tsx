@@ -5,6 +5,7 @@ import { WEEKDAY_LABELS, WorkoutPlanSchema, formatReps, trainingWeekdays } from 
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
+import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { type SwapOption, fetchSwapOptions, recordSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
@@ -61,6 +62,7 @@ function Plan({ data }: { data: PlanData }) {
   return (
     <Screen variant="dashboard">
         <Text variant="display">{t.planTitle}</Text>
+        <PlanOutdatedCard />
         <Card style={{ gap: spacing.sm }}>
           <Text tone="muted">{t.update.hint}</Text>
           <Button label={t.update.action} variant="secondary" onPress={() => router.push('/update-plan')} />

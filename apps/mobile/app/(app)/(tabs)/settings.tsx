@@ -73,6 +73,7 @@ export default function SettingsScreen() {
         </Card>
 
         <Card style={{ gap: spacing.xs }}>
+          <ListItem title={t.profile.link} onPress={() => router.push('/profile')} />
           <ListItem title={t.memory.link} onPress={() => router.push('/memory')} />
         </Card>
 

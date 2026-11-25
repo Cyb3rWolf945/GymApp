@@ -2,7 +2,7 @@ import { type Page, expect } from '@playwright/test';
 import { authCopy } from '../../mobile/src/auth/copy';
 import { en } from '../../mobile/src/copy/en';
 import { type Backend, installFakeBackend } from './fake-backend';
-import { NUTRITION_PLAN, SESSION_STORAGE_KEY, WORKOUT_PLAN, fakeSession } from './fixtures';
+import { NUTRITION_PLAN, SESSION_STORAGE_KEY, USER, WORKOUT_PLAN, fakeSession } from './fixtures';
 
 // Labels come from the app's own copy file, so a wording change cannot silently break the tests.
 
@@ -83,7 +83,39 @@ export function seedPlan(backend: Backend): void {
     job('20000000-0000-4000-8000-000000000001', 'workout_plan', WORKOUT_PLAN),
     job('20000000-0000-4000-8000-000000000002', 'nutrition_plan', NUTRITION_PLAN),
   ];
-  backend.state.profile = { user_id: 'u', onboarding: { preferredDays: ['mon', 'thu'], equipment: ['full_gym'], contraindications: [] }, experience: 'beginner' };
+  // The full set of onboarding answers (what the quiz stores in `profiles.onboarding`), so "Your profile" can edit them.
+  backend.state.profile = {
+    user_id: USER.id, // the app filters by its own user id, and the fake applies that filter
+    sex: 'male',
+    birth_date: '1996-07-01',
+    height_cm: 180,
+    weight_kg: 80,
+    goal: 'recomp',
+    experience: 'beginner',
+    units: 'metric',
+    onboarding: {
+      version: 1,
+      goalType: 'recomp',
+      sex: 'male',
+      age: 30,
+      heightCm: 180,
+      weightKg: 80,
+      units: 'metric',
+      experience: 'beginner',
+      daysPerWeek: 2,
+      sessionMinutes: 45,
+      preferredDays: ['mon', 'thu'],
+      location: 'gym',
+      equipment: ['full_gym'],
+      contraindications: [],
+      activity: 'light',
+      diet: 'omnivore',
+      mealsPerDay: 3,
+      allergens: [],
+      dislikes: [],
+      consents: { terms: true, privacy: true, healthData: true, disclaimer: true, notifications: false },
+    },
+  };
 }
 
 /** A signed-in Pro user whose plan is already generated, on Home. */

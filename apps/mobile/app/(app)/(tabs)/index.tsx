@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { WEEKDAY_LABELS, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
 import { PastDueBanner } from '../../../src/billing/PastDueBanner';
+import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
 import { PlanGate } from '../../../src/home/PlanGate';
@@ -43,6 +44,7 @@ function Today({ data }: { data: PlanData }) {
     <Screen variant="dashboard">
       <Text variant="display">{t.title}</Text>
       <PastDueBanner />
+      <PlanOutdatedCard />
       {/* Workout and meals side by side from `medium` up, stacked on phones. */}
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
         <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>
