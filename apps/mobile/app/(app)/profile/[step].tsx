@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, type ScrollView } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type PartialAnswers, type StepId, isEditableStep, validateStep } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
+import { FieldErrorsProvider, useStepErrors } from '../../../src/onboarding/FieldErrors';
 import { STEP_BODIES } from '../../../src/onboarding/steps';
 import { fetchProfileAnswers, saveProfileEdit } from '../../../src/profile/api';
 import { markPlanOutdated } from '../../../src/profile/outdated';
@@ -31,10 +32,11 @@ function Editor({ id }: { id: StepId }) {
   const { colors } = useTheme();
   const [stored, setStored] = useState<PartialAnswers | null | undefined>(undefined);
   const [draft, setDraft] = useState<PartialAnswers>({});
-  const [showError, setShowError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const loaded = useRef(false);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const stepErrors = useStepErrors(id, draft, scrollRef);
 
   useEffect(() => {
     if (!user || loaded.current) return;
@@ -54,7 +56,7 @@ function Editor({ id }: { id: StepId }) {
   const update = (patch: PartialAnswers) => setDraft((d) => ({ ...d, ...patch }));
 
   const save = async () => {
-    if (!valid) return setShowError(true);
+    if (!valid) return stepErrors.reveal();
     if (!user) return;
     setSaving(true);
     setError(false);
@@ -69,6 +71,7 @@ function Editor({ id }: { id: StepId }) {
   return (
     <Screen
       keyboardTaps
+      scrollRef={scrollRef}
       footer={
         <>
           <Button label={saving ? t.saving : t.save} loading={saving} onPress={() => void save()} />
@@ -78,8 +81,10 @@ function Editor({ id }: { id: StepId }) {
     >
       <Text variant="display">{copy.title}</Text>
       {copy.body ? <Text tone="muted">{copy.body}</Text> : null}
-      <Body answers={draft} update={update} onContinue={() => void save()} />
-      {showError && !valid ? <Text tone="danger" accessibilityRole="alert">{id === 'equipment' ? o.errors.pickAtLeastOne : o.errors.pickOne}</Text> : null}
+      <FieldErrorsProvider value={{ messages: stepErrors.messages, register: stepErrors.register }}>
+        <Body answers={draft} update={update} onContinue={() => void save()} />
+      </FieldErrorsProvider>
+      {stepErrors.generic ? <Text tone="danger" accessibilityRole="alert">{stepErrors.generic}</Text> : null}
       {error ? <Text tone="danger" accessibilityRole="alert">{t.saveError}</Text> : null}
     </Screen>
   );

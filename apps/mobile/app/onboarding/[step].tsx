@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { Animated, type ScrollView, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type StepId, getStep, isStepId, nextStepId, prevStepId, progressOf, validateStep } from '@gymapp/shared';
 import { trackOnboarding } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
+import { FieldErrorsProvider, useStepErrors } from '../../src/onboarding/FieldErrors';
 import { FadeSlideIn, createTapLock, staggerDelay, stepDirection, useConfirmPulse, useReducedMotion, useShake } from '../../src/motion';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
 import { STEP_BODIES } from '../../src/onboarding/steps';
@@ -21,9 +22,9 @@ export default function OnboardingStep() {
   const { hydrated, answers, update, setStepId, resumeStep } = useOnboarding();
   const router = useRouter();
   const { spacing } = useTheme();
-  const [showError, setShowError] = useState(false);
   const id = isStepId(step) ? step : null;
   const reduced = useReducedMotion();
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const shake = useShake();
   const confirm = useConfirmPulse();
   // One navigation per screen: extra taps while the next step comes in are ignored.
@@ -36,9 +37,10 @@ export default function OnboardingStep() {
     return d;
   }, [id]);
 
+  const stepErrors = useStepErrors(id ?? 'welcome', answers, scrollRef);
+
   useEffect(() => {
     if (!id || !hydrated) return;
-    setShowError(false);
     setStepId(id);
     trackOnboarding('onboarding_step_viewed', id);
   }, [id, hydrated]);
@@ -65,7 +67,7 @@ export default function OnboardingStep() {
   const onContinue = () => {
     if (lock.locked) return;
     if (!valid) {
-      setShowError(true); // the message fades in
+      stepErrors.reveal(); // a message under each field that is wrong; the first one is scrolled to and focused
       shake.run();
       return;
     }
@@ -78,13 +80,13 @@ export default function OnboardingStep() {
   const onBack = (to: StepId) => {
     if (lock.take()) router.replace(`/onboarding/${to}`);
   };
-  const errorText = id === 'consents' ? t.errors.needConsents : id === 'equipment' ? t.errors.pickAtLeastOne : t.errors.pickOne;
 
   return (
     <Screen
       framed
       center
       keyboardTaps
+      scrollRef={scrollRef}
       header={id !== 'welcome' ? <ProgressBar step={n} total={total} label={t.progress(n, total)} /> : null}
       footer={
         id === 'welcome' ? (
@@ -110,13 +112,15 @@ export default function OnboardingStep() {
       <FadeSlideIn direction={direction} delay={staggerDelay(1, reduced)}>
         <Animated.View style={[shake.style, confirm.style]}>
           <View style={{ gap: spacing.lg }}>
-            <Body answers={answers} update={update} onContinue={onContinue} />
+            <FieldErrorsProvider value={{ messages: stepErrors.messages, register: stepErrors.register }}>
+              <Body answers={answers} update={update} onContinue={onContinue} />
+            </FieldErrorsProvider>
           </View>
         </Animated.View>
       </FadeSlideIn>
-      {showError && !valid ? (
+      {stepErrors.generic ? (
         <FadeSlideIn>
-          <Text tone="danger" accessibilityRole="alert">{errorText}</Text>
+          <Text tone="danger" accessibilityRole="alert">{stepErrors.generic}</Text>
         </FadeSlideIn>
       ) : null}
     </Screen>

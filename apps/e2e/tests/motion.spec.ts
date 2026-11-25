@@ -84,9 +84,9 @@ test('a double tap on Continue moves one step, once', async ({ page }) => {
 
 test('Continue with nothing chosen shakes and the message fades in; the step stays', async ({ page }) => {
   await atGoalStep(page);
-  const seen = lowestOpacity(page, en.onboarding.errors.pickOne, 600);
+  const seen = lowestOpacity(page, en.onboarding.fieldErrors.goalType.missing, 600);
   await button(page, en.common.continue).click();
-  await expect(page.getByRole('alert').filter({ hasText: en.onboarding.errors.pickOne })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: en.onboarding.fieldErrors.goalType.missing })).toBeVisible();
   const { min, final } = await seen;
   expect(min, 'the message faded in').toBeLessThan(0.9);
   expect(final).toBe(1);

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentRef, ReactNode, Ref } from 'react';
 import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH, type ContentVariant, SCREEN_PADDING, useBreakpoint, useTheme } from '../theme';
@@ -18,6 +18,8 @@ interface Props {
   footer?: ReactNode;
   /** Keep the keyboard open when tapping buttons (screens with text fields). */
   keyboardTaps?: boolean;
+  /** Ref to the scroll area, for screens that scroll to something (the first field with an error). */
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }
@@ -27,7 +29,7 @@ interface Props {
  * the breakpoint. On phones (`compact`) the content is as wide as the screen with the same 24 px padding screens
  * already use, so nothing changes there.
  */
-export function Screen({ variant = 'reading', scroll = true, center = false, framed = false, header, footer, keyboardTaps = false, children, style }: Props) {
+export function Screen({ variant = 'reading', scroll = true, center = false, framed = false, header, footer, keyboardTaps = false, scrollRef, children, style }: Props) {
   const { colors, radius, spacing } = useTheme();
   const bp = useBreakpoint();
   const card = framed && bp !== 'compact';
@@ -55,6 +57,7 @@ export function Screen({ variant = 'reading', scroll = true, center = false, fra
       {edge(header, true)}
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={{ alignItems: 'center', flexGrow: 1, justifyContent: center ? 'center' : 'flex-start' }}
           keyboardShouldPersistTaps={keyboardTaps ? 'handled' : undefined}
         >

@@ -20,6 +20,8 @@ export const EVENT_PROPS = {
   onboarding_step_skipped: onboardingProps,
   onboarding_finished: onboardingProps,
   account_modal_view: z.object({}).strict(),
+  // A validation error the screen has no specific message for. Ids only, never the value that was entered.
+  onboarding_validation_unknown: z.object({ step: z.string().max(40), field: z.string().max(60) }).strict(),
   signin_method_chosen: z.object({ method: z.enum(['password', 'email_code', 'google', 'apple']) }).strict(),
   plan_preview_view: z.object({}).strict(),
   paywall_view: z.object({ variant: z.string().max(40).optional() }).strict(),
@@ -34,7 +36,7 @@ export type EventProps<N extends AnalyticsEventName> = z.infer<(typeof EVENT_PRO
 
 /** Events a browser or app may send through `track-event`. Everything else is written by the server only. */
 export const CLIENT_EVENTS = [
-  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'workout_logged',
+  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'onboarding_validation_unknown', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'workout_logged',
 ] as const satisfies readonly AnalyticsEventName[];
 /** Money and identity events: written by webhooks and database triggers, so they can't be forged. */
 export const SERVER_EVENTS = ['signup', 'trial_start', 'purchase'] as const satisfies readonly AnalyticsEventName[];

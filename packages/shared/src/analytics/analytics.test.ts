@@ -33,6 +33,11 @@ describe('ClientTrackSchema', () => {
     expect(ClientTrackSchema.safeParse({ anonId, name: 'signin_method_chosen', props: { method: 'google', email: 'a@b.co' } }).success).toBe(false);
     expect(ClientTrackSchema.safeParse({ anonId, name: 'account_modal_view', props: { email: 'a@b.co' } }).success).toBe(false);
   });
+  it('accepts onboarding_validation_unknown with a step and a field, and nothing else (never the entered value)', () => {
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'onboarding_validation_unknown', props: { step: 'basics', field: 'age' } }).success).toBe(true);
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'onboarding_validation_unknown', props: { step: 'basics', field: 'age', value: 5 } }).success).toBe(false);
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'onboarding_validation_unknown', props: { step: 'basics' } }).success).toBe(false);
+  });
   it('accepts landing_view with UTM tags and the marketing ids, and rejects other keys', () => {
     expect(ClientTrackSchema.safeParse({ anonId, name: 'landing_view', props: { utm_source: 'meta', utm_campaign: 'launch' }, marketing: { fbp: 'fb.1.1.2' } }).success).toBe(true);
     expect(ClientTrackSchema.safeParse({ anonId, name: 'landing_view', props: { email: 'a@b.co' } }).success).toBe(false);
