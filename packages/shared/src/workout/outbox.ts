@@ -8,9 +8,11 @@ export interface OutboxItem {
   id: string;
   table: OutboxTable;
   row: Record<string, unknown>;
+  /** `upsert` (default): store the row. `delete`: remove the stored row with this id (a correction made in History). */
+  op?: 'upsert' | 'delete';
 }
 
-/** Add or replace by (table, id): re-queueing the same row keeps only the latest version. */
+/** Add or replace by (table, id): re-queueing the same row keeps only the latest version (a delete replaces an earlier edit of the same row). */
 export function enqueue(queue: readonly OutboxItem[], item: OutboxItem): OutboxItem[] {
   const i = queue.findIndex((q) => q.table === item.table && q.id === item.id);
   if (i < 0) return [...queue, item];
@@ -19,10 +21,13 @@ export function enqueue(queue: readonly OutboxItem[], item: OutboxItem): OutboxI
   return next;
 }
 
-/** Sessions go before their sets (foreign key); order inside each table is kept. */
+/**
+ * Writes go before deletes. Among writes, sessions go before their sets (foreign key); among deletes, sets go before
+ * their session. Order inside each group is kept.
+ */
 export function inSyncOrder(queue: readonly OutboxItem[]): OutboxItem[] {
-  const rank = (t: OutboxTable) => (t === 'workout_sessions' ? 0 : 1);
-  return [...queue].sort((a, b) => rank(a.table) - rank(b.table));
+  const rank = (i: OutboxItem) => (i.op === 'delete' ? (i.table === 'set_logs' ? 2 : 3) : i.table === 'workout_sessions' ? 0 : 1);
+  return [...queue].sort((a, b) => rank(a) - rank(b));
 }
 
 /**
