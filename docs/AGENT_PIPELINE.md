@@ -15,15 +15,17 @@ The owner explicitly authorized merging PRs that pass review with green CI. Neve
 The body of issue #49 holds exactly two lines: `owner: <A|B>` and `heartbeat: <ISO-8601 UTC>`.
 
 **Before every job and every watchdog run**, read issue #49:
-- **`owner` is your team:** run the usage check below first. If you're under 90%, set `heartbeat` to now (keep `owner`), then do the job. Refresh `heartbeat` again when the job ends.
-- **`owner` is the other team and `heartbeat` is less than 90 minutes old:** the other team is working. Do nothing and stop.
-- **`owner` is the other team and `heartbeat` is 90 minutes old or more:** that team has stalled, probably because its account ran out of usage. **Take over**:
+- **`owner` is your team:** run the usage check below first. If you're under 90%, set `heartbeat` to now (keep `owner`), then do the job. While you work, refresh `heartbeat` at least every 20 minutes: after every push, every CI wait and every message you send. Refresh it again when the job ends.
+- **`owner` is the other team and `heartbeat` is less than 45 minutes old:** the other team is working. Do nothing and stop.
+- **`owner` is the other team and `heartbeat` is 45 minutes old or more:** that team has stalled, probably because its account ran out of usage. **Take over**:
   1. Set `owner` to your team and `heartbeat` to now.
   2. Add a line to #36: "Shift taken over by team <X> at <time>".
   3. Resume as described in "Hourly watchdog" below. The REVIEWER reviews any open PR first. The IMPLEMENTER continues any `status:in-progress` issue on its existing branch, keeping the other team's commits.
 
+**Lost the lock?** Re-read issue #49 before every push, merge and message you send. If `owner` is no longer your team, the other team has taken over: push your work in progress to its branch, comment where you stopped on the issue or PR, and stop. Never take the lock back while the other team's heartbeat is fresh.
+
 ### Usage handoff at 90%
-Each team hands over the shift **before** its account runs out, so the other team can start at its next watchdog run without waiting 90 minutes.
+Each team hands over the shift **before** its account runs out, so the other team can start at its next watchdog run without waiting for the stale-lock takeover.
 
 **Usage check.** Call `get_session` with no `session_id` to get your own session ID. Then call `list_events` on that ID with `kinds: ["rate_limit_event"]` and `limit: 100`. Read `unifiedWindows.five_hour.utilization` from the newest event. It's account-wide, so it covers both runners of your team. If no event is returned, treat usage as under 90%.
 
@@ -38,9 +40,9 @@ Each team hands over the shift **before** its account runs out, so the other tea
 
 **When the lock is handed to you** (`owner` is your team, but your team didn't hold it before), resume as in step 3 of "Take over" above. Read the latest "Handoff from team …" comment first.
 
-**If your own usage is also 90% or more** when the lock is yours, don't hand it back. Do nothing, don't refresh the heartbeat, and stop. Whichever team has usage left takes over once the heartbeat is 90 minutes old.
+**If your own usage is also 90% or more** when the lock is yours, don't hand it back. Do nothing, don't refresh the heartbeat, and stop. Whichever team has usage left takes over once the heartbeat is 45 minutes old.
 
-The 90-minute takeover rule stays as the fallback for a team that stops without handing over.
+The 45-minute takeover rule is the fallback for a team that runs out without handing over, for example when one long job uses up the last 10%.
 
 Only the REVIEWER of the owning team edits #36's "Progress" section.
 
