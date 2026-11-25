@@ -57,10 +57,14 @@ test.describe('responsive main tabs', () => {
     await page.setViewportSize({ width: 1366, height: 900 });
     await swap.click();
     await expect(heading()).toBeVisible();
-    const box = (await heading().boundingBox())!;
-    expect(box.width, 'desktop: dialog is capped').toBeLessThanOrEqual(520);
-    expect(Math.abs(box.x + box.width / 2 - 1366 / 2), 'desktop: horizontally centred').toBeLessThan(60);
-    expect(box.y, 'desktop: not stuck to the bottom').toBeLessThan(900 / 2);
+    // Measured once the dialog has stopped moving (it fades in), never from a single early reading.
+    const geometry = async () => {
+      const box = await heading().boundingBox();
+      return box ? { width: box.width, centre: box.x + box.width / 2, top: box.y } : null;
+    };
+    await expect.poll(async () => (await geometry())?.width ?? 9999, 'desktop: dialog is capped').toBeLessThanOrEqual(520);
+    await expect.poll(async () => Math.abs(((await geometry())?.centre ?? 0) - 1366 / 2), 'desktop: horizontally centred').toBeLessThan(60);
+    await expect.poll(async () => (await geometry())?.top ?? 9999, 'desktop: not stuck to the bottom').toBeLessThan(900 / 2);
   });
 
   test('Progress: the chart redraws at the new width', async ({ page }) => {

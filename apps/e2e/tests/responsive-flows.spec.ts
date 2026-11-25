@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { authCopy } from '../../mobile/src/auth/copy';
 import { en } from '../../mobile/src/copy/en';
 import { MIN_TAP_TARGET } from '../../mobile/src/theme/tokens';
 import { button, shown, signedInWithPlan, start } from '../support/app';
@@ -67,7 +68,7 @@ test.describe('responsive flows', () => {
     await expect(button(page, en.common.continue)).toBeVisible();
 
     await page.goto('/sign-in');
-    const send = shown(page, 'Send magic link', false);
+    const send = button(page, authCopy.createAccount);
     await expect(send).toBeVisible();
     const s = (await send.boundingBox())!;
     expect(Math.abs(s.x + s.width / 2 - 720), 'sign-in centred').toBeLessThan(40);

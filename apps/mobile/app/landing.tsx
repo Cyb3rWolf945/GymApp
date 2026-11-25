@@ -65,7 +65,7 @@ export default function Landing() {
           <Button key={k} label={en.home.legal[k]} variant="ghost" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: k } })} />
         ))}
       </View>
-      <Button label={t.signIn} variant="secondary" onPress={() => router.push('/sign-in')} />
+      <Button label={t.signIn} variant="secondary" onPress={() => router.push('/sign-in?mode=login')} />
     </Screen>
   );
 }

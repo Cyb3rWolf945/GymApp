@@ -23,6 +23,9 @@ function RootStack() {
     >
       {/* Legal pages are public: onboarding (signed out) and Settings (signed in) both link to them. */}
       <Stack.Screen name="legal/[doc]" />
+      {/* Email links and OAuth come back here, signed in or out: they create the session. */}
+      <Stack.Screen name="auth" />
+      <Stack.Screen name="reset-password" />
       <Stack.Protected guard={Boolean(session)}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>

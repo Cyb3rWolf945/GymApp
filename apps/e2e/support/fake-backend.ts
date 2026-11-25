@@ -1,5 +1,5 @@
 import type { Page, Request, Route } from '@playwright/test';
-import { EXERCISES, NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, sessionHistory, setLogHistory, weightHistory } from './fixtures';
+import { EXERCISES, NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, fakeSession, sessionHistory, setLogHistory, weightHistory } from './fixtures';
 
 // A small in-memory stand-in for Supabase (auth, PostgREST tables, RPC and the Edge Functions the app calls).
 // It answers by table and ignores row filters: there is one synthetic user. It records every write so tests can
@@ -13,7 +13,19 @@ export interface Recorded {
   body: unknown;
 }
 
+/** The auth server's side of the story: accounts, and the emails it would have sent (a stand-in for Mailpit). */
+export interface AuthState {
+  /** Like the Supabase project setting "Confirm email". Off by default so the funnel flows straight through. */
+  confirmEmails: boolean;
+  accounts: Map<string, { password: string; confirmed: boolean }>;
+  mailbox: { to: string; kind: 'confirm' | 'reset' | 'code'; /** The `?code=` of the link, or the 6 digits. */ code: string }[];
+}
+
+/** The 6-digit code the fake "emails" for the sign-in code option. */
+export const FAKE_EMAIL_CODE = '123456';
+
 export interface Backend {
+  auth: AuthState;
   /** Every non-GET request the app made. */
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
@@ -66,6 +78,11 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
   const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
+  const auth: AuthState = { confirmEmails: false, accounts: new Map(), mailbox: [] };
+  const authUser = (email: string) => ({ ...(fakeSession().user as object), email, identities: [{ identity_id: 'i', provider: 'email' }], email_confirmed_at: now() });
+  const authSession = (email: string) => ({ ...fakeSession(), user: authUser(email) });
+  const authError = (route: Route, status: number, errorCode: string, msg: string) => json(route, { code: status, error_code: errorCode, msg }, status);
+  let pendingConfirm: string | null = null;
 
   const doneJob = (kind: 'workout_plan' | 'nutrition_plan') => ({
     id: kind === 'workout_plan' ? '20000000-0000-4000-8000-000000000001' : '20000000-0000-4000-8000-000000000002',
@@ -99,6 +116,56 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     const path = url.pathname;
 
     // ---- Auth
+    if (path.startsWith('/auth/v1/') && path !== '/auth/v1/user' && path !== '/auth/v1/logout') {
+      const body = (parseBody(req) ?? {}) as Record<string, unknown>;
+      const email = String(body.email ?? '').toLowerCase();
+      const grant = url.searchParams.get('grant_type');
+      if (path === '/auth/v1/signup') {
+        if (auth.accounts.has(email)) return json(route, { ...authUser(email), identities: [] }); // existing address: no error, no identities
+        auth.accounts.set(email, { password: String(body.password ?? ''), confirmed: !auth.confirmEmails });
+        if (!auth.confirmEmails) return json(route, authSession(email));
+        pendingConfirm = email;
+        auth.mailbox.push({ to: email, kind: 'confirm', code: 'confirm-code' });
+        return json(route, { ...authUser(email), email_confirmed_at: null });
+      }
+      if (path === '/auth/v1/token' && grant === 'password') {
+        const acct = auth.accounts.get(email);
+        if (!acct || acct.password !== body.password) return authError(route, 400, 'invalid_credentials', 'Invalid login credentials');
+        if (!acct.confirmed) return authError(route, 400, 'email_not_confirmed', 'Email not confirmed');
+        return json(route, authSession(email));
+      }
+      if (path === '/auth/v1/token' && grant === 'pkce') {
+        // The link in the confirmation or reset email: it confirms the pending account and starts a session.
+        const target = pendingConfirm ?? [...auth.accounts.keys()][0] ?? USER.email;
+        const acct = auth.accounts.get(target);
+        if (acct) acct.confirmed = true;
+        pendingConfirm = null;
+        return json(route, authSession(target));
+      }
+      if (path === '/auth/v1/resend') {
+        auth.mailbox.push({ to: email, kind: 'confirm', code: 'confirm-code' });
+        return json(route, {});
+      }
+      if (path === '/auth/v1/recover') {
+        auth.mailbox.push({ to: email, kind: 'reset', code: 'reset-code' });
+        return json(route, {});
+      }
+      if (path === '/auth/v1/otp') {
+        auth.mailbox.push({ to: email, kind: 'code', code: FAKE_EMAIL_CODE });
+        return json(route, {});
+      }
+      if (path === '/auth/v1/verify') {
+        if (body.token !== FAKE_EMAIL_CODE) return authError(route, 403, 'otp_expired', 'Token has expired or is invalid');
+        if (!auth.accounts.has(email)) auth.accounts.set(email, { password: '', confirmed: true });
+        return json(route, authSession(email));
+      }
+    }
+    if (path === '/auth/v1/user' && method === 'PUT') {
+      const body = (parseBody(req) ?? {}) as { password?: string };
+      const acct = auth.accounts.get(USER.email) ?? [...auth.accounts.values()][0];
+      if (acct && body.password) acct.password = body.password;
+      return json(route, authUser(USER.email));
+    }
     if (path === '/auth/v1/otp') return json(route, {});
     if (path === '/auth/v1/user') return json(route, { id: USER.id, email: USER.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: now() });
     if (path === '/auth/v1/logout') return route.fulfill({ status: 204, headers: CORS });
@@ -144,6 +211,7 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
   });
 
   return {
+    auth,
     writes,
     functionCalls,
     state,
