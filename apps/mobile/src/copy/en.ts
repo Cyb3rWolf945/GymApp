@@ -1,4 +1,5 @@
 import { authCopy } from '../auth/copy';
+import { plural } from './plural';
 
 // All user-facing copy, keyed by screen. Follows docs/SPEC.md → "Guia de escrita":
 // EN, 2nd person, short sentences, verb-first sentence-case buttons, no guilt words,
@@ -157,7 +158,7 @@ export const en = {
       mealsTitle: 'A day of meals',
       why: 'Why this plan',
       setsReps: (sets: number, reps: string) => `${sets} × ${reps}`,
-      portions: (n: number) => (n === 1 ? '1 serving' : `${n} servings`),
+      portions: (n: number) => plural(n, 'serving'),
       kcal: 'Calories',
       protein: 'Protein',
       carbs: 'Carbs',
@@ -170,7 +171,7 @@ export const en = {
     title: 'Today',
     tabs: { today: 'Today', plan: 'Plan', nutrition: 'Nutrition', progress: 'Progress', settings: 'Settings' },
     startWorkout: 'Start workout',
-    workoutMeta: (exercises: number, minutes: number) => `${exercises} exercises · about ${minutes} min`,
+    workoutMeta: (exercises: number, minutes: number) => `${plural(exercises, 'exercise')} · about ${minutes} min`,
     restTitle: 'Rest day',
     restBody: 'Recovery is part of your plan.',
     nextWorkout: (weekday: string, name: string) => `Next: ${weekday} · ${name}`,
@@ -241,7 +242,7 @@ export const en = {
       weightEmpty: 'Log your weight to see your trend.',
       weightNow: (kg: number) => `${kg} kg · 7-day average`,
       weightChange: (kg: number) => `${kg > 0 ? '+' : kg < 0 ? '−' : ''}${Math.abs(kg)} kg since your first entry`,
-      weightChart: (n: number) => `Line chart of your 7-day average weight over ${n} entries`,
+      weightChart: (n: number) => `Line chart of your 7-day average weight over ${plural(n, 'entry', 'entries')}`,
       prsTitle: 'Personal records',
       prsEmpty: 'Log a weighted set and your records show up here.',
       prLine: (weight: number, reps: number, date: string) => `${weight} kg × ${reps} · ${date}`,
@@ -250,13 +251,13 @@ export const en = {
       trendTitle: 'Strength trend',
       trendEmpty: 'Log a few workouts and your strength trend shows up here.',
       trendNow: (kg: number) => `${kg} kg estimated one-rep max`,
-      trendChart: (name: string, n: number) => `Line chart of your estimated one-rep max for ${name} over ${n} workouts`,
+      trendChart: (name: string, n: number) => `Line chart of your estimated one-rep max for ${name} over ${plural(n, 'workout')}`,
       mapTitle: 'Muscles this week',
       mapBody: 'Brighter means more sets in the last 7 days. Tap a muscle for details.',
       front: 'Front',
       back: 'Back',
       mapListTitle: 'All muscles',
-      sets: (n: number) => (n === 1 ? '1 set' : `${n} sets`),
+      sets: (n: number) => plural(n, 'set'),
       noSets: 'No sets this week',
       sheetWeekly: 'This week',
       sheetLast: 'Last trained',
@@ -307,7 +308,7 @@ export const en = {
     starting: 'Getting your workout ready…',
     summary: {
       title: 'Workout done.',
-      stats: (sets: number, minutes: number, volume: number) => `${sets} sets · ${minutes} min · ${volume.toLocaleString('en-US')} kg lifted`,
+      stats: (sets: number, minutes: number, volume: number) => `${plural(sets, 'set')} · ${minutes} min · ${volume.toLocaleString('en-US')} kg lifted`,
       pr: (exercise: string, e1rm: number) => `New PR! ${exercise}: ${e1rm} kg estimated max.`,
       prDelta: (delta: number) => `That's +${delta} kg since your last best 🔥`,
       feedbackTitle: 'How did it feel?',
@@ -323,7 +324,7 @@ export const en = {
     history: {
       title: 'History',
       empty: 'No workouts logged yet.',
-      sessionLine: (sets: number, volume: number) => `${sets} sets · ${volume.toLocaleString('en-US')} kg`,
+      sessionLine: (sets: number, volume: number) => `${plural(sets, 'set')} · ${volume.toLocaleString('en-US')} kg`,
     },
   },
   nutrition: {
@@ -345,7 +346,7 @@ export const en = {
       ingredients: 'Ingredients',
       steps: 'Steps',
       macros: (p: number, c: number, f: number) => `${p} g protein · ${c} g carbs · ${f} g fat`,
-      portions: (n: number) => (n === 1 ? '1 portion' : `${n} portions`),
+      portions: (n: number) => plural(n, 'portion'),
       allergens: 'Contains',
       allergenNames: { gluten: 'Gluten', lactose: 'Lactose', nuts: 'Nuts', shellfish: 'Shellfish', egg: 'Egg', soy: 'Soy', fish: 'Fish' } as Record<string, string>,
       none: 'No common allergens',

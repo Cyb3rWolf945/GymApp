@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { MAP_HEIGHT, MAP_REGIONS, MAP_WIDTH, type MapView, type MuscleId, type MuscleStat, ellipsePath, heat, muscleLabel, regionShapes } from '@gymapp/shared';
+import { plural } from '../copy/plural';
 import { useTheme } from '../theme';
 
 interface Props {
@@ -32,7 +33,7 @@ export function MuscleMap({ view, stats, onSelect }: Props) {
               fillOpacity={h > 0 ? 0.25 + 0.75 * h : 0.6}
               stroke={colors.background}
               strokeWidth={0.8}
-              accessibilityLabel={`${muscleLabel(r.muscle)}, ${stat?.sets ?? 0} sets this week`}
+              accessibilityLabel={`${muscleLabel(r.muscle)}, ${plural(stat?.sets ?? 0, 'set')} this week`}
               onPress={() => onSelect(r.muscle)}
             />
           ));
