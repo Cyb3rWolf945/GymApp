@@ -3,3 +3,4 @@ export * from './access.ts';
 export * from './preview.ts';
 export * from './today.ts';
 export * from './swaps.ts';
+export * from './meals.ts';

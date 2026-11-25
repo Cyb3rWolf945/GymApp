@@ -1,4 +1,4 @@
-import { type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, expandEquipment, isEntitled } from '@gymapp/shared';
+import { type Allergen, type JobRow, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment, isEntitled } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
@@ -67,5 +67,54 @@ export async function fetchSwapOptions(
 /** Record a swap (own row, RLS). The plan view applies it on top of the generated plan. */
 export async function recordSwap(userId: string, jobId: string, dayIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
   const { error } = await supabase.from('plan_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, from_slug: fromSlug, to_slug: toSlug } as never);
+  return !error;
+}
+
+type IngredientJoin = { grams: number; ingredients: { name: string; allergens: string[] } | null }[];
+
+/** All recipes with allergens derived from their ingredients: the pool for "Swap meal". */
+export async function fetchRecipeLibrary(): Promise<RecipeCandidate[]> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,name,diet,kcal,protein_g,carbs_g,fat_g,recipe_ingredients(ingredients(allergens))');
+  if (error) throw error;
+  return ((data ?? []) as unknown as (Omit<RecipeCandidate, 'allergens'> & { recipe_ingredients: IngredientJoin })[]).map(
+    ({ recipe_ingredients, ...r }) => ({ ...r, allergens: deriveAllergens((recipe_ingredients ?? []).map((i) => ({ allergens: i.ingredients?.allergens ?? [] }))) }),
+  );
+}
+
+export interface RecipeDetail {
+  slug: string;
+  name: string;
+  instructions: string | null;
+  servings: number;
+  kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  allergens: Allergen[];
+  ingredients: { name: string; grams: number }[];
+}
+
+export async function fetchRecipeDetail(slug: string): Promise<RecipeDetail | null> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('slug,name,instructions,servings,kcal,protein_g,carbs_g,fat_g,recipe_ingredients(grams,ingredients(name,allergens))')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { recipe_ingredients, ...r } = data as unknown as Omit<RecipeDetail, 'allergens' | 'ingredients'> & { recipe_ingredients: IngredientJoin };
+  const rows = (recipe_ingredients ?? []).filter((i) => i.ingredients);
+  return {
+    ...r,
+    allergens: deriveAllergens(rows.map((i) => ({ allergens: i.ingredients!.allergens ?? [] }))),
+    ingredients: rows.map((i) => ({ name: i.ingredients!.name, grams: Number(i.grams) })).sort((a, b) => b.grams - a.grams),
+  };
+}
+
+/** Record a meal swap (own row, RLS). It is the signal for memory; the plan view applies it on top of the generated plan. */
+export async function recordMealSwap(userId: string, jobId: string, dayIndex: number, mealIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
+  const { error } = await supabase.from('meal_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, meal_index: mealIndex, from_slug: fromSlug, to_slug: toSlug } as never);
   return !error;
 }
