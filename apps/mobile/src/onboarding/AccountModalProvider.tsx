@@ -170,6 +170,17 @@ export function AccountModalProvider({ children }: { children: ReactNode }) {
     if (state === 'account') trackEvent('account_modal_view', {});
   }, [state]);
 
+  // Escape closes the modal wherever keyboard focus is. After sign-up the screen behind navigates and can take focus
+  // from the dialog, so the sheet's own handler alone would miss it. Closing twice is harmless (`dismiss` is idempotent).
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !isOpen(state)) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dispatch('dismiss');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state]);
+
   const onMethod = (method: SignInMethod) => {
     trackEvent('signin_method_chosen', { method });
     // A Google or Apple redirect leaves the page: remember that the modal was waiting for it, to reopen on step 2.
