@@ -12,3 +12,4 @@ export * from './logging.ts';
 export * from './smoke.ts';
 export * from './history.ts';
 export * from './memory.ts';
+export * from './redteam.ts';
