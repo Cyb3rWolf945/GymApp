@@ -9,7 +9,7 @@ import { type PlanData, PlanDataProvider, usePlanData } from '../../../src/home/
 import { SwapSheet } from '../../../src/plan/SwapSheet';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
 import { useBreakpoint, useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, LineChart, ListItem, Screen, Text } from '../../../src/ui';
+import { Button, Card, EmptyState, LineChart, ListItem, Screen, ScreenSkeleton, Text } from '../../../src/ui';
 
 const x = en.exercise;
 
@@ -118,7 +118,7 @@ function dayOf(data: PlanData, slug: string, hint: number): number | null {
 function ExerciseBody({ slug, day }: { slug: string; day: number }) {
   const router = useRouter();
   const wide = useBreakpoint() !== 'compact';
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const { state: plan, reload } = usePlanData();
   const [state, setState] = useState<Load<ExerciseDetail | null>>({ status: 'loading' });
   const [swapOpen, setSwapOpen] = useState(false);
@@ -136,7 +136,7 @@ function ExerciseBody({ slug, day }: { slug: string; day: number }) {
   }, [slug]);
 
   const body = () => {
-    if (state.status === 'loading') return <ActivityIndicator color={colors.accent} />;
+    if (state.status === 'loading') return <ScreenSkeleton title={false} label={en.common.loading} />;
     if (state.status === 'error') return <EmptyState title={x.loadError} actionLabel={en.common.retry} onAction={() => router.replace({ pathname: '/exercise/[slug]', params: { slug } })} />;
     if (!state.value) return <EmptyState title={x.missing} />;
     const ex = state.value;

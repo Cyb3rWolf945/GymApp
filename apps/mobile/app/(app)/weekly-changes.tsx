@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { type WeeklyChanges, fetchPendingWeekly, resolveWeekly } from '../../src/plan/weekly';
 import { useTheme } from '../../src/theme';
-import { Button, Card, ListItem, Screen, Text, useToast } from '../../src/ui';
+import { Button, Card, EmptyState, ListItem, Screen, ScreenSkeleton, Text, useToast } from '../../src/ui';
 
 const t = en.home.weekly;
 
@@ -18,15 +17,17 @@ export default function WeeklyChangesScreen() {
   const [data, setData] = useState<WeeklyChanges | null | 'loading' | 'error'>('loading');
   const [busy, setBusy] = useState<'keep' | 'revert' | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     let active = true;
+    setData('loading');
     fetchPendingWeekly(user.id).then((v) => active && setData(v), () => active && setData('error'));
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, attempt]);
 
   const decide = async (keep: boolean) => {
     if (!data || data === 'loading' || data === 'error') return;
@@ -54,8 +55,8 @@ export default function WeeklyChangesScreen() {
         ) : null
       }
     >
-      {data === 'loading' ? <ActivityIndicator /> : null}
-      {data === 'error' ? <Text tone="danger" accessibilityRole="alert">{t.loadError}</Text> : null}
+      {data === 'loading' ? <ScreenSkeleton title={false} cards={1} label={en.common.loading} /> : null}
+      {data === 'error' ? <EmptyState title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} /> : null}
       {data === null ? (
         <>
           <Text variant="display">{t.title}</Text>

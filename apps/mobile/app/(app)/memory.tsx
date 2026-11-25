@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { type MemoryFact, deleteMemoryFact, fetchMemoryFacts } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, Screen, Text, useToast } from '../../src/ui';
+import { Button, Card, EmptyState, Screen, ScreenSkeleton, Text, useToast } from '../../src/ui';
 
 const t = en.home.memory;
 
@@ -46,10 +46,12 @@ export default function Memory() {
     <Screen style={{ flexGrow: 1 }} footer={<Button label={en.common.back} variant="ghost" onPress={() => router.back()} />}>
         <Text variant="display">{t.title}</Text>
         <Text tone="muted">{t.body}</Text>
-        {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
+        {error && facts && facts.length > 0 ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
         {facts === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : facts.length === 0 && !error ? (
+          <ScreenSkeleton title={false} cards={1} label={en.common.loading} />
+        ) : error && facts.length === 0 ? (
+          <EmptyState title={error} actionLabel={en.common.retry} onAction={() => { setFacts(null); void load(); }} />
+        ) : facts.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <EmptyState title={t.empty} />
           </View>

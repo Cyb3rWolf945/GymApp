@@ -23,6 +23,7 @@ export const en = {
     retry: 'Try again',
     close: 'Close',
     loading: 'Loading…',
+    offline: "You're offline. Your logs sync when you're back online.",
   },
   auth: authCopy,
   onboarding: {

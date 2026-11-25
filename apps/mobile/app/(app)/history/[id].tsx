@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   SET_EDIT_LIMITS, type OutboxItem, type SessionInfo, type SessionSet, applyQueuedEdits, buildSessionDetail, sessionDeleteItem, sessionIsDeleted, setDeleteItem, setEditItem, validateSetEdit,
@@ -8,7 +8,7 @@ import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
 import { fetchSession } from '../../../src/history/api';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, ChipGroup, EmptyState, ListItem, Screen, Text, TextField, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, ChipGroup, EmptyState, ListItem, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
 
 const t = en.workout.history;
@@ -28,7 +28,7 @@ export default function HistoryDetail() {
   const { user } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const { outbox, queue } = useWorkout();
   const [loaded, setLoaded] = useState<Loaded>(undefined);
 
@@ -92,7 +92,7 @@ export default function HistoryDetail() {
   const L = SET_EDIT_LIMITS;
   const message: Record<string, string> = { weight: d.errors.weight(L.weightKg.min, L.weightKg.max), reps: d.errors.reps(L.reps.min, L.reps.max), rpe: d.errors.rpe(L.rpe.min, L.rpe.max) };
 
-  if (loaded === undefined) return <Screen center><ActivityIndicator color={colors.accent} /></Screen>;
+  if (loaded === undefined) return <Screen><ScreenSkeleton label={en.common.loading} /></Screen>;
   if (loaded === 'error') return <Screen center><EmptyState title={d.loadError} actionLabel={en.common.retry} onAction={load} /></Screen>;
   if (loaded === null || deleted || !detail) return <Screen center><EmptyState title={d.notFound} actionLabel={en.common.back} onAction={() => router.back()} /></Screen>;
 
