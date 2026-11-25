@@ -5,6 +5,8 @@ import { NUTRITION_PLAN, PLAN_PRICES, RECIPES, USER, WORKOUT_PLAN, exerciseRows,
 // It answers by table and ignores row filters: there is one synthetic user. It records every write so tests can
 // assert on what the app sent. Stripe Checkout itself is not exercised (see the funnel test).
 
+import type { editableWorkout } from './fixtures';
+
 export const API_URL = 'http://localhost:54321';
 
 export interface Recorded {
@@ -32,7 +34,7 @@ export interface Backend {
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
   functionCalls: string[];
-  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown> };
+  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown>; /** One workout whose sets can be corrected and deleted (History). Writes to `set_logs` / `workout_sessions` change it. */ editable: ReturnType<typeof editableWorkout> | null; /** Writes to the tables fail (no connection); reads still work. */ offline: boolean };
   /** What the Stripe webhook would do after a successful payment. */
   completeCheckout(): void;
   writesTo(path: string): Recorded[];
@@ -77,7 +79,7 @@ export function applyFilters(rows: unknown[], params: URLSearchParams): unknown[
 }
 
 export async function installFakeBackend(page: Page, opts: { checkoutUrl: string }): Promise<Backend> {
-  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {} };
+  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {}, editable: null, offline: false };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
   const auth: AuthState = { confirmEmails: false, accounts: new Map(), identities: ['email'], mailbox: [] };
@@ -106,8 +108,8 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     plan_prices: () => PLAN_PRICES,
     shopping_list_items: () => state.checked.map((label) => ({ label, checked: true })),
     body_metrics: () => (state.history ? weightHistory(state.history) : []),
-    set_logs: () => (state.history ? setLogHistory(state.history) : []),
-    workout_sessions: () => (state.history ? sessionHistory(state.history) : []),
+    set_logs: () => (state.editable ? state.editable.sets : state.history ? setLogHistory(state.history) : []),
+    workout_sessions: () => (state.editable ? [state.editable.session] : state.history ? sessionHistory(state.history) : []),
   };
 
   await page.route(/localhost:54321/, async (route) => {
@@ -206,7 +208,20 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
       const table = path.replace('/rest/v1/', '');
       if (method === 'GET' || method === 'HEAD') return json(route, applyFilters((tables[table] ?? (() => []))(), url.searchParams));
       const body = parseBody(req);
+      if (state.offline && (table === 'set_logs' || table === 'workout_sessions')) return route.fulfill({ status: 503, headers: { ...CORS, 'content-type': 'application/json' }, body: '{"message":"offline"}' });
       writes.push({ method, path, body });
+      const ed = state.editable;
+      if (ed && (table === 'set_logs' || table === 'workout_sessions')) {
+        const wantedId = /^eq\.(.*)$/.exec(url.searchParams.get('id') ?? '')?.[1];
+        if (method === 'DELETE' && wantedId) {
+          if (table === 'set_logs') ed.sets = ed.sets.filter((r: { id: string }) => r.id !== wantedId);
+          else if (wantedId === ed.session.id) state.editable = null;
+        } else if (table === 'set_logs' && body && !Array.isArray(body)) {
+          // An upsert by id: change the stored row (the queued correction carries the whole row).
+          const row = body as Record<string, unknown>;
+          ed.sets = ed.sets.map((r: { id: string }) => (r.id === row.id ? { ...r, reps: row.reps, weight_kg: row.weight_kg, rpe: row.rpe } : r)) as typeof ed.sets;
+        }
+      }
       if (table === 'profiles' && body && !Array.isArray(body)) state.profile = { ...(state.profile ?? {}), ...(body as object) };
       if (table === 'shopping_list_items' && body && !Array.isArray(body)) {
         const row = body as { label: string; checked: boolean };

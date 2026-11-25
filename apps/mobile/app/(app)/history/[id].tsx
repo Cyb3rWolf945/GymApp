@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  SET_EDIT_LIMITS, type SessionInfo, type SessionSet, applyQueuedEdits, buildSessionDetail, sessionDeleteItem, sessionIsDeleted, setDeleteItem, setEditItem, validateSetEdit,
+  SET_EDIT_LIMITS, type OutboxItem, type SessionInfo, type SessionSet, applyQueuedEdits, buildSessionDetail, sessionDeleteItem, sessionIsDeleted, setDeleteItem, setEditItem, validateSetEdit,
 } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
@@ -50,6 +50,10 @@ export default function HistoryDetail() {
   const [errors, setErrors] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<'set' | 'workout' | null>(null);
 
+  /** Once a correction has been sent it leaves the queue: keep it in the loaded copy too, so the screen never falls back to the old value. */
+  const keep = (item: OutboxItem) =>
+    setLoaded((cur) => (cur && cur !== 'error' ? { ...cur, sets: applyQueuedEdits(cur.sets, sessionId, [item]) } : cur));
+
   const open = (set: SessionSet, title: string) => {
     setEditing({ set, title });
     setWeight(String(set.weightKg ?? 0));
@@ -63,13 +67,17 @@ export default function HistoryDetail() {
     const edit = { weightKg: parseNumber(weight), reps: parseNumber(reps), rpe: rpe[0] ? Number(rpe[0]) : null };
     const bad = validateSetEdit(edit);
     if (bad.length > 0) return setErrors(bad);
-    queue(setEditItem(user.id, sessionId, editing.set, edit));
+    const item = setEditItem(user.id, sessionId, editing.set, edit);
+    queue(item);
+    keep(item);
     setEditing(null);
     toast.show(d.saved, 'success');
   };
   const removeSet = () => {
     if (!editing) return;
-    queue(setDeleteItem(editing.set.id));
+    const item = setDeleteItem(editing.set.id);
+    queue(item);
+    keep(item);
     setConfirm(null);
     setEditing(null);
     toast.show(d.setDeleted, 'success');

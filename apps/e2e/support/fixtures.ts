@@ -116,3 +116,26 @@ export function sessionHistory(now: Date) {
     { id: `30000000-0000-4000-8000-0000000000${week}2`, day_name: 'Lower body', started_at: iso(now, week * 7 + 4) },
   ]);
 }
+
+/** A finished workout that can be corrected in History: three bench sets (the last one is a typo: 1000 kg instead of 100 kg) and one overhead press. */
+export function editableWorkout(now: Date) {
+  const started = iso(now, 3);
+  const at = (minutes: number) => new Date(Date.parse(started) + minutes * 60_000).toISOString();
+  const bench = EXERCISES[0];
+  const press = EXERCISES[1];
+  const row = (id: string, ex: (typeof EXERCISES)[number], index: number, kg: number, reps: number, rpe: number | null, minutes: number) => ({
+    id, user_id: USER.id, session_id: EDITABLE_SESSION_ID, exercise_id: ex.id, set_index: index, reps, weight_kg: kg, rpe, logged_at: at(minutes),
+    exercises: { slug: ex.slug, name: ex.name, exercise_muscles: MUSCLES[ex.slug] },
+  });
+  return {
+    session: { id: EDITABLE_SESSION_ID, user_id: USER.id, day_name: 'Upper body', started_at: started, finished_at: at(45), rating: 4 },
+    sets: [
+      row('50000000-0000-4000-8000-000000000001', bench, 0, 100, 5, 8, 5),
+      row('50000000-0000-4000-8000-000000000002', bench, 1, 100, 5, 9, 10),
+      row('50000000-0000-4000-8000-000000000003', bench, 2, 1000, 5, null, 15),
+      row('50000000-0000-4000-8000-000000000004', press, 0, 50, 8, null, 25),
+    ],
+  };
+}
+export const EDITABLE_SESSION_ID = '40000000-0000-4000-8000-000000000001';
+export const EDITABLE_TYPO_SET_ID = '50000000-0000-4000-8000-000000000003';
