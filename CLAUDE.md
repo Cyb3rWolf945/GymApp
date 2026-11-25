@@ -45,6 +45,7 @@ docs/            SPEC.md
 
 ## Security & privacy (non-negotiable)
 - RLS on every user table, filter by `auth.uid()`. Service role only in server code.
+- Every new table migration enables RLS, adds policies **and** explicit `grant`s for the roles that use it (new Supabase projects give `anon`/`authenticated` no table access by default; `service_role` gets it from default privileges).
 - User free-text goes to LLMs only inside delimited data tags, after the guardrail pre-filter. LLM output only via JSON Schema, then deterministic validation.
 - Health data = GDPR special category. Never log raw health data or prompts with real user data to third parties. Free models (`dev`) get synthetic data only.
 - Stripe webhooks: verify signature, idempotent by `event.id`.

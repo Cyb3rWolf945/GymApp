@@ -81,6 +81,7 @@ CI runs the same commands, and a PR with red CI will not be merged.
 ## 7. Security and privacy (non-negotiable)
 
 - RLS on every user table, filtered by `auth.uid()`. Use the service-role key only in server code, never in the app or the browser.
+- Every new table migration enables RLS, adds policies **and** explicit `grant`s for the roles that use it (new Supabase projects give `anon`/`authenticated` no table access by default; `service_role` gets it from default privileges).
 - Health data is GDPR special-category data. Don't log raw health data. In the admin app, record every view of user health data in `admin_audit_log`.
 - Stripe webhooks: verify the signature and make the handler idempotent by `event.id`. Access to paid features is checked **server-side** (`has_access`), never only in the UI.
 - **No secrets in the repo.** Use `.env` locally (it's gitignored) and keep `.env.example` updated with empty values. If you ever commit a key by mistake, tell the team and rotate it immediately.

@@ -14,8 +14,8 @@ create function auth.uid() returns uuid language sql stable as
 grant usage on schema auth, public to anon, authenticated, service_role;
 `;
 
+// Table grants come from the migrations (as on a live project, where the roles start with none).
 const GRANTS = `
-grant all on all tables in schema public to authenticated, service_role;
 grant select on auth.users to authenticated, service_role;
 `;
 
