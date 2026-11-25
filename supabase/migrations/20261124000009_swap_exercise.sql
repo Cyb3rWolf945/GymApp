@@ -7,10 +7,13 @@ create table public.plan_swaps (
   user_id uuid not null references auth.users(id) on delete cascade,
   job_id uuid not null references public.generation_jobs(id) on delete cascade,
   day_index int not null check (day_index >= 0),
-  from_slug text not null,
-  to_slug text not null,
+  -- Catalog slugs only: these values can reach the planner prompt, so they must never hold free text.
+  -- The foreign keys make that a database rule; the format check is a second, cheap guard.
+  from_slug text not null references public.exercises(slug) on delete cascade,
+  to_slug text not null references public.exercises(slug) on delete cascade,
   created_at timestamptz not null default now(),
-  check (from_slug <> to_slug)
+  check (from_slug <> to_slug),
+  check (from_slug ~ '^[a-z0-9][a-z0-9-]{0,63}$' and to_slug ~ '^[a-z0-9][a-z0-9-]{0,63}$')
 );
 create index on public.plan_swaps(user_id, created_at desc);
 create index on public.plan_swaps(job_id);

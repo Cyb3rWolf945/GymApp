@@ -14,7 +14,7 @@ import {
   canGenerate,
   expandEquipment,
   runPipeline,
-  swapSignals,
+  knownSwapSignals,
   getModelProfile,
   isEntitled,
   type PlanKind,
@@ -132,7 +132,11 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
       .limit(20);
     // Swap signal: exercises the user keeps swapping out (catalog names only, never free text).
     const { data: swaps } = await admin.from('plan_swaps').select('from_slug').eq('user_id', userId);
-    const swapped = swapSignals(swaps ?? []);
+    const { data: known } = swaps?.length
+      ? await admin.from('exercises').select('slug').in('slug', [...new Set(swaps.map((x: { from_slug: string }) => x.from_slug))])
+      : { data: [] };
+    // Only slugs that exist in the catalog may reach the prompt.
+    const swapped = knownSwapSignals(swaps ?? [], new Set((known ?? []).map((k: { slug: string }) => k.slug)));
     const swapLines = swapped.length ? [`- The user often swaps out these exercises (avoid them): ${swapped.join(', ')}`] : [];
     const memorySummary = [...(facts ?? []).map((f: { fact: string }) => `- ${f.fact}`), ...swapLines].join('\n');
 
