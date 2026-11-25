@@ -686,6 +686,7 @@ export type Database = {
           weight_kg: number | null;
           rpe: number | null;
           logged_at: string;
+          is_warmup: boolean;
         };
         Insert: {
           id?: string;
@@ -697,6 +698,7 @@ export type Database = {
           weight_kg?: number | null;
           rpe?: number | null;
           logged_at?: string;
+          is_warmup?: boolean;
         };
         Update: Partial<Database['public']['Tables']['set_logs']['Insert']>;
       };

@@ -37,6 +37,7 @@ export async function fetchSets(userId: string): Promise<{ records: SetRecord[];
     .from('set_logs')
     .select('weight_kg,reps,logged_at,exercises(slug,name,exercise_muscles(muscle,role))')
     .eq('user_id', userId)
+    .eq('is_warmup', false)
     .gte('logged_at', since(180))
     .order('logged_at', { ascending: false })
     .limit(5000);

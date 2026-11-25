@@ -58,7 +58,7 @@ export default function ProgressScreen() {
         supabase.from('workout_sessions').select('id,day_name,started_at').eq('user_id', user.id).not('finished_at', 'is', null).order('started_at', { ascending: false }).limit(30),
       ]);
       const list = (sessions.data ?? []) as { id: string; day_name: string | null; started_at: string }[];
-      const { data: logs } = list.length ? await supabase.from('set_logs').select('session_id,weight_kg,reps').in('session_id', list.map((x) => x.id)) : { data: [] };
+      const { data: logs } = list.length ? await supabase.from('set_logs').select('session_id,weight_kg,reps').eq('is_warmup', false).in('session_id', list.map((x) => x.id)) : { data: [] };
       const agg = new Map<string, { sets: number; volume: number }>();
       for (const l of (logs ?? []) as { session_id: string; weight_kg: number | null; reps: number | null }[]) {
         const a = agg.get(l.session_id) ?? { sets: 0, volume: 0 };

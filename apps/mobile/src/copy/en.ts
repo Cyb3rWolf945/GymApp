@@ -407,6 +407,15 @@ export const en = {
   },
   // E-55: coach styles. Tone only. Variants per style; `pickLine` falls back to Calm. Same writing guide for all three:
   // 2nd person, no guilt or shame, no medical claims.
+  plateSettings: {
+    title: 'Bar and plates',
+    body: 'Used by the plate calculator and warm-up sets. Saved on this device.',
+    bar: (unit: string) => `Bar weight (${unit})`,
+    plates: (unit: string) => `Plates you have (${unit})`,
+    saved: 'Plates saved.',
+    barError: (min: number, max: number, unit: string) => `Enter a bar weight between ${min} and ${max} ${unit}.`,
+    platesError: 'Pick at least one plate.',
+  },
   coach: {
     settingsTitle: 'Coach style',
     settingsBody: 'Changes how we talk to you. Your plan stays the same.',
@@ -434,6 +443,27 @@ export const en = {
     },
   },
   workout: {
+    warmup: {
+      title: 'Warm up first',
+      body: 'Optional. Based on your first working weight.',
+      set: (weight: number, unit: string, reps: number, bar: boolean) => `${bar ? 'Empty bar' : `${weight} ${unit}`} × ${reps}`,
+      log: 'Log warm-up sets',
+      skip: 'Skip warm-up',
+      label: 'Warm-up',
+    },
+    plates: {
+      open: (weight: number, unit: string) => `Plates for ${weight} ${unit}`,
+      title: 'Plates per side',
+      total: (weight: number, unit: string) => `${weight} ${unit} on the bar`,
+      barOnly: 'Just the empty bar.',
+      side: (count: number, plate: number, unit: string) => `${count} × ${plate} ${unit}`,
+      barLine: (bar: number, unit: string) => `Bar: ${bar} ${unit}`,
+      below: (bar: number, unit: string) => `That's lighter than the bar (${bar} ${unit}).`,
+      invalid: 'Enter a weight to see the plates.',
+      noMatch: (lower: number | null, higher: number | null, unit: string) =>
+        `Your plates can't make that weight. Closest: ${[lower, higher].filter((v): v is number => v !== null).map((v) => `${v} ${unit}`).join(' or ')}.`,
+      settingsHint: 'Change your bar and plates in Settings.',
+    },
     logSet: 'Log set',
     finish: 'Finish workout',
     resume: 'Resume workout',

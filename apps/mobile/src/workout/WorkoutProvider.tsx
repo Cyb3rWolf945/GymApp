@@ -20,6 +20,14 @@ export interface StartInput {
   exercises: { slug: string; name: string; sets: number; repsMin: number; repsMax: number; restSeconds: number }[];
 }
 
+export interface NewSet {
+  slug: string;
+  weightKg: number;
+  reps: number;
+  rpe?: number;
+  warmup?: boolean;
+}
+
 export interface FinishResult {
   prs: NewPR[];
   sets: number;
@@ -37,7 +45,8 @@ interface Ctx {
   /** Queue a write or delete and send it as soon as there is a connection (corrections made in History). */
   queue: (item: OutboxItem) => void;
   start: (input: StartInput) => Promise<void>;
-  logSet: (set: { slug: string; weightKg: number; reps: number; rpe?: number }) => void;
+  /** One set, or several at once (the warm-up sets). `warmup` sets are kept apart from the work: no PRs, no volume. */
+  logSet: (set: NewSet | NewSet[]) => void;
   undoLast: () => void;
   finish: () => FinishResult | null;
   /** Forget the finished workout (after the summary screen). */
@@ -143,6 +152,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
             .from('set_logs')
             .select('exercise_id,weight_kg,reps,session_id,logged_at')
             .in('exercise_id', [...ids.values()])
+            .eq('is_warmup', false)
             .order('logged_at', { ascending: false })
             .limit(500);
           const h = summarizeHistory((rows ?? []) as unknown as HistoryRow[]);
@@ -168,20 +178,28 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   );
 
   const logSet = useCallback<Ctx['logSet']>(
-    (s) => {
+    (input) => {
       if (!active || !userId) return;
-      const exercise = active.planned.find((p) => p.slug === s.slug);
-      const setIndex = active.logged.filter((l) => l.slug === s.slug).length;
-      const set: ActiveSet = { ...s, id: newId(), setIndex, loggedAt: new Date().toISOString() };
-      updateActive({ ...active, logged: [...active.logged, set] });
-      if (exercise?.exerciseId) {
-        push({
-          id: set.id,
-          table: 'set_logs',
-          row: { id: set.id, user_id: userId, session_id: active.id, exercise_id: exercise.exerciseId, set_index: setIndex, reps: s.reps, weight_kg: s.weightKg, rpe: s.rpe ?? null, logged_at: set.loggedAt },
-        });
-        void flush();
-      }
+      const list = Array.isArray(input) ? input : [input];
+      const logged = [...active.logged];
+      const now = Date.now();
+      list.forEach((s, i) => {
+        const exercise = active.planned.find((p) => p.slug === s.slug);
+        const warmup = s.warmup === true;
+        // Warm-ups and working sets are numbered apart.
+        const setIndex = logged.filter((l) => l.slug === s.slug && (l.warmup === true) === warmup).length;
+        const set: ActiveSet = { ...s, warmup: warmup || undefined, id: newId(), setIndex, loggedAt: new Date(now + i).toISOString() };
+        logged.push(set);
+        if (exercise?.exerciseId) {
+          push({
+            id: set.id,
+            table: 'set_logs',
+            row: { id: set.id, user_id: userId, session_id: active.id, exercise_id: exercise.exerciseId, set_index: setIndex, reps: s.reps, weight_kg: s.weightKg, rpe: s.rpe ?? null, is_warmup: warmup, logged_at: set.loggedAt },
+          });
+        }
+      });
+      updateActive({ ...active, logged });
+      void flush();
     },
     [active, userId, updateActive, push, flush],
   );
@@ -212,7 +230,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     const prs = detectPRs(done.logged, new Map(Object.entries(done.previousBest)));
     return {
       prs,
-      sets: done.logged.length,
+      sets: done.logged.filter((l) => !l.warmup).length,
       minutes: Math.max(1, Math.round((Date.parse(finishedAt) - Date.parse(done.startedAt)) / 60000)),
       volume: Math.round(volumeKg(done.logged)),
     };

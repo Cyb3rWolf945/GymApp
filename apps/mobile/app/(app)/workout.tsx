@@ -2,10 +2,11 @@ import { trackEvent } from '../../src/analytics/track';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { formatRest, nextPosition, prefillSet, setLine } from '@gymapp/shared';
+import { firstBarbellCompound, formatRest, nextPosition, platesPerSide, prefillSet, setLine, toUnit, warmupSets } from '@gymapp/shared';
 import { en } from '../../src/copy/en';
 import { useBreakpoint, useTheme } from '../../src/theme';
-import { Button, Card, ChipGroup, ListItem, Screen, Stepper, Text } from '../../src/ui';
+import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Stepper, Text } from '../../src/ui';
+import { usePlateConfig } from '../../src/workout/plateSettings';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout;
@@ -17,6 +18,9 @@ export default function WorkoutScreen() {
   const router = useRouter();
   const { spacing } = useTheme();
   const wide = useBreakpoint() === 'expanded';
+  const { config: plateCfg } = usePlateConfig();
+  const [platesOpen, setPlatesOpen] = useState(false);
+  const [warmupSkipped, setWarmupSkipped] = useState(false);
 
   const pos = useMemo(() => (active ? nextPosition(active.planned, active.logged) : null), [active]);
   const exercise = active && pos ? active.planned[pos.exercise] : null;
@@ -35,10 +39,17 @@ export default function WorkoutScreen() {
     // Only when the position changes, not on every keystroke of the steppers.
   }, [key]);
 
+  // Warm-up suggestions: only before the first working set of the workout's first barbell compound lift.
+  const compound = active ? firstBarbellCompound(active.planned.map((p) => p.slug)) : null;
+  const warmups = useMemo(
+    () => (active && exercise && pos && exercise.slug === compound && !active.logged.some((l) => l.slug === exercise.slug) ? warmupSets(weight, plateCfg) : []),
+    [active, exercise, pos, compound, weight, plateCfg],
+  );
+
   // Rest timer: ends `restSeconds` after the last logged set.
   const [now, setNow] = useState(Date.now());
   const [restSkipped, setRestSkipped] = useState(false);
-  const lastSet = active?.logged[active.logged.length - 1];
+  const lastSet = active?.logged.filter((l) => !l.warmup).at(-1);
   const lastPlanned = lastSet && active ? active.planned.find((p) => p.slug === lastSet.slug) : undefined;
   const restEndsAt = lastSet && lastPlanned ? Date.parse(lastSet.loggedAt) + lastPlanned.restSeconds * 1000 : 0;
   const restLeft = Math.max(0, Math.ceil((restEndsAt - now) / 1000));
@@ -78,8 +89,27 @@ export default function WorkoutScreen() {
               {resting ? ` · ${t.rest(formatRest(restLeft))}` : ''}
             </Text>
 
+            {warmups.length > 0 && !warmupSkipped ? (
+              <Card style={{ gap: spacing.sm }}>
+                <Text variant="heading">{t.warmup.title}</Text>
+                <Text tone="muted">{t.warmup.body}</Text>
+                {warmups.map((w, i) => (
+                  <Text key={i}>{t.warmup.set(w.weight, plateCfg.unit, w.reps, i === 0 && w.weight === plateCfg.bar)}</Text>
+                ))}
+                <Button
+                  label={t.warmup.log}
+                  onPress={() => {
+                    logSet(warmups.map((w) => ({ slug: exercise.slug, weightKg: w.weightKg, reps: w.reps, warmup: true })));
+                    setWarmupSkipped(true);
+                  }}
+                />
+                <Button label={t.warmup.skip} variant="ghost" onPress={() => setWarmupSkipped(true)} />
+              </Card>
+            ) : null}
+
             <Card style={{ gap: spacing.lg }}>
               <Stepper label={t.weight} value={weight} step={2.5} format={(v) => `${v} kg`} onChange={setWeight} />
+              {weight > 0 ? <Button label={t.plates.open(toUnit(weight, plateCfg.unit), plateCfg.unit)} variant="ghost" onPress={() => setPlatesOpen(true)} /> : null}
               <Stepper label={t.reps} value={reps} step={1} min={1} max={100} onChange={setReps} />
               <View style={{ gap: spacing.sm }}>
                 <Text variant="small" tone="muted">{t.effort}</Text>
@@ -109,7 +139,7 @@ export default function WorkoutScreen() {
               <ListItem
                 key={s.id}
                 title={active.planned.find((p) => p.slug === s.slug)?.name ?? s.slug}
-                subtitle={`${s.weightKg > 0 ? `${s.weightKg} kg × ` : ''}${s.reps}${s.rpe ? ` · RPE ${s.rpe}` : ''}`}
+                subtitle={`${s.warmup ? `${t.warmup.label} · ` : ''}${s.weightKg > 0 ? `${s.weightKg} kg × ` : ''}${s.reps}${s.rpe ? ` · RPE ${s.rpe}` : ''}`}
               />
             ))}
             <Button label={t.undo} variant="ghost" onPress={undoLast} />
@@ -119,6 +149,39 @@ export default function WorkoutScreen() {
         </View>
 
         {exercise ? <Button label={t.finish} variant="ghost" onPress={onFinish} /> : null}
+
+        <BottomSheet visible={platesOpen} onClose={() => setPlatesOpen(false)} title={t.plates.title}>
+          <PlatesBody weightKg={weight} />
+        </BottomSheet>
     </Screen>
+  );
+}
+
+/** The plates for the weight in the stepper, in the person's unit. */
+function PlatesBody({ weightKg }: { weightKg: number }) {
+  const { config } = usePlateConfig();
+  const { spacing } = useTheme();
+  const t = en.workout.plates;
+  const w = toUnit(weightKg, config.unit);
+  const r = platesPerSide(w, config);
+  return (
+    <View style={{ gap: spacing.md }}>
+      <Text variant="bodyStrong">{t.total(w, config.unit)}</Text>
+      <Text tone="muted">{t.barLine(config.bar, config.unit)}</Text>
+      {r.ok ? (
+        r.barOnly ? (
+          <Text>{t.barOnly}</Text>
+        ) : (
+          r.perSide.map((s) => <Text key={s.plate} variant="heading">{t.side(s.count, s.plate, config.unit)}</Text>)
+        )
+      ) : r.reason === 'below_bar' ? (
+        <Text tone="danger" accessibilityRole="alert">{t.below(config.bar, config.unit)}</Text>
+      ) : r.reason === 'not_loadable' ? (
+        <Text tone="danger" accessibilityRole="alert">{t.noMatch(r.nearest.lower, r.nearest.higher, config.unit)}</Text>
+      ) : (
+        <Text tone="muted">{t.invalid}</Text>
+      )}
+      <Text variant="small" tone="muted">{t.settingsHint}</Text>
+    </View>
   );
 }

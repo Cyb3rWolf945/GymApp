@@ -22,6 +22,7 @@ export async function fetchSession(sessionId: string): Promise<{ session: Sessio
     .from('set_logs')
     .select('id,exercise_id,set_index,reps,weight_kg,rpe,logged_at,exercises(slug,name)')
     .eq('session_id', sessionId)
+    .eq('is_warmup', false) // warm-ups are not part of the workout record
     .order('logged_at');
   if (setsError) throw setsError;
   return {

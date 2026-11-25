@@ -21,7 +21,7 @@ export interface Position {
 /** Where the next set goes: the first exercise that still has planned sets left. null = everything is logged. */
 export function nextPosition(planned: readonly PlannedExercise[], logged: readonly LoggedSet[]): Position | null {
   const done = new Map<string, number>();
-  for (const s of logged) done.set(s.slug, (done.get(s.slug) ?? 0) + 1);
+  for (const s of logged) if (!s.warmup) done.set(s.slug, (done.get(s.slug) ?? 0) + 1);
   for (let i = 0; i < planned.length; i++) {
     const n = done.get(planned[i].slug) ?? 0;
     if (n < planned[i].sets) return { exercise: i, set: n };
@@ -43,7 +43,7 @@ export function prefillSet(
   loggedThisWorkout: readonly LoggedSet[],
   lastWorkout: Prefill | undefined,
 ): Prefill {
-  const prev = [...loggedThisWorkout].reverse().find((s) => s.slug === planned.slug);
+  const prev = [...loggedThisWorkout].reverse().find((s) => s.slug === planned.slug && !s.warmup);
   if (prev) return { weightKg: prev.weightKg, reps: prev.reps };
   if (lastWorkout) return lastWorkout;
   return { weightKg: 0, reps: planned.repsMax };
@@ -64,7 +64,7 @@ export function setLine(setNumber: number, total: number, weightKg: number, reps
 }
 
 /** Total volume (weight × reps) of a list of sets, in kg. */
-export const volumeKg = (sets: readonly LoggedSet[]): number => sets.reduce((t, s) => t + s.weightKg * s.reps, 0);
+export const volumeKg = (sets: readonly LoggedSet[]): number => sets.reduce((t, s) => (s.warmup ? t : t + s.weightKg * s.reps), 0);
 
 export interface HistoryRow {
   exercise_id: string;
