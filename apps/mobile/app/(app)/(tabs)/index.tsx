@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WEEKDAY_LABELS, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
 import { en } from '../../../src/copy/en';
@@ -7,13 +8,15 @@ import { loadEaten, saveEaten } from '../../../src/home/eaten';
 import { PlanGate } from '../../../src/home/PlanGate';
 import type { PlanData } from '../../../src/home/usePlanData';
 import { useTheme } from '../../../src/theme';
-import { Button, Card, ListItem, StatTile, Text, useToast } from '../../../src/ui';
+import { useWorkout } from '../../../src/workout/WorkoutProvider';
+import { Button, Card, ListItem, StatTile, Text } from '../../../src/ui';
 
 const t = en.home;
 
 function Today({ data }: { data: PlanData }) {
   const { colors, spacing, radius } = useTheme();
-  const toast = useToast();
+  const router = useRouter();
+  const { active, start } = useWorkout();
   const now = useMemo(() => new Date(), []);
   const day = dateKey(now);
   const [eaten, setEaten] = useState<number[]>([]);
@@ -47,7 +50,15 @@ function Today({ data }: { data: PlanData }) {
             {workout.exercises.map((e) => (
               <ListItem key={e.slug} title={e.name} subtitle={`${e.sets} × ${e.reps}`} />
             ))}
-            <Button label={t.startWorkout} onPress={() => toast.show(t.workoutSoon)} />
+            <Button
+              label={active && !active.finishedAt ? en.workout.resume : t.startWorkout}
+              onPress={async () => {
+                if (!active || active.finishedAt) {
+                  await start({ dayName: workout.dayName, exercises: workout.exercises.map((e) => ({ slug: e.slug, name: e.name, sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, restSeconds: e.restSeconds })) });
+                }
+                router.push('/workout');
+              }}
+            />
           </Card>
         ) : workout?.kind === 'rest' ? (
           <Card style={{ gap: spacing.sm }}>

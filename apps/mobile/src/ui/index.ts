@@ -10,3 +10,4 @@ export { StatTile } from './StatTile';
 export { Text } from './Text';
 export { ToastProvider, useToast } from './Toast';
 export { TextField } from './TextField';
+export { Stepper } from './Stepper';
