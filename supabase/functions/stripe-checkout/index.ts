@@ -1,4 +1,4 @@
-// Edge Function: stripe-checkout. POST { priceKey, founding? } with the user's JWT -> { url } of a Stripe Checkout page (web).
+// Edge Function: stripe-checkout. POST { priceKey, founding?, returnTo? } with the user's JWT -> { url } of a Stripe Checkout page (web).
 // Prices are resolved by lookup_key (see packages/shared/src/payments/pricing.ts); the trial applies to annual plans only.
 import { createClient } from '@supabase/supabase-js';
 import { FOUNDING_COUPON, type PlanPriceRow, priceByKey, resolvePrices, stripeClient } from '../../../packages/shared/src/payments/index.ts';
@@ -15,7 +15,7 @@ Deno.serve(withCors(async (req) => {
   const user = auth.user;
   if (!user) return json(401, { error: 'Sign in to continue.' });
 
-  const body = (await req.json().catch(() => null)) as { priceKey?: string; founding?: boolean } | null;
+  const body = (await req.json().catch(() => null)) as { priceKey?: string; founding?: boolean; returnTo?: string } | null;
   const spec = body?.priceKey ? priceByKey(body.priceKey) : undefined;
   if (!spec) return json(400, { error: 'Pick a plan.' });
   const founding = body?.founding === true && spec.lookupKey === FOUNDING_COUPON.lookupKey;
@@ -50,7 +50,8 @@ Deno.serve(withCors(async (req) => {
     subscription_data: { metadata: { user_id: user.id, price_variant: row?.variant ?? 'default' }, trial_period_days: spec.trialDays > 0 ? spec.trialDays : undefined },
     discounts: founding ? [{ coupon: FOUNDING_COUPON.id }] : undefined,
     success_url: `${appUrl}/?checkout=success`,
-    cancel_url: `${appUrl}/paywall`,
+    // Cancelling from the account modal (E-62) comes back to it; from the paywall page, back to the paywall.
+    cancel_url: body?.returnTo === 'account_modal' ? `${appUrl}/?checkout=cancelled` : `${appUrl}/paywall`,
   });
   return json(200, { url: session.url });
 }, () => originsFromEnv((k) => Deno.env.get(k))));

@@ -37,6 +37,12 @@ export function resolvePrices(rows: readonly PlanPriceRow[], userId: string): { 
   return { variant, prices: byVariant.get(variant)! };
 }
 
+/** The cheapest monthly price in a price set ("Plans from $X a month"), or null when there is none. */
+export function lowestMonthlyCents(prices: readonly PlanPriceRow[]): number | null {
+  const monthly = prices.filter((p) => p.active && p.interval === 'month').map((p) => p.cents);
+  return monthly.length ? Math.min(...monthly) : null;
+}
+
 export const formatUsd = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 /** Price per day for the paywall ("$0.82/day"): monthly over 30.4 days, annual over 365. */
