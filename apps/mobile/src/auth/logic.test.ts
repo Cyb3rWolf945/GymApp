@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanCode, isValidCode, isValidEmail, isValidPassword, normalizeEmail, parseAuthCallback, resendWait } from './logic';
+import { cleanCode, isValidCode, isValidEmail, isValidPassword, normalizeEmail, parseAuthCallback, resendWait, visibleProviders } from './logic';
 
 describe('validators', () => {
   it('email', () => {
@@ -67,5 +67,16 @@ describe('parseAuthCallback', () => {
     expect(parseAuthCallback('')).toEqual({});
     expect(parseAuthCallback('not a url')).toEqual({});
     expect(parseAuthCallback('https://a.test/auth?code=')).toEqual({});
+  });
+});
+
+describe('visibleProviders (App Store rule)', () => {
+  it('shows Apple on iOS whenever Google is shown', () => {
+    expect(visibleProviders({ google: true, apple: false }, 'ios')).toEqual({ google: true, apple: true });
+  });
+  it('uses the flags as set elsewhere', () => {
+    expect(visibleProviders({ google: true, apple: false }, 'android')).toEqual({ google: true, apple: false });
+    expect(visibleProviders({ google: false, apple: false }, 'web')).toEqual({ google: false, apple: false });
+    expect(visibleProviders({ google: false, apple: true }, 'ios')).toEqual({ google: false, apple: true });
   });
 });

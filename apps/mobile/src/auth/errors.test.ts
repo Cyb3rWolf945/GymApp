@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { authCopy } from './copy';
-import { mapAuthError, mapCodeError } from './errors';
+import { mapAuthError, mapCodeError, mapOAuthError } from './errors';
 
 describe('mapAuthError', () => {
   it.each([
@@ -58,5 +58,20 @@ describe('mapCodeError', () => {
   });
   it('still reports a rate limit as a rate limit', () => {
     expect(mapCodeError({ code: 'over_request_rate_limit' }).kind).toBe('rate_limit');
+  });
+});
+
+describe('mapOAuthError', () => {
+  it('says which way to log in when the email already has an account', () => {
+    for (const code of ['email_exists', 'user_already_exists']) expect(mapOAuthError({ code })).toEqual({ kind: 'other_method', message: authCopy.errors.otherMethod });
+    expect(mapOAuthError({ message: 'A user with this email address has already been registered' }).kind).toBe('other_method');
+  });
+  it('says the account is linked elsewhere, and when linking is off', () => {
+    expect(mapOAuthError({ code: 'identity_already_exists' }).kind).toBe('identity_in_use');
+    expect(mapOAuthError({ code: 'manual_linking_disabled' }).kind).toBe('linking_off');
+  });
+  it('falls back to the normal mapping', () => {
+    expect(mapOAuthError({ code: 'provider_disabled' }).kind).toBe('provider_disabled');
+    expect(mapOAuthError(null).kind).toBe('unknown');
   });
 });

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import { authCopy } from './copy';
 import {
@@ -9,14 +8,18 @@ import {
   resendConfirmation,
   sendEmailCode,
   sendPasswordReset,
+  saveAppleName,
   signInWithAppleToken,
+  signInWithGoogleToken,
   signInWithOAuth,
   signInWithPassword,
   signUpWithPassword,
   verifyEmailCode,
 } from './authService';
 import type { AuthErrorKind } from './errors';
-import { cleanCode } from './logic';
+import { cleanCode, visibleProviders } from './logic';
+import { nativeApple, nativeGoogle, googleNativeConfigured } from './nativeSignIn';
+import { ProviderButton } from './ProviderButton';
 import { authRedirect, oauthEnabled } from './redirects';
 import { useResendWait } from './useCountdown';
 import { isSupabaseConfigured, supabase } from '../supabase';
@@ -126,25 +129,36 @@ export function SignInForm({ initialMode = 'signUp', onMethod, showHeading = tru
     if (r?.ok) setNotice(authCopy.resetSent);
   };
 
-  const onOAuth = (provider: OAuthProvider) => {
-    onMethod?.(provider);
-    return run(() => signInWithOAuth(supabase, provider, authRedirect('auth'), isWeb ? undefined : openAuthSession));
-  };
-  // Native iOS uses the system Sign in with Apple sheet; web/Android use the OAuth flow.
-  const onApple = () => {
-    if (Platform.OS !== 'ios') return onOAuth('apple');
-    onMethod?.('apple');
+  const browserOAuth = (provider: OAuthProvider) => run(() => signInWithOAuth(supabase, provider, authRedirect('auth'), isWeb ? undefined : openAuthSession));
+
+  // Google: the phone's account picker when it is set up, otherwise the browser flow (web and fallback).
+  const onGoogle = () => {
+    onMethod?.('google');
+    if (isWeb || !googleNativeConfigured) return browserOAuth('google');
     return run(async () => {
-      try {
-        const cred = await AppleAuthentication.signInAsync({
-          requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
-        });
-        return signInWithAppleToken(supabase, cred.identityToken);
-      } catch {
-        return { ok: false as const, error: authCopy.genericError };
-      }
+      const r = await nativeGoogle();
+      if (r.status === 'cancelled') return { ok: true as const }; // backed out: no error
+      return r.status === 'ok' ? signInWithGoogleToken(supabase, r.idToken) : { ok: false as const, error: authCopy.genericError };
     });
   };
+  // Apple: the system sheet on iOS (hashed nonce to Apple, raw nonce to Supabase); the browser flow elsewhere.
+  const onApple = () => {
+    onMethod?.('apple');
+    if (Platform.OS !== 'ios') return browserOAuth('apple');
+    return run(async () => {
+      const r = await nativeApple();
+      if (r.status === 'cancelled') return { ok: true as const };
+      if (r.status === 'error') return { ok: false as const, error: authCopy.genericError };
+      const result = await signInWithAppleToken(supabase, r.identityToken, r.rawNonce);
+      if (result.ok) {
+        // Apple sends the name only now, on the first sign-in: keep it.
+        const { data } = await supabase.auth.getUser();
+        if (data.user) await saveAppleName(supabase, data.user.id, r.fullName);
+      }
+      return result;
+    });
+  };
+  const providers = visibleProviders(oauthEnabled, Platform.OS);
 
   const emailField = (
     <TextField
@@ -279,10 +293,10 @@ export function SignInForm({ initialMode = 'signUp', onMethod, showHeading = tru
         <Button label={authCopy.codeOption} variant="ghost" onPress={() => go('code')} />
       </View>
 
-      {oauthEnabled.google || oauthEnabled.apple ? (
+      {providers.google || providers.apple ? (
         <View style={{ gap: 8 }}>
-          {oauthEnabled.google ? <Button label={authCopy.google} variant="secondary" disabled={busy} onPress={() => void onOAuth('google')} /> : null}
-          {oauthEnabled.apple ? <Button label={authCopy.apple} variant="secondary" disabled={busy} onPress={() => void onApple()} /> : null}
+          {providers.google ? <ProviderButton provider="google" label={authCopy.google} disabled={busy} onPress={() => void onGoogle()} /> : null}
+          {providers.apple ? <ProviderButton provider="apple" label={authCopy.apple} disabled={busy} onPress={() => void onApple()} /> : null}
         </View>
       ) : null}
     </View>
