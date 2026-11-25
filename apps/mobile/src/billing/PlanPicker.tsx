@@ -136,6 +136,7 @@ export function usePlanPicker({ placement, mode, initial = DEFAULT_SELECTION, on
               key={tier}
               accessibilityRole="radio"
               accessibilityState={{ checked: isChosen }}
+              aria-checked={isChosen}
               accessibilityLabel={t.chosen(t.plans[tier].name, interval === 'month' ? t.monthly : t.annual)}
               onPress={() => setSelection((s) => ({ ...s, tier }))}
             >

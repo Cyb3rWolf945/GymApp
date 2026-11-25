@@ -86,6 +86,8 @@ test('Escape closes step 2 and leaves "Choose a plan"; the button brings it back
   // Tapping outside does not close it.
   await page.mouse.click(2, 2);
   await expect(planDialog(page)).toBeVisible();
+  // (Escape is heard by whatever has focus inside the dialog; the click outside moved focus away, so put it back.)
+  await planDialog(page).focus();
   await page.keyboard.press('Escape');
   await expect(planDialog(page)).toHaveCount(0);
   await expect(button(page, g.planCta)).toBeVisible();
