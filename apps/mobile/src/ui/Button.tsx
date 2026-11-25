@@ -16,7 +16,7 @@ interface Props extends Omit<PressableProps, 'children' | 'style'> {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Button({ label, variant = 'primary', loading = false, disabled, onPressIn, onPressOut, ...rest }: Props) {
-  const { colors, radius, spacing, minTapTarget } = useTheme();
+  const { colors, radius, spacing, minTapTarget, scheme } = useTheme();
   const reduced = useReducedMotion();
   const press = useRef(new Animated.Value(0)).current; // 0 = resting, 1 = pressed in
   const inactive = disabled || loading;
@@ -42,6 +42,8 @@ export function Button({ label, variant = 'primary', loading = false, disabled, 
         styles.base,
         { backgroundColor: bg, minHeight: Math.max(minTapTarget, 52), borderRadius: radius.md, paddingHorizontal: spacing.xl },
         variant === 'secondary' && { borderWidth: 1, borderColor: colors.border },
+        // A soft glow in the brand colour under the main button (dark only: on light it would look dirty).
+        variant === 'primary' && !inactive && scheme === 'dark' && { boxShadow: '0 6px 20px rgba(198,255,61,0.22)' },
         {
           // Pressed: shrink a little (not with reduced motion) and dim a little.
           opacity: Animated.multiply(press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }), inactive ? 0.5 : 1),

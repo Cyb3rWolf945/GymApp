@@ -1,5 +1,6 @@
 import type { ComponentRef, ReactNode, Ref } from 'react';
 import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH, type ContentVariant, SCREEN_PADDING, useBreakpoint, useTheme } from '../theme';
 
@@ -54,6 +55,8 @@ export function Screen({ variant = 'reading', scroll = true, center = false, fra
     ) : null;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* A soft glow of the secondary accent behind the top of the screen: depth, not decoration you read. */}
+      <LinearGradient pointerEvents="none" colors={[...colors.gradient.glow]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }} />
       {edge(header, true)}
       {scroll ? (
         <ScrollView

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_TAP_TARGET, contrastRatio, createTheme, palettes, spacing, typography } from './tokens';
+import { MIN_TAP_TARGET, contrastRatio, createTheme, elevations, fonts, palettes, radius, spacing, typography } from './tokens';
 
 describe('theme tokens', () => {
   it('dark and light palettes define the same keys', () => {
     expect(Object.keys(palettes.light).sort()).toEqual(Object.keys(palettes.dark).sort());
   });
   it('dark is the default look and keeps the brand accent', () => {
-    expect(createTheme('dark').colors.background).toBe('#0B0B0F');
+    expect(createTheme('dark').colors.background).toBe('#0A0B10');
     expect(palettes.dark.accent).toBe('#C6FF3D');
   });
   it.each(['dark', 'light'] as const)('%s: text and button contrast meet WCAG AA (4.5:1)', (scheme) => {
@@ -58,4 +58,56 @@ it('the dark and light palettes are different looks, each with a clear step betw
     const c = palettes[scheme];
     expect(new Set([c.background, c.surface, c.surfaceAlt]).size).toBe(3);
   }
+});
+
+// Identity v2 (#138): secondary accent, gradients, elevation, type scale, 8-pt spacing.
+describe.each(['dark', 'light'] as const)('%s palette: identity v2', (scheme) => {
+  const c = palettes[scheme];
+  it('the secondary accent reads as text on every surface, and text on it is readable', () => {
+    for (const bg of [c.background, c.surface, c.surfaceAlt]) expect(contrastRatio(c.accent2, bg), `accent2 on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(c.onAccent2, c.accent2)).toBeGreaterThanOrEqual(4.5);
+  });
+  it('the brand gradient ends are both clearly visible on the page (3:1, they are fills, not text)', () => {
+    for (const stop of c.gradient.brand) expect(contrastRatio(stop, c.background), `${stop} on page`).toBeGreaterThanOrEqual(3);
+  });
+  it('gradients have two stops each and the glow fades to the page colour', () => {
+    for (const g of Object.values(c.gradient)) expect(g).toHaveLength(2);
+    expect(c.gradient.glow[1]).toMatch(/^rgba\(\d+,\s*\d+,\s*\d+,\s*0\)$/);
+  });
+  it('elevation grows: flat, then each level has a stronger shadow', () => {
+    const e = elevations[scheme];
+    expect(e.none).toEqual({});
+    const blur = (s?: string) => Math.max(...(s ?? '').match(/\d+px rgba/g)!.map((m) => parseInt(m, 10)));
+    expect(blur(e.low.boxShadow)).toBeLessThan(blur(e.mid.boxShadow));
+    expect(blur(e.mid.boxShadow)).toBeLessThan(blur(e.high.boxShadow));
+  });
+});
+
+describe('identity v2: type, spacing and radius', () => {
+  it('spacing is on the 8-pt grid: everything but the half and in-between steps is a multiple of 8', () => {
+    for (const [name, v] of Object.entries(spacing)) {
+      if (name === 'xs' || name === 'md') expect(v % 4, name).toBe(0);
+      else expect(v % 8, name).toBe(0);
+    }
+  });
+  it('radius grows and the pill is fully round', () => {
+    const r = [radius.sm, radius.md, radius.lg, radius.xl];
+    expect([...r].sort((a, b) => a - b)).toEqual(r);
+    expect(radius.pill).toBeGreaterThanOrEqual(999);
+  });
+  it('every text style names one of the loaded fonts, has no fontWeight (a family per weight) and a line height on a 4-pt grid', () => {
+    const families = new Set<string>(Object.values(fonts));
+    for (const [name, t] of Object.entries(typography)) {
+      expect(families.has(t.fontFamily), name).toBe(true);
+      expect(t, name).not.toHaveProperty('fontWeight');
+      expect(t.lineHeight % 4, name).toBe(0);
+      expect(t.lineHeight, name).toBeGreaterThan(t.fontSize);
+    }
+  });
+  it('the character face is for display, titles and headings; reading text uses the UI face', () => {
+    expect(typography.display.fontFamily).toBe(fonts.displayBold);
+    expect(typography.heading.fontFamily).toBe(fonts.displaySemiBold);
+    expect(typography.body.fontFamily).toBe(fonts.uiRegular);
+    expect(typography.bodyStrong.fontFamily).toBe(fonts.uiSemiBold);
+  });
 });
