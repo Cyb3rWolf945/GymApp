@@ -87,3 +87,23 @@ test.describe('responsive main tabs', () => {
     await expect.poll(width).toBeGreaterThan(narrow + 100);
   });
 });
+
+// E-57: the same sweep with the OS (and so Appearance: System) in light mode, one route per tab.
+test.describe('responsive main tabs in light mode', () => {
+  test.use({ colorScheme: 'light' });
+  const scheme = (page: Page) => page.evaluate(() => ({ scheme: document.documentElement.dataset.scheme, bg: getComputedStyle(document.documentElement).backgroundColor }));
+
+  test('every tab draws in the light theme, with no horizontal scrolling at phone, tablet and desktop widths', async ({ page }) => {
+    await signedInWithPlan(page);
+    for (const tab of TABS) {
+      for (const width of [390, 768, 1366]) {
+        await page.setViewportSize({ width, height: 900 });
+        await openTab(page, tab);
+        await expect(page.getByRole('tab', { name: tab, exact: true })).toHaveAttribute('aria-selected', 'true');
+        await page.waitForTimeout(100);
+        expect(await overflowX(page), `${tab} at ${width}px`).toBeLessThanOrEqual(0);
+      }
+      expect(await scheme(page), tab).toEqual({ scheme: 'light', bg: 'rgb(246, 246, 248)' });
+    }
+  });
+});

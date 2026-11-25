@@ -21,6 +21,9 @@ export default defineConfig({
     // Animations are tested on their own (tests/motion.spec.ts); everywhere else the app runs with reduced motion, so
     // nothing is caught mid-transition.
     reducedMotion: 'reduce',
+    // The app's Appearance default is System. Pin the browser to dark so the suite keeps testing the dark look; light is
+    // tested on its own (tests/appearance.spec.ts and the light sweep in responsive-tabs.spec.ts).
+    colorScheme: 'dark',
     // Set CHROMIUM_PATH to use a browser that is already installed instead of Playwright's own download.
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
   },
