@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, View } from 'react-native';
 import {
   type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
   e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, trendChange, trendLifts, weightTrend,
@@ -11,7 +10,7 @@ import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, Text, TextField, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
 const p = t.progress;
@@ -111,12 +110,12 @@ export default function ProgressScreen() {
   const empty = rows !== null && rows.length === 0 && weights.length === 0 && sets.records.length === 0 && !failed;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl, flexGrow: 1 }}>
+    <Screen variant="dashboard" style={{ flexGrow: 1 }}>
         <Text variant="display">{t.progressTitle}</Text>
         {rows === null ? <ActivityIndicator color={colors.accent} /> : null}
         {failed ? <Text tone="danger" accessibilityRole="alert">{p.loadError}</Text> : null}
 
+        <ResponsiveGrid gap={spacing.xl} columns={{ expanded: 2 }}>
         {rows !== null ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.weightTitle}</Text>
@@ -202,6 +201,7 @@ export default function ProgressScreen() {
             )}
           </Card>
         ) : null}
+        </ResponsiveGrid>
 
         {empty ? (
           <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -217,8 +217,6 @@ export default function ProgressScreen() {
             ))}
           </Card>
         ) : null}
-      </ScrollView>
-
       <BottomSheet visible={!!detail} onClose={() => setSelected(null)} title={selected ? muscleLabel(selected) : undefined} closeLabel={en.common.close}>
         {detail ? (
           <>
@@ -232,6 +230,6 @@ export default function ProgressScreen() {
           </>
         ) : null}
       </BottomSheet>
-    </SafeAreaView>
+    </Screen>
   );
 }

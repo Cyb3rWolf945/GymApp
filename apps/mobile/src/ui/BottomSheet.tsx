@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, View } from 'react-native';
-import { useTheme } from '../theme';
+import { useBreakpoint, useTheme } from '../theme';
 import { Text } from './Text';
 
 interface Props {
@@ -14,6 +14,24 @@ interface Props {
 
 export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', children }: Props) {
   const { colors, radius, spacing } = useTheme();
+  const dialog = useBreakpoint() === 'expanded';
+  if (dialog) {
+    // Wide screens: a centred dialog with a capped width instead of a sheet stuck to the bottom edge.
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} />
+          <View
+            accessibilityViewIsModal
+            style={{ width: '100%', maxWidth: 520, maxHeight: '90%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.lg }}
+          >
+            {title ? <Text variant="heading">{title}</Text> : null}
+            {children}
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={{ flex: 1, backgroundColor: colors.overlay }} />

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LEGAL_KINDS } from '@gymapp/shared';
 import { deleteAccount, deliverExport, fetchExport } from '../../../src/account/api';
 import { signOut } from '../../../src/auth/authService';
@@ -11,14 +10,14 @@ import { en } from '../../../src/copy/en';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, ListItem, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, ListItem, Screen, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const d = t.data;
 
 export default function SettingsScreen() {
   const { user } = useAuth();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const router = useRouter();
   const toast = useToast();
   const push = usePushReminders();
@@ -54,8 +53,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
+    <Screen variant="reading">
         <Text variant="display">{t.settingsTitle}</Text>
         <Card style={{ gap: spacing.sm }}>
           <Text variant="small" tone="muted">{t.account}</Text>
@@ -96,14 +94,12 @@ export default function SettingsScreen() {
 
         <Text variant="small" tone="muted">{en.health.disclaimer}</Text>
         <Button label={authCopy.signOut} variant="secondary" onPress={() => void signOut(supabase)} />
-      </ScrollView>
-
       <BottomSheet visible={confirming} onClose={() => !deleting && setConfirming(false)} title={d.deleteTitle} closeLabel={en.common.close}>
         <Text tone="muted">{d.deleteBody}</Text>
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
         <Button label={d.deleteConfirm} variant="danger" loading={deleting} onPress={() => void deleteMyAccount()} />
         <Button label={d.deleteCancel} variant="secondary" disabled={deleting} onPress={() => setConfirming(false)} />
       </BottomSheet>
-    </SafeAreaView>
+    </Screen>
   );
 }
