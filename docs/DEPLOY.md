@@ -110,3 +110,9 @@ Do this only after you have asked for and given approval in the "MVP status" iss
 - **Database:** migrations are forward-only. Fix forward with a new migration; for a bad data change restore from the
   Supabase backup (point in time recovery).
 - **AI costs spiking:** unset `MODEL_PROFILE` in the function secrets (back to the free models), or rotate the OpenRouter key.
+
+### Weekly plan adaptation (Elite)
+Migration `20261125000025_weekly_adapt.sql` schedules `weekly-adapt` with pg_cron (Mondays 06:00 UTC) through `run_weekly_adapt()`. Owner steps:
+1. Deploy `weekly-adapt` and `generate-plan` (`deploy-functions.sh`).
+2. In Vault, add the secrets `functions_url` (`https://<ref>.supabase.co/functions/v1`) and `service_role_key`.
+3. Production only: `alter database postgres set app.environment = 'production';`, then re-run the `do $$ … cron.schedule …` block (or `select cron.alter_job((select jobid from cron.job where jobname='weekly-adapt'), active := true);`). Everywhere else the schedule stays disabled.

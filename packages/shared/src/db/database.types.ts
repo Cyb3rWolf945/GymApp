@@ -291,6 +291,9 @@ export type Database = {
           created_at: string;
           finished_at: string | null;
           needs_review: boolean;
+          source: string;
+          adapt_week: string | null;
+          adapt_state: string | null;
         };
         Insert: {
           id?: string;
@@ -303,6 +306,9 @@ export type Database = {
           created_at?: string;
           finished_at?: string | null;
           needs_review?: boolean;
+          source?: string;
+          adapt_week?: string | null;
+          adapt_state?: string | null;
         };
         Update: Partial<Database['public']['Tables']['generation_jobs']['Insert']>;
       };
@@ -539,6 +545,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           attribution: Json;
+          weekly_adapt: boolean;
         };
         Insert: {
           user_id: string;
@@ -555,6 +562,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           attribution?: Json;
+          weekly_adapt?: boolean;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };

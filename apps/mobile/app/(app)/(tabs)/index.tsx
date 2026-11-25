@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { WEEKDAY_LABELS, WorkoutPlanSchema, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
 import { PastDueBanner } from '../../../src/billing/PastDueBanner';
 import { WeeklyCheckinCard } from '../../../src/checkin/WeeklyCheckinCard';
+import { WeeklyChangesCard } from '../../../src/plan/WeeklyChangesCard';
 import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
@@ -50,6 +51,7 @@ function Today({ data }: { data: PlanData }) {
       <Text variant="display">{t.title}</Text>
       <PastDueBanner />
       <PlanOutdatedCard />
+      <WeeklyChangesCard />
       <WeeklyCheckinCard workoutDays={plannedDays} preferredDays={data.preferredDays} />
       {/* Workout and meals side by side from `medium` up, stacked on phones. */}
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>

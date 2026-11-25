@@ -73,7 +73,7 @@ export interface PushMessage {
   data: { url: string };
 }
 
-export const pushMessage = (token: string, body: string): PushMessage => ({ to: token, body, sound: 'default', data: { url: '/' } });
+export const pushMessage = (token: string, body: string, url = '/'): PushMessage => ({ to: token, body, sound: 'default', data: { url } });
 
 export function chunkMessages<T>(messages: readonly T[], size = EXPO_BATCH_SIZE): T[][] {
   const out: T[][] = [];

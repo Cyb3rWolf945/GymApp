@@ -6,3 +6,4 @@ export * from './swaps.ts';
 export * from './meals.ts';
 export * from './shopping.ts';
 export * from './diff.ts';
+export * from './weeklyAdapt.ts';

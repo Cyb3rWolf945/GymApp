@@ -8,6 +8,7 @@ import { useAuth } from '../../../src/auth/AuthProvider';
 import { authCopy } from '../../../src/auth/copy';
 import { SignInMethods } from '../../../src/auth/SignInMethods';
 import { en } from '../../../src/copy/en';
+import { useWeeklyAdaptSetting } from '../../../src/plan/weekly';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
@@ -22,6 +23,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const toast = useToast();
   const push = usePushReminders();
+  const weekly = useWeeklyAdaptSetting();
   const [exporting, setExporting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -60,6 +62,16 @@ export default function SettingsScreen() {
           <Text variant="small" tone="muted">{t.account}</Text>
           <Text variant="bodyStrong">{user?.email ?? ''}</Text>
         </Card>
+
+        {weekly.enabled !== null ? (
+          <Card style={{ gap: spacing.sm }}>
+            <Text variant="heading">{t.weekly.settingsTitle}</Text>
+            <Text tone="muted">{t.weekly.settingsBody}</Text>
+            {weekly.enabled ? <Text variant="small" tone="accent">{t.weekly.enabledNote}</Text> : null}
+            <Button label={weekly.enabled ? t.weekly.off : t.weekly.on} variant="secondary" loading={weekly.busy} onPress={() => void weekly.toggle()} />
+            {weekly.error ? <Text tone="danger" accessibilityRole="alert">{t.weekly.error}</Text> : null}
+          </Card>
+        ) : null}
 
         <Card style={{ gap: spacing.sm }}>
           <Text variant="heading">{t.reminders.title}</Text>

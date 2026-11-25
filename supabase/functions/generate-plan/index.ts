@@ -17,6 +17,7 @@ import {
   runPipeline,
   knownSwapSignals,
   formatUserHistory,
+  adaptWeek,
   UserHistorySchema,
   buildUpdateSummary,
   getRuntimeModelProfile,
@@ -24,6 +25,7 @@ import {
   guardrailRow,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
+import { EXPO_PUSH_URL, EXPO_TOKEN_PATTERN, pushMessage } from '../../../packages/shared/src/notifications/index.ts';
 import { originsFromEnv, resolveCaller, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
@@ -84,7 +86,9 @@ Deno.serve(withCors(async (req) => {
 
   // Tier and quota rules (E-18): see decideGeneration. Everything is decided here, never in the app.
   // An admin regenerating a plan for support is not held to the user's tier or quota (the action is audited there).
-  const decision = adminOverride ? ({ allow: true } as const) : decideGeneration(ent as never, kind, jobs, month ?? []);
+  // The weekly adaptation (E-54, service key + source 'weekly') is held to the user's tier and quota like any other run.
+  const weekly = adminOverride && body?.source === 'weekly';
+  const decision = adminOverride && !weekly ? ({ allow: true } as const) : decideGeneration(ent as never, kind, jobs, month ?? []);
   if (!decision.allow) {
     const error = {
       needs_trial: 'Start your trial to generate plans.',
@@ -94,20 +98,23 @@ Deno.serve(withCors(async (req) => {
     return json(403, { error, reason: decision.reason });
   }
 
+  const week = weekly ? adaptWeek(new Date()) : null;
   const { data: job, error: jobErr } = await admin
     .from('generation_jobs')
-    .insert({ user_id: user.id, kind, status: 'queued' })
+    .insert({ user_id: user.id, kind, status: 'queued', ...(weekly ? { source: 'weekly', adapt_week: week, adapt_state: 'new' } : {}) })
     .select('id')
     .single();
+  // A second weekly run for the same week hits the unique index: nothing to do.
+  if (weekly && jobErr?.code === '23505') return json(200, { skipped: 'already_ran' });
   if (jobErr || !job) return json(500, { error: 'Could not start the job.' });
 
   // "Update my plan": regenerate through the same pipeline and keep a diff against the previous plan.
-  const update = body?.update === true;
-  EdgeRuntime.waitUntil(run(admin, user.id, job.id, kind, update));
+  const update = body?.update === true || weekly;
+  EdgeRuntime.waitUntil(run(admin, user.id, job.id, kind, update, week));
   return json(202, { jobId: job.id });
 }, () => originsFromEnv((k) => Deno.env.get(k))));
 
-async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false) {
+async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
   const fail = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId);
   try {
@@ -178,6 +185,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
         .eq('kind', kind)
         .eq('status', 'done')
         .neq('id', jobId)
+        .or('adapt_state.is.null,adapt_state.neq.reverted')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -218,8 +226,33 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
         finished_at: new Date().toISOString(),
       })
       .eq('id', jobId);
+    if (adaptOfWeek) await notifyWeekly(admin, userId, adaptOfWeek);
   } catch (e) {
     // Keep errors generic: they can echo model output.
     await fail(e instanceof PlanInputError ? 'Profile is incomplete.' : 'Generation failed. Try again.');
+  }
+}
+
+// Weekly adaptation: one push when both new plans of the week are ready (best effort, never blocks the plan).
+async function notifyWeekly(admin: ReturnType<typeof createClient>, userId: string, week: string) {
+  try {
+    const { data: done } = await admin.from('generation_jobs').select('kind').eq('user_id', userId).eq('adapt_week', week).eq('status', 'done');
+    if (new Set((done ?? []).map((j: { kind: string }) => j.kind)).size < 2) return;
+    const { data: tokens } = await admin.from('push_tokens').select('token').eq('user_id', userId).eq('enabled', true);
+    const messages = ((tokens ?? []) as { token: string }[])
+      .filter((t) => EXPO_TOKEN_PATTERN.test(t.token))
+      .map((t) => pushMessage(t.token, 'Your plan was updated for this week. See what changed.', '/weekly-changes'));
+    if (messages.length === 0) return;
+    await fetch(EXPO_PUSH_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(Deno.env.get('EXPO_ACCESS_TOKEN') ? { Authorization: `Bearer ${Deno.env.get('EXPO_ACCESS_TOKEN')}` } : {}),
+      },
+      body: JSON.stringify(messages),
+    });
+  } catch {
+    // A failed push never affects the plan.
   }
 }
