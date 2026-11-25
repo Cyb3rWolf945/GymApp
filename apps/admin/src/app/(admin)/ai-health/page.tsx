@@ -44,7 +44,7 @@ export default async function AiHealthPage() {
     <>
       <PageHeader title="AI health">Last {DAYS} days. Rates are over finished generations (a workout or a meal plan each).</PageHeader>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tile('Generations', String(g.done), `${g.failed} failed of ${g.jobs} started`)}
         {tile('First-pass rate', pct(g.firstPassRate), 'passed validation and QA first time')}
         {tile('Retry rate', pct(g.retryRate), 'needed more than one attempt')}

@@ -19,7 +19,7 @@ export default async function EngagementPage() {
         Aggregates only, no individual users. A user is active on a day if they started a workout or did something in the app (UTC days).
       </PageHeader>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card><CardTitle>DAU (today)</CardTitle><CardValue>{summary.dau}</CardValue></Card>
         <Card><CardTitle>WAU (last 7 days)</CardTitle><CardValue>{summary.wau}</CardValue></Card>
         <Card><CardTitle>Workouts per day (30 days)</CardTitle><CardValue>{summary.workoutsPerDay}</CardValue></Card>

@@ -55,7 +55,7 @@ export default async function UserPage({ params, searchParams }: { params: Promi
       ) : null}
 
       <h2 className="mb-3 text-lg font-semibold text-neutral-50">Account</h2>
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {fact('Signed up', day(d.user.created_at))}
         {fact('Last sign-in', day(d.user.last_sign_in_at))}
         {fact('Plan', `${ent?.tier ?? 'none'} (${ent?.status ?? 'none'})`)}
@@ -63,7 +63,7 @@ export default async function UserPage({ params, searchParams }: { params: Promi
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-neutral-50">Onboarding profile</h2>
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {fact('Name', String(p.display_name ?? '–'))}
         {fact('Sex', String(p.sex ?? '–'))}
         {fact('Birth date', day(p.birth_date as string | null))}
@@ -103,14 +103,14 @@ export default async function UserPage({ params, searchParams }: { params: Promi
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-neutral-50">Workouts and adherence</h2>
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {fact('Workouts, last 4 weeks', String(adh.done))}
         {fact('Planned', String(adh.planned))}
         {fact('Adherence', pct(adh.rate))}
       </div>
 
       <h2 className="mb-3 text-lg font-semibold text-neutral-50">Payments</h2>
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {fact('Source', ent?.source ?? '–')}
         {fact('Price', ent?.price_key ?? '–')}
         {fact('Cancels at period end', ent?.cancel_at_period_end ? 'yes' : 'no')}
