@@ -3,7 +3,8 @@
 // "Update my plan" pipeline through generate-plan (source 'weekly'): Planner -> validator -> QA -> guardrails, logged as AI calls.
 // generate-plan applies tier and quota again and marks the jobs `adapt_state = 'new'`; failures never touch the current plan.
 import { createClient } from '@supabase/supabase-js';
-import { adaptEligibility, adaptWeek, startOfMonthUtc, type AdaptSkip } from '../../../packages/shared/src/index.ts';
+import { adaptEligibility, adaptWeek, type AdaptSkip } from '../../../packages/shared/src/plan/weeklyAdapt.ts';
+import { startOfMonthUtc } from '../../../packages/shared/src/payments/gating.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

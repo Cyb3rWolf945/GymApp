@@ -5,7 +5,6 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   type AiCallLog,
-  FeedbackSchema,
   aiCallRow,
   guardrailRow,
   callStructured,
@@ -13,6 +12,7 @@ import {
   getRuntimeModelProfile,
   runGuardrails,
 } from '../../../packages/shared/src/ai/index.ts';
+import { FeedbackSchema } from '../../../packages/shared/src/workout/feedback.ts';
 import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };

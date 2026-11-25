@@ -3,6 +3,7 @@ name: CI
 # Parallel jobs, and only the work a change can affect:
 #   changes      which parts of the repo this change touches
 #   checks       lint, typecheck, unit tests            (any change except docs-only)
+#   functions-boot  import every Edge Function under Deno (any change except docs-only)
 #   admin-build  Next.js build of the admin             (apps/admin, packages/shared, lockfile)
 #   e2e-build    Expo web export, built once            (apps/mobile, apps/e2e, packages/shared, lockfile)
 #   e2e          Playwright, one job per screen size    (needs e2e-build; desktop is split in two)
@@ -86,6 +87,21 @@ jobs:
         run: pnpm typecheck
       - name: Test
         run: pnpm test
+
+  # Imports every Supabase Edge Function under Deno, so a missing export or bad import path fails here
+  # instead of as BOOT_ERROR after deploy (lint/typecheck/vitest don't run the functions under Deno).
+  functions-boot:
+    name: functions-boot
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Boot every Edge Function
+        run: deno run --allow-all --no-lock --config supabase/functions/generate-plan/deno.json scripts/check-functions-boot.ts
 
   admin-build:
     name: admin-build
@@ -179,7 +195,7 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [changes, checks, admin-build, e2e-build, e2e]
+    needs: [changes, checks, functions-boot, admin-build, e2e-build, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs passed or were skipped
