@@ -5,12 +5,14 @@ import {
   type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
   e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, trendChange, trendLifts, weightTrend,
 } from '@gymapp/shared';
+import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { en } from '../../../src/copy/en';
 import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
+import { useWorkout } from '../../../src/workout/WorkoutProvider';
 import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
@@ -33,6 +35,7 @@ export default function ProgressScreen() {
   const { user } = useAuth();
   const { colors, spacing } = useTheme();
   const toast = useToast();
+  const { pending } = useWorkout();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [weights, setWeights] = useState<WeightPoint[]>([]);
   const [sets, setSets] = useState<{ records: SetRecord[]; muscleSets: MuscleSet[] }>({ records: [], muscleSets: [] });
@@ -80,9 +83,11 @@ export default function ProgressScreen() {
       setRows((r) => r ?? []);
     }
   }, [user]);
+  // Load when the screen opens, when you come back to it, and whenever the queue of writes empties (a correction made in a past workout was saved), so records and charts recalculate.
+  useFocusEffect(useCallback(() => void load(), [load]));
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (pending === 0) void load();
+  }, [pending, load]);
 
   const trend = useMemo(() => weightTrend(weights), [weights]);
   const change = trendChange(trend);
@@ -215,7 +220,7 @@ export default function ProgressScreen() {
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{h.title}</Text>
             {rows.map((r) => (
-              <ListItem key={r.id} title={`${r.date} · ${r.title}`} subtitle={h.sessionLine(r.sets, r.volume)} />
+              <ListItem key={r.id} title={`${r.date} · ${r.title}`} subtitle={h.sessionLine(r.sets, r.volume)} onPress={() => router.push(`/history/${r.id}`)} />
             ))}
           </Card>
         ) : null}
