@@ -11,14 +11,18 @@ import {
   extractFreeText,
   runGuardrails,
   callStructured,
+  canGenerate,
   expandEquipment,
   runPipeline,
   getModelProfile,
+  isEntitled,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
 
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
+
+const STALE_JOB_MS = 5 * 60 * 1000;
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -39,9 +43,28 @@ Deno.serve(async (req) => {
   const kind = body?.kind as PlanKind;
   if (!PLAN_KINDS.includes(kind)) return json(400, { error: 'Unknown plan kind.' });
 
-  // Access is always checked server-side.
+  // Access is always checked server-side. Entitled users always; everyone else gets one free
+  // generation per kind (failed jobs do not count), so the plan preview can come before the paywall.
   const { data: ent } = await admin.from('entitlements').select('tier,status').eq('user_id', user.id).maybeSingle();
-  if (!ent || ent.tier === 'none' || !['active', 'trialing'].includes(ent.status)) {
+  const { data: prior } = await admin
+    .from('generation_jobs')
+    .select('id,status,created_at')
+    .eq('user_id', user.id)
+    .eq('kind', kind)
+    .order('created_at', { ascending: false });
+
+  // A job stuck in queued/running for over 5 minutes (the function died) counts as failed.
+  const jobs = (prior ?? []).map((j: { id: string; status: string; created_at: string }) =>
+    (j.status === 'queued' || j.status === 'running') && Date.now() - new Date(j.created_at).getTime() > STALE_JOB_MS
+      ? { ...j, status: 'failed' }
+      : j,
+  );
+
+  // Already on it: return the running job instead of starting another (double taps, reloads).
+  const running = jobs.find((j: { status: string }) => j.status === 'queued' || j.status === 'running');
+  if (running) return json(202, { jobId: running.id });
+
+  if (!canGenerate(isEntitled(ent), jobs).allow) {
     return json(403, { error: 'Start your trial to generate plans.' });
   }
 

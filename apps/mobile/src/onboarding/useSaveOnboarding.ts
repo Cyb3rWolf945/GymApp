@@ -1,24 +1,37 @@
-import { useEffect, useRef } from 'react';
-import { isComplete, toProfileUpdate } from '@gymapp/shared';
+import { useEffect } from 'react';
+import { type PartialAnswers, isComplete, toProfileUpdate } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../supabase';
 import { useOnboarding } from './OnboardingProvider';
+
+const inflight = new Map<string, Promise<boolean>>();
+
+/**
+ * Save the answers to `profiles` (own row, RLS). One save per user at a time, shared by the root hook and the
+ * plan screen, which must wait for the profile before asking for a plan. Returns false on failure.
+ */
+export function saveProfileOnce(userId: string, answers: PartialAnswers): Promise<boolean> {
+  const running = inflight.get(userId);
+  if (running) return running;
+  const p = (async () => {
+    const { error } = await supabase.from('profiles').upsert({ user_id: userId, ...toProfileUpdate(answers) } as never, { onConflict: 'user_id' });
+    return !error;
+  })().finally(() => inflight.delete(userId));
+  inflight.set(userId, p);
+  return p;
+}
 
 /** Once the user is signed in and the answers are complete, save them to `profiles` and drop the local copy. */
 export function useSaveOnboarding(): void {
   const { session } = useAuth();
   const { hydrated, answers, clear } = useOnboarding();
-  const saving = useRef(false);
   const userId = session?.user.id;
 
   useEffect(() => {
-    if (!userId || !hydrated || saving.current || !isComplete(answers)) return;
-    saving.current = true;
-    void (async () => {
-      const { error } = await supabase.from('profiles').upsert({ user_id: userId, ...toProfileUpdate(answers) } as never, { onConflict: 'user_id' });
+    if (!userId || !hydrated || !isComplete(answers)) return;
+    void saveProfileOnce(userId, answers).then((ok) => {
       // On failure keep the local copy: the next launch tries again.
-      if (!error) await clear();
-      saving.current = false;
-    })();
+      if (ok) void clear();
+    });
   }, [userId, hydrated, answers, clear]);
 }
