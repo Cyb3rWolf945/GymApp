@@ -61,6 +61,10 @@ export default function SettingsScreen() {
         </Card>
 
         <Card style={{ gap: spacing.xs }}>
+          <ListItem title={t.memory.link} onPress={() => router.push('/memory')} />
+        </Card>
+
+        <Card style={{ gap: spacing.xs }}>
           <Text variant="heading">{t.legal.title}</Text>
           {LEGAL_KINDS.map((k) => (
             <ListItem key={k} title={t.legal[k]} onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: k } })} />

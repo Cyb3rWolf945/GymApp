@@ -24,6 +24,39 @@ export async function startGeneration(kind: PlanKind): Promise<StartResult> {
 
 export const START_KINDS = PLAN_KINDS;
 
+export type UpdateStart = { result: 'started'; jobId: string } | { result: 'needs_upgrade' } | { result: 'error' };
+
+/** "Update my plan": regenerate one kind through the same pipeline; the server keeps a diff on the new job. */
+export async function startPlanUpdate(kind: PlanKind): Promise<UpdateStart> {
+  const { data, error } = await supabase.functions.invoke('generate-plan', { body: { kind, update: true } });
+  if (error) return (error as { context?: { status?: number } }).context?.status === 403 ? { result: 'needs_upgrade' } : { result: 'error' };
+  const jobId = (data as { jobId?: string } | null)?.jobId;
+  return jobId ? { result: 'started', jobId } : { result: 'error' };
+}
+
+export interface MemoryFact {
+  id: string;
+  fact: string;
+  created_at: string;
+}
+
+/** What the AI remembers about the user (own rows, RLS). */
+export async function fetchMemoryFacts(userId: string): Promise<MemoryFact[]> {
+  const { data, error } = await supabase
+    .from('memory_facts')
+    .select('id,fact,created_at')
+    .eq('user_id', userId)
+    .eq('obsolete', false)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MemoryFact[];
+}
+
+export async function deleteMemoryFact(userId: string, id: string): Promise<boolean> {
+  const { error } = await supabase.from('memory_facts').delete().eq('id', id).eq('user_id', userId);
+  return !error;
+}
+
 /** Server-side answer (`my_access` RPC) to "may this user use this feature?". */
 export async function fetchAccess(feature: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('my_access', { p_feature: feature } as never);
