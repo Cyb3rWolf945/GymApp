@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { COACH_STYLES, LEGAL_KINDS, type CoachStyle } from '@gymapp/shared';
+import { BAR_RANGE, COACH_STYLES, LEGAL_KINDS, PLATE_CHOICES, type CoachStyle } from '@gymapp/shared';
 import { deleteAccount, deliverExport, fetchExport } from '../../../src/account/api';
 import { signOut } from '../../../src/auth/authService';
 import { useAuth } from '../../../src/auth/AuthProvider';
@@ -9,11 +9,12 @@ import { authCopy } from '../../../src/auth/copy';
 import { SignInMethods } from '../../../src/auth/SignInMethods';
 import { en } from '../../../src/copy/en';
 import { useCoachStyle } from '../../../src/coach/useCoachStyle';
+import { usePlateConfig } from '../../../src/workout/plateSettings';
 import { useWeeklyAdaptSetting } from '../../../src/plan/weekly';
 import { usePushReminders } from '../../../src/push/usePushReminders';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
 const d = t.data;
@@ -26,6 +27,10 @@ export default function SettingsScreen() {
   const push = usePushReminders();
   const weekly = useWeeklyAdaptSetting();
   const coach = useCoachStyle();
+  const plates = usePlateConfig();
+  const [barText, setBarText] = useState<string | null>(null);
+  const [pickedPlates, setPickedPlates] = useState<string[] | null>(null);
+  const [plateError, setPlateError] = useState<string | null>(null);
   const [coachError, setCoachError] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -81,6 +86,44 @@ export default function SettingsScreen() {
           />
           <Text variant="small" tone="muted">{en.coach.styles[coach.style].example}</Text>
           {coachError ? <Text tone="danger" accessibilityRole="alert">{en.coach.error}</Text> : null}
+        </Card>
+
+        <Card style={{ gap: spacing.sm }}>
+          <Text variant="heading">{en.plateSettings.title}</Text>
+          <Text tone="muted">{en.plateSettings.body}</Text>
+          <Text variant="bodyStrong">{en.plateSettings.bar(plates.config.unit)}</Text>
+          <TextField
+            value={barText ?? String(plates.config.bar)}
+            onChangeText={setBarText}
+            keyboardType="decimal-pad"
+            accessibilityLabel={en.plateSettings.bar(plates.config.unit)}
+          />
+          <Text variant="bodyStrong">{en.plateSettings.plates(plates.config.unit)}</Text>
+          <ChipGroup
+            multiple
+            options={PLATE_CHOICES[plates.config.unit].map((p) => ({ value: String(p), label: String(p) }))}
+            value={pickedPlates ?? plates.config.plates.map(String)}
+            onChange={setPickedPlates}
+          />
+          {plateError ? <Text tone="danger" accessibilityRole="alert">{plateError}</Text> : null}
+          <Button
+            label={en.common.save}
+            variant="secondary"
+            onPress={() => {
+              const unit = plates.config.unit;
+              const bar = Number((barText ?? String(plates.config.bar)).replace(',', '.'));
+              const picked = (pickedPlates ?? plates.config.plates.map(String)).map(Number);
+              const r = BAR_RANGE[unit];
+              if (!(bar >= r.min && bar <= r.max)) return setPlateError(en.plateSettings.barError(r.min, r.max, unit));
+              if (picked.length === 0) return setPlateError(en.plateSettings.platesError);
+              setPlateError(null);
+              void plates.save({ unit, bar, plates: picked.sort((a, b) => b - a) }).then(() => {
+                setBarText(null);
+                setPickedPlates(null);
+                toast.show(en.plateSettings.saved, 'success');
+              });
+            }}
+          />
         </Card>
 
         {weekly.enabled !== null ? (

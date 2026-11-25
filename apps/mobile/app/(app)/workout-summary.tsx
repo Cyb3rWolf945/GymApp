@@ -29,7 +29,7 @@ export default function WorkoutSummary() {
     const minutes = Math.max(1, Math.round((Date.parse(active.finishedAt ?? new Date().toISOString()) - Date.parse(active.startedAt)) / 60000));
     return {
       prs: detectPRs(active.logged, new Map(Object.entries(active.previousBest))),
-      sets: active.logged.length,
+      sets: active.logged.filter((l) => !l.warmup).length,
       minutes,
       volume: Math.round(volumeKg(active.logged)),
     };

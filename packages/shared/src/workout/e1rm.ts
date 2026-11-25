@@ -14,6 +14,8 @@ export interface LoggedSet {
   weightKg: number;
   reps: number;
   rpe?: number;
+  /** A warm-up set (E-56): never counts for PRs, volume or the set count of the plan. */
+  warmup?: boolean;
 }
 
 export interface NewPR {
@@ -34,6 +36,7 @@ export interface NewPR {
 export function detectPRs(sets: readonly LoggedSet[], previousBest: ReadonlyMap<string, number>): NewPR[] {
   const best = new Map<string, NewPR>();
   for (const s of sets) {
+    if (s.warmup) continue;
     const e = epley(s.weightKg, s.reps);
     if (e <= 0) continue;
     const cur = best.get(s.slug);

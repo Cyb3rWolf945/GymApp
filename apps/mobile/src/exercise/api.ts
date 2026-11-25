@@ -33,6 +33,7 @@ export async function fetchExerciseSets(userId: string, slug: string): Promise<S
     .select('weight_kg,reps,logged_at,exercises!inner(slug,name)')
     .eq('user_id', userId)
     .eq('exercises.slug', slug)
+    .eq('is_warmup', false)
     .order('logged_at', { ascending: false })
     .limit(1000);
   if (error) throw error;
