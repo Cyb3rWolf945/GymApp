@@ -16,7 +16,7 @@ import {
   expandEquipment,
   runPipeline,
   swapSignals,
-  getModelProfile,
+  getRuntimeModelProfile,
   aiCallRow,
   guardrailRow,
   type PlanKind,
@@ -101,7 +101,7 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
   try {
     await admin.from('generation_jobs').update({ status: 'running' }).eq('id', jobId);
 
-    const profile = getModelProfile(Deno.env.get('MODEL_PROFILE'));
+    const profile = getRuntimeModelProfile(Deno.env.get('MODEL_PROFILE'), Deno.env.get('APP_ENV'));
     const cfg = {
       profile,
       apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',

@@ -55,3 +55,7 @@ Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it 
 - **Cookie banner:** web only, Accept and Reject are equal. Nothing loads from Meta and nothing is sent until the visitor accepts. The choice is stored as a `marketing` consent record at sign-up; the Facebook ids are dropped from the saved attribution unless they accepted.
 - **Meta events:** `Lead` (quiz done) from the browser Pixel and from `track-event` (Conversions API) with the same event id (`lead_<anonId>`); `StartTrial` and `Purchase` from `stripe-webhook` only for users with an accepted `marketing` consent, with ids `trial_<subscription>` and `purchase_<invoice>`. Emails are hashed with SHA-256; no health data is ever sent.
 - **Setup:** set `EXPO_PUBLIC_META_PIXEL_ID` for the web build, and `META_PIXEL_ID`, `META_CAPI_TOKEN` (and `META_TEST_EVENT_CODE` while testing) as Edge Function secrets. Set `ALLOWED_ORIGINS` (or `APP_URL`) so the browser may call the functions (CORS).
+
+## Deploying to production
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md): database, Edge Functions (`supabase/scripts/deploy-functions.sh`), secrets, Vercel, the AI smoke test (`scripts/smoke-ai.ts`), the Stripe live approval gate, the launch checklist and rollback. `MODEL_PROFILE=prod` only works together with `APP_ENV=production`.
