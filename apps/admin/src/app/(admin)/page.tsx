@@ -60,7 +60,7 @@ export default async function OverviewPage() {
       <PageHeader title="Overview">Subscriptions, revenue, costs and growth. List prices, no coupons: MRR is an estimate.</PageHeader>
 
       <h2 className="mb-3 text-sm font-medium text-neutral-400">Subscriptions</h2>
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tile('MRR', cents(s.mrrCents), `${s.paying} paying`)}
         {tile('ARPU', cents(s.arpuCents), 'MRR per paying user')}
         {tile('Active trials', String(s.trials))}
@@ -70,7 +70,7 @@ export default async function OverviewPage() {
       </div>
 
       <h2 className="mb-3 text-sm font-medium text-neutral-400">Money</h2>
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tile('Net revenue, 7 days', usd(net7))}
         {tile('Net revenue, 30 days', usd(net30))}
         {tile("Today: net vs cost", `${usd(netToday)} / ${usd(costToday)}`, `Margin ${usd(mToday.profit)} (${pct(mToday.pct)})`)}
