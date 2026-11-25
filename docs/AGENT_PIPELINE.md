@@ -1,11 +1,11 @@
 # Agent pipeline: scheduled runner teams, strictly sequential
 
-The MVP is built by **runner teams**. A team is two long-lived cloud sessions, each with repo and GitHub access and its own hourly scheduled task (watchdog). Each team runs on a different person's Claude account, so the project keeps going while at least one account has usage left. **Only the team that holds the shift lock (issue #49) works**, and inside a team the two runners hand work to each other with `send_message`, so only one agent works at a time.
+The MVP is built by **runner teams**. A team is three long-lived cloud sessions (IMPLEMENTER, REVIEWER, QA), each with repo and GitHub access and its own hourly scheduled task (watchdog). Each team runs on a different person's Claude account, so the project keeps going while at least one account has usage left. **Only the team that holds the shift lock (issue #49) works**, and inside a team the runners hand work to each other with `send_message` in a fixed loop (IMPLEMENTER → REVIEWER code review → QA functional test → REVIEWER merge → IMPLEMENTER), so only one agent works at a time. **No PR is merged before QA has tested it.**
 
-| Team | Account | IMPLEMENTER session | REVIEWER session |
-|---|---|---|---|
-| A | António (repo owner) | `session_01CWbvJqfz84tsJqy7tRiobX` | `session_01CWbvJsYk7BCAU48iigGYJn` |
-| B | Collaborator | `session_01Kdop2igX7KLqqN61nWjG9S` | `session_01Kdop2jLbpwqz6qKGYGFxR6` |
+| Team | Account | IMPLEMENTER session | REVIEWER session | QA session |
+|---|---|---|---|---|
+| A | António (repo owner) | `session_01CWbvJqfz84tsJqy7tRiobX` | `session_01CWbvJsYk7BCAU48iigGYJn` | `session_01CWbvJrixWFes7avDhooddf` |
+| B | Collaborator | `session_01Kdop2igX7KLqqN61nWjG9S` | `session_01Kdop2jLbpwqz6qKGYGFxR6` | _fill in when created_ |
 
 Every runner knows its own team letter from its first prompt. **Only send messages to sessions of your own team.**
 
@@ -101,12 +101,72 @@ The review always runs on Sonnet, whatever the issue's `model:` label says, so r
      - the PR doesn't touch `supabase/migrations/**` or `supabase/functions/**` (check the PR's file list).
      In the review comment, say that the local run was skipped and why, for example "Local run skipped: CI green on <sha>, up to date with main, no migrations or Edge Functions."
    - **Otherwise** (CI not green on the current head, the PR is behind `main`, or it touches migrations or Edge Functions): merge the PR branch onto current `main` locally and run lint, typecheck and tests, as before. Migrations and Edge Functions are always run locally.
-4. **If it passes:**
-   1. Squash-merge as described in "Merging" below.
+4. **If the code review passes:** don't merge yet. Comment "Code review passed, sent to QA" on the PR, then send your team's **QA** runner `QA PR #<p> issue #<n>` and stop. If your team has no QA session yet, merge directly as in step 6.
+5. **If it fails:** post one PR comment listing the concrete required changes, then send the IMPLEMENTER: `FIX PR #<p> issue #<n>: <one-line summary>`. Stop.
+
+**On `QA PASS PR #<p> issue #<n>`** (from your QA runner):
+6. Check that the PR head SHA is still the one QA tested (its PR comment says which SHA). If new commits arrived, do the code review again and send it back to QA.
+   1. Squash-merge as described in "Merging" below. Add `Closes #<q>` lines for any `[QA]` issues this PR fixed.
    2. Close the issue as completed and label it `status:done`.
    3. Update the "Progress" section of #36: closed x/35, last merged, next issue, blocked, needs owner.
    4. Pick the next eligible issue and send the IMPLEMENTER: `NEXT <n>`. Stop.
-5. **If it fails:** post one PR comment listing the concrete required changes, then send the IMPLEMENTER: `FIX PR #<p> issue #<n>: <one-line summary>`. Stop.
+
+**On `QA FAIL PR #<p> issue #<n>: …`:** nothing to do. QA has already sent the fix request to the IMPLEMENTER. The PR comes back to you as `REVIEW PR #<p>` after the fix.
+
+## QA runner
+The QA runner **functionally tests every PR before it is merged**, the way a user would, to protect the user experience and catch regressions. It never changes product code and never merges. Anything wrong becomes a GitHub issue, so it gets fixed through the normal pipeline.
+
+**On `QA PR #<p> issue #<n>`** (from the REVIEWER, after the code review passed):
+1. Do the "Start of every job" steps and apply the shift-lock rules.
+2. **Build the PR as it would land.** Check out the PR head, run `git merge origin/main` locally (don't push), then `pnpm install`. Build and serve the web app, pointed at the real Supabase project:
+   - `EXPO_PUBLIC_SUPABASE_URL=https://qcmpzjopinnqfmbkpqnp.supabase.co`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_68p4hBAupAsDC0BwM3z_mg_lkLiow7Q` (public publishable key)
+   - `pnpm --filter e2e build:web`, then `node apps/e2e/serve.mjs` (or `expo start --web` as a fallback).
+   - **Edge Functions or migrations in the PR:** they aren't deployed until after merge. Test what the PR changes in the app against the deployed backend, and say in the QA comment which server changes couldn't be tested live. Never deploy from a PR branch.
+3. **Test the task.** Read issue #<n> and the PR diff. For **each acceptance criterion** that a user can see, run it in Playwright at phone size (`devices['iPhone 14']`) and at desktop size (1440×900), and record pass or fail. Log in with `QA_TEST_EMAIL` / `QA_TEST_PASSWORD` from the environment. If they're missing, test only signed-out screens and add "Needs owner: QA test account env vars" to #36.
+4. **Quick regression tour** (5–10 minutes), with synthetic answers only:
+   1. Landing.
+   2. Onboarding.
+   3. Log in.
+   4. "Building your plan": wait up to 3 minutes. It must end in a plan preview or a clear error, never an endless spinner.
+   5. Today, Plan, Workout (log 2 sets), Nutrition, Shopping list, Progress, Settings.
+   6. Paywall, in Stripe test mode only. Never enter real card details.
+
+   On every screen, record:
+   - console errors and failed requests (4xx/5xx);
+   - layout problems: overlaps, text cut off, horizontal scroll, content hidden behind banners;
+   - dead buttons and broken navigation;
+   - data that isn't saved;
+   - copy that breaks the writing guide.
+
+   Take screenshots with `deviceScaleFactor: 2` and keep them in the job's scratch folder.
+5. **Create an issue for every problem found**, at most 5 per run, most severe first:
+   - First search open issues labelled `found-by:qa`, and comment on an existing one rather than opening a duplicate.
+   - Each new issue has:
+     - title `[QA] <short problem>`;
+     - labels `found-by:qa`, `bug`, `status:ready`, an `area:` label and a `model:` label (see "Choosing the model label");
+     - `priority:must` for a broken flow, crash, data loss or security problem; `priority:should` for visual or copy problems;
+     - steps to reproduce, expected vs actual, screen size, the console/network error text, and the SHA tested.
+   - Describe exactly what the screenshot shows; don't attach images.
+   - Never put health data or real user data in an issue. Only the synthetic test profile.
+6. **Decide.**
+   - **Blocking: an acceptance criterion of #<n> fails, or the PR breaks something that worked on `main`.**
+     1. Open the `[QA]` issue(s). They're `priority:must`, and the body says "Found while testing PR #<p>".
+     2. Comment on the PR: "QA FAIL on <sha>: <criteria that failed> → #<q>".
+     3. Send the IMPLEMENTER: `FIX PR #<p> issue #<n>: QA found #<q> (<one line>)`. The fix goes on the same PR, whose description must then also say `Closes #<q>`.
+     4. Send the REVIEWER: `QA FAIL PR #<p> issue #<n>: #<q>`. Stop.
+   - **Not blocking: every acceptance criterion passes, and anything else found already existed on `main` or is minor polish.**
+     1. Open those `[QA]` issues as normal backlog items.
+     2. Comment on the PR: "QA PASS on <sha>: <criteria tested>, phone + desktop. Other findings: #… (not blocking)".
+     3. Send the REVIEWER: `QA PASS PR #<p> issue #<n>`. Stop.
+7. Refresh the #49 heartbeat after every push of a comment and before every message.
+
+**Limits:**
+- Keep a QA run under about 25 minutes.
+- Don't run the full `apps/e2e` suite; CI does that.
+- Use the QA test account only. Never sign up new real accounts.
+- Never change product code, and never merge.
+- Docs-only PRs and PRs that change no app or backend behaviour: reply `QA PASS` right away with "Nothing user-facing to test".
 
 ## Merging
 Every PR is squash-merged, including docs PRs and PRs opened by humans. Never use a merge commit, a rebase merge or GitHub's default squash message. Merge through the API so the message is exactly this:
@@ -138,7 +198,9 @@ Closes #<n>
 1. If you are in the middle of a job, carry on.
 2. If the pipeline has stalled (no open PR or `status:in-progress` issue updated in the last 2 hours), restart it:
    - the REVIEWER reviews any open PR, or sends `NEXT <n>`;
-   - the IMPLEMENTER resumes an unfinished `status:in-progress` issue of its own.
+   - the IMPLEMENTER resumes an unfinished `status:in-progress` issue of its own;
+   - the QA runner finishes a QA job it had started (and then sends `QA PASS` or `QA FAIL`), otherwise does nothing. It never starts a QA run on its own;
+   - the REVIEWER also checks for a PR stuck "sent to QA" for more than 2 hours, and re-sends it to QA.
 3. Otherwise do nothing and stop. Keep this cheap.
 
 ## Choosing the model label
@@ -149,7 +211,7 @@ Every issue carries one label:
 ## Next eligible issue
 - Open, and every `Depends on: E-xx` issue is closed.
 - No human assignee, and not `status:blocked`.
-- Order: `priority:must` before `should`, then lower `day:`, then lowest number.
+- Order: `found-by:qa` bugs with `priority:must` first, then `priority:must` before `should`, then lower `day:`, then lowest number.
 - `day:` only sets the order. Never skip or postpone an eligible issue because of its `day:` label: if a `day:3` issue is the only eligible one, take it now.
 - If nothing is eligible, write "Pipeline idle: waiting on …" in #36 and stop.
 
