@@ -26,8 +26,8 @@ const button = (page: Page, label: string) => page.getByRole('button', { name: l
 const shown = (page: Page, text: string, exact = true) => page.getByText(text, { exact }).filter({ visible: true }).first();
 export { button, chip, shown };
 
-/** The quiz (13 screens) with a synthetic profile. Ends on the "Create my account" screen, then on sign-in. */
-export async function completeQuiz(page: Page): Promise<void> {
+/** The quiz (13 screens) with a synthetic profile. Ends on "Building your plan…" with the account modal open. */
+export async function completeQuiz(page: Page, { waitForModal = true } = {}): Promise<void> {
   await button(page, o.welcome.cta).click();
 
   await chip(page, o.goal.options.recomp).click();
@@ -63,9 +63,8 @@ export async function completeQuiz(page: Page): Promise<void> {
   for (const k of ['terms', 'privacy', 'healthData', 'disclaimer'] as const) await chip(page, o.consents[k]).click();
   await button(page, o.consents.cta).click();
 
-  // Screen 14 before the account exists: the calories are calculated here, the plan needs an account.
-  await expect(shown(page, en.plan.generating.accountTitle)).toBeVisible();
-  await button(page, en.plan.generating.accountCta).click();
+  // Screen 14 before the account exists: the calories are calculated here, then the account modal opens over it.
+  if (waitForModal) await expect(page.getByRole('dialog', { name: en.plan.generating.accountTitle })).toBeVisible();
 }
 
 /** The Create account form with a synthetic email and password. With "Confirm email" off in the fake, you are signed in at once. */

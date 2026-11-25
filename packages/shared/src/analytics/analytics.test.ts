@@ -24,6 +24,15 @@ describe('ClientTrackSchema', () => {
     expect(ClientTrackSchema.safeParse({ anonId, name: 'workout_logged', props: { sets: 12, minutes: 40 } }).success).toBe(true);
     expect(ClientTrackSchema.safeParse({ anonId, name: 'quiz_start' }).success).toBe(true);
   });
+  it('accepts the account modal events: viewed, and which sign-in method was chosen (an enum, never an email)', () => {
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'account_modal_view', props: {} }).success).toBe(true);
+    for (const method of ['password', 'email_code', 'google', 'apple']) {
+      expect(ClientTrackSchema.safeParse({ anonId, name: 'signin_method_chosen', props: { method } }).success, method).toBe(true);
+    }
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'signin_method_chosen', props: { method: 'a@b.co' } }).success).toBe(false);
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'signin_method_chosen', props: { method: 'google', email: 'a@b.co' } }).success).toBe(false);
+    expect(ClientTrackSchema.safeParse({ anonId, name: 'account_modal_view', props: { email: 'a@b.co' } }).success).toBe(false);
+  });
   it('accepts landing_view with UTM tags and the marketing ids, and rejects other keys', () => {
     expect(ClientTrackSchema.safeParse({ anonId, name: 'landing_view', props: { utm_source: 'meta', utm_campaign: 'launch' }, marketing: { fbp: 'fb.1.1.2' } }).success).toBe(true);
     expect(ClientTrackSchema.safeParse({ anonId, name: 'landing_view', props: { email: 'a@b.co' } }).success).toBe(false);
