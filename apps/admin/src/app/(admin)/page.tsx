@@ -2,8 +2,10 @@ import { PageHeader } from '@/components/page';
 import { Card, CardTitle, CardValue } from '@/components/ui/card';
 import { aiUsageRows, funnelRows, guardrailRows, revenueRows } from '@/lib/data';
 import { funnelSteps, sum, usd } from '@/lib/metrics';
+import { requireAdmin } from '@/lib/session';
 
 export default async function OverviewPage() {
+  await requireAdmin();
   const [funnel, ai, guard, revenue] = await Promise.all([funnelRows(7), aiUsageRows(7), guardrailRows(7), revenueRows(7)]);
   const steps = funnelSteps(funnel);
   const visitors = (name: string) => steps.find((s) => s.name === name)?.visitors ?? 0;

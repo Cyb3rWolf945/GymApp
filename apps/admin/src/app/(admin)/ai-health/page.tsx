@@ -3,8 +3,10 @@ import { BarSeries } from '@/components/chart';
 import { Card, CardTitle } from '@/components/ui/card';
 import { aiUsageRows } from '@/lib/data';
 import { usd } from '@/lib/metrics';
+import { requireAdmin } from '@/lib/session';
 
 export default async function AiHealthPage() {
+  await requireAdmin();
   const rows = await aiUsageRows(30);
   const byDay = new Map<string, number>();
   for (const r of rows) byDay.set(r.day, (byDay.get(r.day) ?? 0) + Number(r.cost_usd));

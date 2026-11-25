@@ -3,8 +3,10 @@ import { BarSeries } from '@/components/chart';
 import { Card, CardTitle } from '@/components/ui/card';
 import { funnelRows } from '@/lib/data';
 import { funnelSteps, pct } from '@/lib/metrics';
+import { requireAdmin } from '@/lib/session';
 
 export default async function FunnelPage() {
+  await requireAdmin();
   const steps = funnelSteps(await funnelRows(30));
   return (
     <>

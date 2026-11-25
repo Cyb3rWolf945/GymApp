@@ -3,8 +3,10 @@ import { BarSeries } from '@/components/chart';
 import { Card, CardTitle, CardValue } from '@/components/ui/card';
 import { revenueRows } from '@/lib/data';
 import { sum, usd } from '@/lib/metrics';
+import { requireAdmin } from '@/lib/session';
 
 export default async function PnlPage() {
+  await requireAdmin();
   const rows = await revenueRows(30);
   const byDay = new Map<string, number>();
   for (const r of rows) byDay.set(r.day, (byDay.get(r.day) ?? 0) + Number(r.net_usd));

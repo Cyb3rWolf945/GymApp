@@ -1,7 +1,9 @@
 import { PageHeader, Table } from '@/components/page';
 import { guardrailRows } from '@/lib/data';
+import { requireAdmin } from '@/lib/session';
 
 export default async function GuardrailsPage() {
+  await requireAdmin();
   const rows = await guardrailRows(30);
   return (
     <>
