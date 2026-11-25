@@ -5,8 +5,9 @@ import { FIXED_NOW, button, shown, signedInWithPlan } from '../support/app';
 const x = en.exercise;
 
 const openFromPlan = async (page: import('@playwright/test').Page, name: RegExp) => {
-  await page.getByRole('tab', { name: en.home.tabs.plan, exact: true }).click();
-  await page.getByRole('button', { name }).first().click();
+  // A fresh load: tabs visited earlier stay mounted behind the current one, with rows of the same name.
+  await page.goto('/plan');
+  await page.getByRole('button', { name }).filter({ visible: true }).first().click();
 };
 
 test('exercise screen: steps, muscles, and your own history', async ({ page }) => {
@@ -73,13 +74,13 @@ test('it opens from Today, from Personal records, and from the workout without l
 
   // Today.
   await page.goto('/');
-  await page.getByRole('button', { name: /Barbell bench press/ }).first().click();
+  await page.getByRole('button', { name: /Barbell bench press/ }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/exercise\/barbell-bench-press/);
 
   // Personal records on Progress.
   await page.goto('/progress');
   await expect(shown(page, en.home.progress.prsTitle)).toBeVisible();
-  await page.getByRole('button', { name: /Barbell back squat/ }).first().click();
+  await page.getByRole('button', { name: /Barbell back squat/ }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/exercise\/barbell-back-squat/);
 
   // The workout logger: the info button sits next to the exercise and the set in progress stays.
