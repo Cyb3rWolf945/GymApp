@@ -67,7 +67,7 @@ describe('RLS', () => {
   it('entitlements are read-only for users', async () => {
     await expect(
       asUser(db, A, () => db.query(`update public.entitlements set tier='elite' where user_id='${A}'`)),
-    ).resolves.toMatchObject({ affectedRows: 0 });
+    ).rejects.toThrow(/permission denied/);
     await expect(
       asUser(db, B, () => db.query(`insert into public.entitlements(user_id, tier) values ('${B}','elite') on conflict do nothing`)),
     ).rejects.toThrow();
@@ -76,13 +76,13 @@ describe('RLS', () => {
   it('catalog is readable but not writable by authenticated', async () => {
     const rows = await asUser(db, A, async () => (await db.query(`select * from public.exercises`)).rows);
     expect(rows).toHaveLength(1);
-    await expect(asUser(db, A, () => db.query(`insert into public.exercises(slug,name) values ('x','x')`))).rejects.toThrow(/row-level security/);
+    await expect(asUser(db, A, () => db.query(`insert into public.exercises(slug,name) values ('x','x')`))).rejects.toThrow(/permission denied/);
   });
 
   it('admin tables are invisible to authenticated users', async () => {
     for (const t of adminTables) {
-      const rows = await asUser(db, A, async () => (await db.query(`select * from public.${t}`)).rows);
-      expect(rows, t).toEqual([]);
+      // No grant at all (E-61): the roles cannot even reach server-only tables, on top of RLS having no policy.
+      await expect(asUser(db, A, () => db.query(`select * from public.${t}`)), t).rejects.toThrow(/permission denied/);
     }
     const sr = await db.query(`select * from public.admins`); // superuser sanity check
     expect(sr.rows).toHaveLength(1);
@@ -195,7 +195,7 @@ describe('tier gating (E-18)', () => {
   it('plan_prices is readable by everyone and seeded with the six default prices', async () => {
     const rows = await asUser(db, U, async () => (await db.query('select * from public.plan_prices')).rows);
     expect(rows).toHaveLength(6);
-    await expect(asUser(db, U, () => db.query(`update public.plan_prices set cents = 1`))).resolves.toMatchObject({ affectedRows: 0 });
+    await expect(asUser(db, U, () => db.query(`update public.plan_prices set cents = 1`))).rejects.toThrow(/permission denied/);
   });
 });
 
@@ -242,9 +242,8 @@ describe('instrumentation (E-29)', () => {
     const rev = await db.query<{ net_usd: string }>(`select net_usd from public.revenue_net_daily`);
     expect(Number(rev.rows[0].net_usd)).toBe(85);
     for (const v of ['analytics_funnel_daily', 'ai_usage_daily', 'guardrail_daily', 'revenue_net_daily']) {
-      // The test harness grants blanket table access after the migrations; security_invoker + RLS still return nothing.
-      const rows = await asUser(db, A, async () => (await db.query(`select * from public.${v}`)).rows);
-      expect(rows, v).toEqual([]);
+      // No grant for signed-in users, on the views or on the admin tables under them.
+      await expect(asUser(db, A, () => db.query(`select * from public.${v}`)), v).rejects.toThrow(/permission denied/);
     }
   });
 });
@@ -259,8 +258,8 @@ describe('GDPR (E-21)', () => {
     await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${V}', 'terms', 'v1', true)`))).rejects.toThrow(/row-level security/);
     await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'health_data', 'v1', true)`))).rejects.toThrow(/duplicate key/);
     await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'cookies', 'v1', true)`))).rejects.toThrow(/check/);
-    expect((await asUser(db, U, () => db.query(`update public.consent_records set accepted = false`))).affectedRows).toBe(0);
-    expect((await asUser(db, U, () => db.query(`delete from public.consent_records`))).affectedRows).toBe(0);
+    await expect(asUser(db, U, () => db.query(`update public.consent_records set accepted = false`))).rejects.toThrow(/permission denied/);
+    await expect(asUser(db, U, () => db.query(`delete from public.consent_records`))).rejects.toThrow(/permission denied/);
     expect(await asUser(db, V, async () => (await db.query(`select * from public.consent_records`)).rows)).toEqual([]);
   });
 
@@ -398,11 +397,12 @@ describe('admin metrics views (E-31)', () => {
   it('only reveals what the underlying tables reveal to a signed-in user (the real database also revokes access)', async () => {
     // Built on admin-only tables (RLS, no policy): empty for a signed-in user.
     for (const v of ['analytics_events_attributed', 'funnel_by_source_daily', 'onboarding_screens_daily', 'ai_latency_daily']) {
-      const rows = await asUser(db, A1, async () => (await db.query(`select * from public.${v}`)).rows);
-      expect(rows, v).toEqual([]);
+      await expect(asUser(db, A1, () => db.query(`select * from public.${v}`)), v).rejects.toThrow(/permission denied/);
     }
     // Built on generation_jobs, whose own-row policy applies: a user only ever sees their own jobs, never another user's.
+    await db.exec(`grant select on public.generation_daily to authenticated`);
     const mine = await asUser(db, A1, async () => (await db.query<{ n: number }>(`select coalesce(sum(jobs), 0)::int as n from public.generation_daily`)).rows[0].n);
+    await db.exec(`revoke select on public.generation_daily from authenticated`);
     expect(mine).toBe(2);
   });
 });
