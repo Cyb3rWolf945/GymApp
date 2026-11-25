@@ -5,7 +5,7 @@ The MVP is built by **runner teams**. A team is two long-lived cloud sessions, e
 | Team | Account | IMPLEMENTER session | REVIEWER session |
 |---|---|---|---|
 | A | António (repo owner) | `session_01CWbvJqfz84tsJqy7tRiobX` | `session_01CWbvJsYk7BCAU48iigGYJn` |
-| B | Collaborator | _fill in when created_ | _fill in when created_ |
+| B | Collaborator | `session_01Kdop2igX7KLqqN61nWjG9S` | `session_01Kdop2jLbpwqz6qKGYGFxR6` |
 
 Every runner knows its own team letter from its first prompt. **Only send messages to sessions of your own team.**
 
