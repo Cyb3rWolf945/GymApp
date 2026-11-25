@@ -265,6 +265,20 @@ export const en = {
     emptyTitle: 'No meal plan yet.',
     emptyBody: 'Build your plan to see today’s meals.',
     shoppingList: 'Open shopping list',
+    shopping: {
+      title: 'Shopping list',
+      body: "This week's ingredients, from your meal plan.",
+      clear: 'Clear checked',
+      empty: 'Nothing to buy yet.',
+      loadError: "Couldn't load your list. Check your connection and try again.",
+      saveError: "Couldn't save that. Check your connection and try again.",
+      checkedCount: (done: number, total: number) => `${done} of ${total} checked`,
+      categories: {
+        produce: 'Produce', meat: 'Meat', fish_seafood: 'Fish and seafood', dairy: 'Dairy', eggs: 'Eggs', grains: 'Grains',
+        legumes: 'Legumes', plant_protein: 'Plant protein', nuts_seeds: 'Nuts and seeds', fats_oils: 'Fats and oils',
+        condiments: 'Condiments', spices: 'Spices', other: 'Other',
+      } as Record<string, string>,
+    },
   },
   health: {
     disclaimer: "This isn't medical advice. Talk to a doctor if you're pregnant or have a health condition.",
