@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { EXPORT_TABLES } from '../legal/export';
 import { generateTypes } from './gen-types';
 import { asUser, createDb } from './harness';
 
@@ -23,7 +24,7 @@ beforeAll(async () => {
 afterAll(() => db.close());
 
 const userTables = ['workout_plans','workout_days','planned_exercises','workout_sessions','set_logs',
-  'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps'];
+  'nutrition_plans','meals','shopping_list_items','body_metrics','profiles','entitlements','generation_jobs','memory_facts','plan_swaps','meal_swaps','consent_records'];
 const adminTables = ['ai_call_logs','guardrail_events','analytics_events','admins','admin_audit_log',
   'prompt_versions','ad_creatives','ad_insights_daily','cost_entries','revenue_daily','stripe_events'];
 const catalog = ['exercises','exercise_muscles','recipes','ingredients','recipe_ingredients','plan_prices'];
@@ -244,5 +245,67 @@ describe('instrumentation (E-29)', () => {
       const rows = await asUser(db, A, async () => (await db.query(`select * from public.${v}`)).rows);
       expect(rows, v).toEqual([]);
     }
+  });
+});
+
+describe('GDPR (E-21)', () => {
+  const U = '00000000-0000-0000-0000-0000000000d1';
+  const V = '00000000-0000-0000-0000-0000000000d2';
+
+  it('consent records: own rows only, append-only for users, one per kind and version', async () => {
+    await db.exec(`insert into auth.users(id) values ('${U}'), ('${V}') on conflict do nothing`);
+    await asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'health_data', 'v1', true)`));
+    await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${V}', 'terms', 'v1', true)`))).rejects.toThrow(/row-level security/);
+    await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'health_data', 'v1', true)`))).rejects.toThrow(/duplicate key/);
+    await expect(asUser(db, U, () => db.query(`insert into public.consent_records(user_id, kind, version, accepted) values ('${U}', 'cookies', 'v1', true)`))).rejects.toThrow(/check/);
+    expect((await asUser(db, U, () => db.query(`update public.consent_records set accepted = false`))).affectedRows).toBe(0);
+    expect((await asUser(db, U, () => db.query(`delete from public.consent_records`))).affectedRows).toBe(0);
+    expect(await asUser(db, V, async () => (await db.query(`select * from public.consent_records`)).rows)).toEqual([]);
+  });
+
+  it('the export covers every table that holds user data', async () => {
+    const { rows } = await db.query<{ table_name: string }>(
+      `select c.table_name from information_schema.columns c
+         join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+        where c.table_schema = 'public' and c.column_name = 'user_id'`,
+    );
+    // admins is staff, not users' data. Everything else with a user_id must be exported.
+    const holders = rows.map((r) => r.table_name).filter((t) => t !== 'admins');
+    expect(holders.filter((t) => !(EXPORT_TABLES as readonly string[]).includes(t))).toEqual([]);
+    for (const t of EXPORT_TABLES) expect(holders, t).toContain(t);
+  });
+
+  it('deleting the account (erase traces + delete the auth user) leaves no row about the user', async () => {
+    const D = '00000000-0000-0000-0000-0000000000d3';
+    const job = '00000000-0000-0000-0000-0000000000d4';
+    await db.exec(`insert into auth.users(id) values ('${D}');
+      insert into public.profiles(user_id) values ('${D}') on conflict do nothing;
+      insert into public.entitlements(user_id, tier, status) values ('${D}', 'pro', 'active');
+      insert into public.body_metrics(user_id, weight_kg) values ('${D}', 80);
+      insert into public.generation_jobs(id, user_id, kind) values ('${job}', '${D}', 'workout_plan');
+      insert into public.memory_facts(user_id, kind, fact) values ('${D}', 'x', 'y');
+      insert into public.consent_records(user_id, kind, version, accepted) values ('${D}', 'terms', 'v1', true);
+      insert into public.meal_swaps(user_id, job_id, day_index, meal_index, from_slug, to_slug) values ('${D}', '${job}', 0, 0, 'a', 'b');
+      insert into public.guardrail_events(user_id, rule, action, input_text) values ('${D}', 'injection', 'blocked', 'my knee hurts');
+      insert into public.analytics_events(user_id, name) values ('${D}', 'paywall_view');
+      insert into public.ai_call_logs(user_id, model, status) values ('${D}', 'm', 'ok');`);
+    await db.query(`select public.erase_user_traces('${D}')`);
+    await db.exec(`delete from auth.users where id = '${D}'`);
+
+    const { rows } = await db.query<{ table_name: string }>(
+      `select c.table_name from information_schema.columns c
+         join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+        where c.table_schema = 'public' and c.column_name = 'user_id'`,
+    );
+    for (const { table_name } of rows) {
+      const left = await db.query<{ n: number }>(`select count(*)::int as n from public.${table_name} where user_id = '${D}'`);
+      expect(left.rows[0].n, table_name).toBe(0);
+    }
+    // The ones with `on delete set null` must not keep the person's text either.
+    expect((await db.query(`select * from public.guardrail_events where input_text = 'my knee hurts'`)).rows).toEqual([]);
+  });
+
+  it('only the service role can erase traces', async () => {
+    await expect(asUser(db, U, () => db.query(`select public.erase_user_traces('${U}')`))).rejects.toThrow(/permission denied/);
   });
 });

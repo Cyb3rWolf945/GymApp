@@ -15,12 +15,12 @@ export function encodeForm(params: Record<string, Param>): string {
   return out.join('&');
 }
 
-export type StripeFetch = <T = Record<string, unknown>>(method: 'GET' | 'POST', path: string, params?: Record<string, Param>) => Promise<T>;
+export type StripeFetch = <T = Record<string, unknown>>(method: 'GET' | 'POST' | 'DELETE', path: string, params?: Record<string, Param>) => Promise<T>;
 
 export function stripeClient(secretKey: string, fetchFn: typeof fetch = fetch): StripeFetch {
-  return async <T>(method: 'GET' | 'POST', path: string, params: Record<string, Param> = {}) => {
+  return async <T>(method: 'GET' | 'POST' | 'DELETE', path: string, params: Record<string, Param> = {}) => {
     const body = encodeForm(params);
-    const url = `https://api.stripe.com/v1${path}${method === 'GET' && body ? `?${body}` : ''}`;
+    const url = `https://api.stripe.com/v1${path}${method !== 'POST' && body ? `?${body}` : ''}`;
     const res = await fetchFn(url, {
       method,
       headers: { Authorization: `Bearer ${secretKey}`, ...(method === 'POST' ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },

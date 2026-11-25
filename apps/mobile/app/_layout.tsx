@@ -20,6 +20,8 @@ function RootStack() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
+      {/* Legal pages are public: onboarding (signed out) and Settings (signed in) both link to them. */}
+      <Stack.Screen name="legal/[doc]" />
       <Stack.Protected guard={Boolean(session)}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>

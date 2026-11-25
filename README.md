@@ -39,3 +39,11 @@ Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it 
 - **Service role:** only in `src/lib/supabase/admin.ts`, which imports `server-only`. Every page, action and route handler starts with `requireAdmin()`; the proxy only refreshes cookies.
 - **Audit:** `admin_audit_log` gets a row for each login, each 2FA step, the user list and every view of a user's health data (the row is written before the data is read; if it fails the page shows nothing).
 - **Vercel:** create a project with root directory `apps/admin` (it picks up `apps/admin/vercel.json`), set the three env vars from `.env.example`, and add the domain `admin.<domain>` in the project settings.
+
+## Legal pages and GDPR
+
+- **Pages:** `/legal/terms`, `/legal/privacy` and `/legal/health` (web routes, also opened in-app from onboarding and Settings). The text lives in `packages/shared/src/legal/docs.ts` and is a **template marked for legal review**: replace it with approved text and bump `LEGAL_VERSIONS` before launch.
+- **Consent:** when onboarding is saved, one row per consent goes to `consent_records` (kind, version of the text, time). Users can read and add rows but never edit or delete them.
+- **Export:** the `export-data` function returns all of a user's data as JSON (`EXPORT_TABLES`; a test fails if a new table with a `user_id` is missing from it).
+- **Deletion:** the `delete-account` function deletes the Stripe customer (cancels billing), runs `erase_user_traces`, then deletes the auth user; every other table cascades. A test checks that no table keeps a row about a deleted user.
+- Deploy both functions with `supabase functions deploy export-data delete-account` (they need `STRIPE_SECRET_KEY`).

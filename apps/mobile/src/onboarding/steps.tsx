@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   ACTIVITY_LEVELS, ALLERGENS, BUDGETS, COOKING_MINUTES, CONTRAINDICATIONS, CUT_PACES, DIETS, DISLIKE_OPTIONS, EQUIPMENT,
   EXERCISE_LEVELS, FREE_TEXT_MAX, GOALS, LOCATIONS, MEALS_PER_DAY, Limits, SESSION_MINUTES, SEXES, UNIT_SYSTEMS, WEEKDAYS,
@@ -219,12 +220,21 @@ function Consents({ answers, update }: StepProps) {
   const cur = answers.consents;
   const base = { terms: false, privacy: false, healthData: false, disclaimer: false, notifications: false, ...cur };
   const toggle = (k: keyof typeof base) => update({ consents: { ...base, [k]: !base[k] } as never });
+  const router = useRouter();
+  const links = [
+    ['terms', c.consents.readTerms],
+    ['privacy', c.consents.readPrivacy],
+    ['health', c.consents.readHealth],
+  ] as const;
   return (
     <Card style={{ gap: 12 }}>
       {CONSENT_KEYS.map((k) => (
         <Chip key={k} label={c.consents[k]} selected={base[k]} onPress={() => toggle(k)} />
       ))}
       <Chip label={c.consents.notifications} selected={base.notifications} onPress={() => toggle('notifications')} />
+      {links.map(([doc, label]) => (
+        <Button key={doc} label={label} variant="ghost" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc } })} />
+      ))}
     </Card>
   );
 }
