@@ -6,6 +6,8 @@ export { EmptyState } from './EmptyState';
 export { LineChart } from './LineChart';
 export { ListItem } from './ListItem';
 export { ProgressBar } from './ProgressBar';
+export { ResponsiveGrid } from './ResponsiveGrid';
+export { Screen } from './Screen';
 export { Slider } from './Slider';
 export { StatTile } from './StatTile';
 export { Text } from './Text';
