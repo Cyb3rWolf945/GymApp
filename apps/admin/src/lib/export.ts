@@ -4,7 +4,7 @@ export const EXPORT_TABLES = [
   'profiles', 'entitlements', 'consent_records', 'body_metrics',
   'workout_plans', 'workout_days', 'planned_exercises', 'workout_sessions', 'set_logs', 'plan_swaps',
   'nutrition_plans', 'meals', 'meal_swaps', 'shopping_list_items',
-  'generation_jobs', 'memory_facts', 'guardrail_events', 'analytics_events', 'ai_call_logs',
+  'generation_jobs', 'memory_facts', 'push_tokens', 'guardrail_events', 'analytics_events', 'ai_call_logs',
 ] as const;
 
 /** Stripe ids are not the user's data. */

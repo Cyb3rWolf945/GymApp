@@ -9,7 +9,7 @@ cd "$(dirname "$0")/../.."
 
 # Functions that must be reachable without a Supabase user token. The Stripe webhook is authenticated by its
 # signature (verified in the function); the others check the service-role key themselves.
-NO_VERIFY_JWT=(stripe-webhook stripe-reconcile daily-maintenance)
+NO_VERIFY_JWT=(stripe-webhook stripe-reconcile daily-maintenance send-reminders)
 
 if [ "$#" -gt 0 ]; then
   FUNCTIONS=("$@")

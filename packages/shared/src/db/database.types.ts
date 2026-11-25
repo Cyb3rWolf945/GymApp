@@ -556,6 +556,33 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['prompt_versions']['Insert']>;
       };
+      push_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          platform: string;
+          tz: string;
+          remind_hour: number;
+          enabled: boolean;
+          last_sent_on: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          platform: string;
+          tz?: string;
+          remind_hour?: number;
+          enabled?: boolean;
+          last_sent_on?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['push_tokens']['Insert']>;
+      };
       recipe_ingredients: {
         Row: {
           recipe_id: string;
