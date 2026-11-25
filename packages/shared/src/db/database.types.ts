@@ -216,6 +216,29 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['entitlements']['Insert']>;
       };
+      eval_runs: {
+        Row: {
+          id: string;
+          suite: string;
+          profile: string;
+          total: number;
+          passed: number;
+          failures: Json;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          suite: string;
+          profile: string;
+          total: number;
+          passed: number;
+          failures?: Json;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['eval_runs']['Insert']>;
+      };
       exercise_muscles: {
         Row: {
           exercise_id: string;

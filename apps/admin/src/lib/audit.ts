@@ -13,6 +13,9 @@ export const AUDIT_ACTIONS = [
   'export_user_data',
   'delete_user',
   'review_guardrail',
+  'edit_content',
+  'create_prompt_version',
+  'activate_prompt_version',
   'admin_action',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

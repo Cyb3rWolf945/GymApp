@@ -13,6 +13,6 @@ export const NAV: readonly NavItem[] = [
   { href: '/guardrails', label: 'Guardrails' },
   { href: '/users', label: 'Users' },
   { href: '/ads', label: 'Ads', comingIn: 'the ads issue' },
-  { href: '/engagement', label: 'Engagement', comingIn: 'the engagement issue' },
-  { href: '/content', label: 'Content', comingIn: 'the content issue' },
+  { href: '/engagement', label: 'Engagement' },
+  { href: '/content', label: 'Content' },
 ];
