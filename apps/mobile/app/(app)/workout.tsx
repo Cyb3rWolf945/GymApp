@@ -71,6 +71,8 @@ export default function WorkoutScreen() {
         {exercise && pos ? (
           <>
             <Text variant="display">{exercise.name}</Text>
+            {/* Opens the exercise page on top of the workout: the set in progress and the rest timer stay as they are. */}
+            <Button label={t.info} variant="ghost" onPress={() => router.push({ pathname: '/exercise/[slug]', params: { slug: exercise.slug } })} />
             <Text variant="bodyStrong" accessibilityLiveRegion="polite">
               {setLine(pos.set + 1, exercise.sets, weight, reps)}
               {resting ? ` · ${t.rest(formatRest(restLeft))}` : ''}

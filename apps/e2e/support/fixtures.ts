@@ -85,6 +85,13 @@ const MUSCLES: Record<string, { muscle: string; role: 'primary' | 'secondary' }[
   'conventional-deadlift': [{ muscle: 'hamstrings', role: 'primary' }, { muscle: 'gluteus_maximus', role: 'primary' }, { muscle: 'erector_spinae', role: 'primary' }, { muscle: 'latissimus_dorsi', role: 'secondary' }],
 };
 
+/** Catalog detail (what the exercise screen shows) merged into the `exercises` rows. */
+export const EXERCISE_DETAIL: Record<string, { equipment: string; instructions: string | null; media_url: string | null }> = {
+  'barbell-bench-press': { equipment: 'barbell', instructions: '1. Lie on the bench with your eyes under the bar.\n2. Lower the bar to your chest.\n3. Press it back up.', media_url: null },
+  'standing-barbell-overhead-press': { equipment: 'barbell', instructions: null, media_url: 'https://example.invalid/missing.jpg' },
+};
+export const exerciseRows = () => EXERCISES.map((e) => ({ ...e, mechanic: null, ...(EXERCISE_DETAIL[e.slug] ?? { equipment: null, instructions: null, media_url: null }), exercise_muscles: MUSCLES[e.slug] ?? [] }));
+
 /** Sets of the last 3 weeks (an upper and a lower workout each week) with rising weights. */
 export function setLogHistory(now: Date) {
   const rows: { weight_kg: number; reps: number; logged_at: string; exercises: { slug: string; name: string; exercise_muscles: (typeof MUSCLES)[string] } }[] = [];

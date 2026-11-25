@@ -53,7 +53,7 @@ function Today({ data }: { data: PlanData }) {
             <Text variant="heading">{workout.dayName}</Text>
             <Text tone="muted">{t.workoutMeta(workout.exercises.length, workout.minutes)}</Text>
             {workout.exercises.map((e) => (
-              <ListItem key={e.slug} title={e.name} subtitle={`${e.sets} × ${e.reps}`} />
+              <ListItem key={e.slug} title={e.name} subtitle={`${e.sets} × ${e.reps}`} onPress={() => router.push({ pathname: '/exercise/[slug]', params: { slug: e.slug } })} />
             ))}
             <Button
               label={active && !active.finishedAt ? en.workout.resume : t.startWorkout}

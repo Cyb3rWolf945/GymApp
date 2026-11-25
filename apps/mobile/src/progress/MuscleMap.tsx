@@ -6,16 +6,19 @@ import { useTheme } from '../theme';
 
 interface Props {
   view: MapView;
-  stats: ReadonlyMap<MuscleId, MuscleStat>;
-  onSelect: (muscle: MuscleId) => void;
+  stats?: ReadonlyMap<MuscleId, MuscleStat>;
+  onSelect?: (muscle: MuscleId) => void;
+  /** Exercise detail: fill these muscles instead of the weekly heat (primary solid, secondary lighter). */
+  highlight?: { primary: readonly MuscleId[]; secondary: readonly MuscleId[] };
+  height?: number;
 }
 
 /** Front or back view; each muscle is filled by last-7-days effective sets (more sets = brighter). Tap a muscle for details. */
-export function MuscleMap({ view, stats, onSelect }: Props) {
+export function MuscleMap({ view, stats, onSelect, highlight, height = 340 }: Props) {
   const { colors } = useTheme();
   return (
     <View style={{ alignItems: 'center' }}>
-      <Svg width="100%" height={340} viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} accessibilityLabel={`Muscle map, ${view} view`}>
+      <Svg width="100%" height={height} viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} accessibilityLabel={`Muscle map, ${view} view`}>
         {/* Body outline: head, torso, arms, legs. */}
         <Circle cx={60} cy={20} r={11} fill={colors.surfaceAlt} />
         <Path
@@ -23,8 +26,9 @@ export function MuscleMap({ view, stats, onSelect }: Props) {
           fill={colors.surfaceAlt}
         />
         {MAP_REGIONS[view].flatMap((r) => {
-          const stat = stats.get(r.muscle);
-          const h = heat(stat?.sets ?? 0);
+          const stat = stats?.get(r.muscle);
+          const role = highlight?.primary.includes(r.muscle) ? 'primary' : highlight?.secondary.includes(r.muscle) ? 'secondary' : null;
+          const h = highlight ? (role === 'primary' ? 1 : role === 'secondary' ? 0.4 : 0) : heat(stat?.sets ?? 0);
           return regionShapes(r).map((s, i) => (
             <Path
               key={`${r.muscle}-${i}`}
@@ -33,8 +37,8 @@ export function MuscleMap({ view, stats, onSelect }: Props) {
               fillOpacity={h > 0 ? 0.25 + 0.75 * h : 0.6}
               stroke={colors.background}
               strokeWidth={0.8}
-              accessibilityLabel={`${muscleLabel(r.muscle)}, ${plural(stat?.sets ?? 0, 'set')} this week`}
-              onPress={() => onSelect(r.muscle)}
+              accessibilityLabel={highlight ? `${muscleLabel(r.muscle)}${role ? `, ${role}` : ''}` : `${muscleLabel(r.muscle)}, ${plural(stat?.sets ?? 0, 'set')} this week`}
+              onPress={onSelect ? () => onSelect(r.muscle) : undefined}
             />
           ));
         })}

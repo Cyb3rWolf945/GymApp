@@ -36,6 +36,7 @@ test.describe('responsive flows', () => {
     await noSidewaysScroll(page, '/shopping', () => expect(shown(page, en.nutrition.shopping.title)).toBeVisible());
     await noSidewaysScroll(page, '/memory', () => expect(shown(page, en.home.memory.title)).toBeVisible());
     await noSidewaysScroll(page, '/recipe/oats-and-berries', () => expect(shown(page, 'Oats and berries', false)).toBeVisible());
+    await noSidewaysScroll(page, '/exercise/barbell-bench-press', () => expect(shown(page, 'Barbell bench press')).toBeVisible());
     await noSidewaysScroll(page, '/preview', () => expect(shown(page, en.plan.preview.title)).toBeVisible());
   });
 

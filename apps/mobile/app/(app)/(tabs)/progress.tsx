@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import {
   type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
@@ -28,6 +29,7 @@ const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toL
 
 /** Progress: body weight, personal records, strength trend, a muscle map and the workout history. */
 export default function ProgressScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const { colors, spacing } = useTheme();
   const toast = useToast();
@@ -153,7 +155,7 @@ export default function ProgressScreen() {
             ) : (
               <>
                 {prs.slice(0, 8).map((r) => (
-                  <ListItem key={r.slug} title={r.name} subtitle={p.prLine(r.weightKg, r.reps, shortDate(r.date))} trailing={<Text variant="bodyStrong">{p.prValue(r.e1rm)}</Text>} />
+                  <ListItem key={r.slug} title={r.name} subtitle={p.prLine(r.weightKg, r.reps, shortDate(r.date))} trailing={<Text variant="bodyStrong">{p.prValue(r.e1rm)}</Text>} onPress={() => router.push({ pathname: '/exercise/[slug]', params: { slug: r.slug } })} />
                 ))}
                 <Text variant="small" tone="muted">{p.prNote}</Text>
               </>

@@ -40,9 +40,12 @@ test.describe('responsive main tabs', () => {
     expect((await meals.boundingBox())!.x, 'desktop: meals to the right of the workout').toBeGreaterThan((await workout.boundingBox())!.x + 100);
   });
 
-  test('Plan: "Swap exercise" is a bottom sheet on phones and a capped, centred dialog on desktop', async ({ page }) => {
+  test('Exercise screen: "Swap exercise" is a bottom sheet on phones and a capped, centred dialog on desktop', async ({ page }) => {
     await signedInWithPlan(page);
     await openTab(page, en.home.tabs.plan);
+    // "Swap exercise" lives on the exercise screen (E-51): open it from the plan.
+    await page.getByRole('button', { name: /Barbell bench press/ }).first().click();
+    await expect(page).toHaveURL(/\/exercise\/barbell-bench-press/);
     const close = page.getByRole('button', { name: en.common.close, exact: true });
     const swap = page.getByText(en.home.swap.action, { exact: true }).filter({ visible: true }).first();
     const heading = () => page.getByText(en.home.swap.body, { exact: true }).filter({ visible: true }).first();
