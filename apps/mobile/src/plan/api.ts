@@ -4,7 +4,7 @@ import { supabase } from '../supabase';
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
   const { data, error } = await supabase
     .from('generation_jobs')
-    .select('id,kind,status,created_at,result,error')
+    .select('id,kind,status,created_at,result,error,adapt_state,adapt_week')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(20);

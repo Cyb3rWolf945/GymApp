@@ -206,6 +206,13 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     if (path.startsWith('/rest/v1/rpc/')) {
       const fn = path.replace('/rest/v1/rpc/', '');
       if (fn === 'my_access') return json(route, state.entitled);
+      if (fn === 'resolve_weekly_adapt') {
+        const b = parseBody(req) as { p_week: string; p_keep: boolean };
+        writes.push({ method, path, body: b });
+        let n = 0;
+        for (const j of state.jobs as Record<string, unknown>[]) if (j.adapt_week === b.p_week && j.adapt_state === 'new') { j.adapt_state = b.p_keep ? 'kept' : 'reverted'; n += 1; }
+        return json(route, n);
+      }
       return json(route, state.rpc[fn] ?? []);
     }
 

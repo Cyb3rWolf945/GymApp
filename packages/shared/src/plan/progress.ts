@@ -11,6 +11,9 @@ export interface JobRow {
   created_at: string;
   result?: unknown;
   error?: string | null;
+  /** Weekly adaptation (E-54): `reverted` jobs are not the current plan. */
+  adapt_state?: 'new' | 'kept' | 'reverted' | null;
+  adapt_week?: string | null;
 }
 
 /** Longest we wait before showing the retry state. Free dev models can be slow; paid ones take seconds. */
@@ -26,10 +29,11 @@ export interface GenerationProgress {
   steps: { id: GenerationStepId; state: GenerationStepState }[];
 }
 
-/** The most recent job of each kind. */
+/** The most recent job of each kind. A weekly plan the user went back from does not count. */
 export function latestJobs(rows: readonly JobRow[]): Partial<Record<PlanKind, JobRow>> {
   const out: Partial<Record<PlanKind, JobRow>> = {};
   for (const r of rows) {
+    if (r.adapt_state === 'reverted') continue;
     const cur = out[r.kind];
     if (!cur || r.created_at > cur.created_at) out[r.kind] = r;
   }
