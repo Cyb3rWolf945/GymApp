@@ -89,7 +89,13 @@ Repo: `Cyb3rWolf945/GymApp`. Issues #1–#35 are `E-01`…`E-35`. The status boa
    - guardrails;
    - real user data sent to free models;
    - scope creep.
-3. Merge the PR branch onto current `main` locally and run lint, typecheck and tests.
+3. Run the checks on the PR merged into `main`, or skip that when CI already did it:
+   - **Skip the local merge-and-test** when **all** of these are true:
+     - CI concluded `success` on the PR's current head SHA (the `ci` check; read the check runs for that SHA, not an older run);
+     - the PR is up to date with `main`: `GET /repos/{owner}/{repo}/compare/main...<head sha>` returns `behind_by: 0`, and `mergeable_state` is `clean`;
+     - the PR doesn't touch `supabase/migrations/**` or `supabase/functions/**` (check the PR's file list).
+     In the review comment, say that the local run was skipped and why, for example "Local run skipped: CI green on <sha>, up to date with main, no migrations or Edge Functions."
+   - **Otherwise** (CI not green on the current head, the PR is behind `main`, or it touches migrations or Edge Functions): merge the PR branch onto current `main` locally and run lint, typecheck and tests, as before. Migrations and Edge Functions are always run locally.
 4. **If it passes:**
    1. Squash-merge as described in "Merging" below.
    2. Close the issue as completed and label it `status:done`.
