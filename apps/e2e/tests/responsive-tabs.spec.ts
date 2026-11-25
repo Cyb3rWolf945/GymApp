@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
-import { signedInWithPlan } from '../support/app';
+import { FIXED_NOW, signedInWithPlan } from '../support/app';
 import { ownViewports } from '../support/projects';
 
 const TABS = [en.home.tabs.today, en.home.tabs.plan, en.home.tabs.nutrition, en.home.tabs.progress, en.home.tabs.settings];
@@ -64,13 +64,19 @@ test.describe('responsive main tabs', () => {
   });
 
   test('Progress: the chart redraws at the new width', async ({ page }) => {
-    await signedInWithPlan(page);
+    const backend = await signedInWithPlan(page);
+    backend.state.history = FIXED_NOW; // weigh-ins from the last weeks, so there is a chart to measure
     await openTab(page, en.home.tabs.progress);
-    const chart = page.getByRole('img').filter({ visible: true }).first();
+    // Found by its accessible name, not by position: "the first visible image" can be a different element after a resize.
+    const chart = page.getByRole('img', { name: /Line chart of your 7-day average weight/ });
+    const width = async () => (await chart.boundingBox())?.width ?? 0;
+
     await page.setViewportSize({ width: 390, height: 900 });
     await expect(chart).toBeVisible();
-    const narrow = (await chart.boundingBox())!.width;
+    await expect.poll(width).toBeGreaterThan(100);
+    const narrow = await width();
+
     await page.setViewportSize({ width: 1366, height: 900 });
-    await expect.poll(async () => (await chart.boundingBox())!.width).toBeGreaterThan(narrow + 100);
+    await expect.poll(width).toBeGreaterThan(narrow + 100);
   });
 });
