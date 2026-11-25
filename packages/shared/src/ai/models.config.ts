@@ -61,6 +61,19 @@ export function getModelProfile(name: string | undefined): ModelProfile {
   return profile;
 }
 
+/**
+ * The profile for a running function. Same as `getModelProfile`, plus a second lock for the paid models:
+ * `prod` only works when `APP_ENV=production` is also set, so copying `MODEL_PROFILE=prod` into a dev or preview
+ * environment fails closed instead of spending money. Set both only in the production Supabase project.
+ */
+export function getRuntimeModelProfile(name: string | undefined, appEnv: string | undefined): ModelProfile {
+  const profile = getModelProfile(name);
+  if (profile.name === 'prod' && appEnv?.trim() !== 'production') {
+    throw new Error('MODEL_PROFILE=prod needs APP_ENV=production. Paid models run in production only.');
+  }
+  return profile;
+}
+
 /** Models in call order for a role: primary first, then fallbacks. */
 export function modelsForRole(profile: ModelProfile, role: ModelRole): string[] {
   const r = profile.roles[role];

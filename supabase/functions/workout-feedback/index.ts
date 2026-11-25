@@ -9,7 +9,7 @@ import {
   aiCallRow,
   guardrailRow,
   callStructured,
-  getModelProfile,
+  getRuntimeModelProfile,
   runGuardrails,
 } from '../../../packages/shared/src/ai/index.ts';
 import { originsFromEnv, withCors } from '../../../packages/shared/src/http/index.ts';
@@ -40,7 +40,7 @@ Deno.serve(withCors(async (req) => {
 
   let remembered = false;
   if (note?.trim()) {
-    const profile = getModelProfile(Deno.env.get('MODEL_PROFILE'));
+    const profile = getRuntimeModelProfile(Deno.env.get('MODEL_PROFILE'), Deno.env.get('APP_ENV'));
     const cfg = {
       profile,
       apiKey: Deno.env.get('OPENROUTER_API_KEY') ?? 'proxy-injected',
