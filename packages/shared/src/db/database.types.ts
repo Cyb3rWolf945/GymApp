@@ -171,6 +171,7 @@ export type Database = {
           stripe_subscription_id: string | null;
           source: string;
           updated_at: string;
+          past_due_since: string | null;
         };
         Insert: {
           user_id: string;
@@ -182,6 +183,7 @@ export type Database = {
           stripe_subscription_id?: string | null;
           source?: string;
           updated_at?: string;
+          past_due_since?: string | null;
         };
         Update: Partial<Database['public']['Tables']['entitlements']['Insert']>;
       };
@@ -602,6 +604,19 @@ export type Database = {
           job_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['shopping_list_items']['Insert']>;
+      };
+      stripe_events: {
+        Row: {
+          id: string;
+          type: string;
+          received_at: string;
+        };
+        Insert: {
+          id: string;
+          type: string;
+          received_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['stripe_events']['Insert']>;
       };
       workout_days: {
         Row: {
