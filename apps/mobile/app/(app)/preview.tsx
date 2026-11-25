@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
+import { FadeSlideIn, staggerDelay, useReducedMotion } from '../../src/motion';
 import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
@@ -20,6 +21,7 @@ export default function Preview() {
   const { colors, spacing } = useTheme();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [entitled, setEntitled] = useState(false);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     if (!user) return;
@@ -63,6 +65,8 @@ export default function Preview() {
     <Screen footer={<Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />}>
         <Text variant="display">{t.title}</Text>
 
+        {/* The cards reveal one after another. */}
+        <FadeSlideIn direction="up" delay={staggerDelay(1, reduced)}>
         <Card style={{ gap: spacing.sm }}>
           <Text variant="heading">{t.workoutTitle}</Text>
           <Text tone="muted">{workout!.dayName}</Text>
@@ -71,7 +75,9 @@ export default function Preview() {
           ))}
           <Text variant="small" tone="muted">{t.why}: {workout!.rationale}</Text>
         </Card>
+        </FadeSlideIn>
 
+        <FadeSlideIn direction="up" delay={staggerDelay(3, reduced)}>
         <Card style={{ gap: spacing.md }}>
           <Text variant="heading">{t.mealsTitle}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -87,11 +93,14 @@ export default function Preview() {
           ))}
           <Text variant="small" tone="muted">{t.why}: {meals!.rationale}</Text>
         </Card>
+        </FadeSlideIn>
 
         {disclaimer ? (
-          <Card>
-            <Text variant="small">{disclaimer}</Text>
-          </Card>
+          <FadeSlideIn direction="up" delay={staggerDelay(5, reduced)}>
+            <Card>
+              <Text variant="small">{disclaimer}</Text>
+            </Card>
+          </FadeSlideIn>
         ) : null}
     </Screen>
   );

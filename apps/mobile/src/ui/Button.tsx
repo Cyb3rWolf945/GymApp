@@ -1,5 +1,7 @@
-import { ActivityIndicator, Pressable, type PressableProps, StyleSheet } from 'react-native';
-import { useTheme } from '../theme';
+import { useRef } from 'react';
+import { ActivityIndicator, Animated, Pressable, type PressableProps, StyleSheet } from 'react-native';
+import { easing, useReducedMotion } from '../motion';
+import { motion, useTheme } from '../theme';
 import { Text } from './Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -11,28 +13,45 @@ interface Props extends Omit<PressableProps, 'children' | 'style'> {
   loading?: boolean;
 }
 
-export function Button({ label, variant = 'primary', loading = false, disabled, ...rest }: Props) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export function Button({ label, variant = 'primary', loading = false, disabled, onPressIn, onPressOut, ...rest }: Props) {
   const { colors, radius, spacing, minTapTarget } = useTheme();
+  const reduced = useReducedMotion();
+  const press = useRef(new Animated.Value(0)).current; // 0 = resting, 1 = pressed in
   const inactive = disabled || loading;
   const bg = { primary: colors.accent, secondary: colors.surfaceAlt, ghost: 'transparent', danger: colors.danger }[variant];
   const fg = variant === 'primary' ? colors.onAccent : variant === 'danger' ? colors.background : colors.text;
+  const to = (value: number) => Animated.timing(press, { toValue: value, duration: motion.duration.fast / 2, easing: easing('standard'), useNativeDriver: true }).start();
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       hitSlop={4}
-      style={({ pressed }) => [
+      onPressIn={(e) => {
+        to(1);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        to(0);
+        onPressOut?.(e);
+      }}
+      style={[
         styles.base,
         { backgroundColor: bg, minHeight: Math.max(minTapTarget, 52), borderRadius: radius.md, paddingHorizontal: spacing.xl },
         variant === 'secondary' && { borderWidth: 1, borderColor: colors.border },
-        { opacity: inactive ? 0.5 : pressed ? 0.85 : 1 },
+        {
+          // Pressed: shrink a little (not with reduced motion) and dim a little.
+          opacity: Animated.multiply(press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }), inactive ? 0.5 : 1),
+          transform: [{ scale: press.interpolate({ inputRange: [0, 1], outputRange: [1, reduced ? 1 : motion.pressScale] }) }],
+        },
       ]}
       {...rest}
     >
       {loading ? <ActivityIndicator color={fg} /> : <Text variant="bodyStrong" style={{ color: fg, textAlign: 'center' }}>{label}</Text>}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

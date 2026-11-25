@@ -16,6 +16,9 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'off',
+    // Animations are tested on their own (tests/motion.spec.ts); everywhere else the app runs with reduced motion, so
+    // nothing is caught mid-transition.
+    reducedMotion: 'reduce',
     // Set CHROMIUM_PATH to use a browser that is already installed instead of Playwright's own download.
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
   },

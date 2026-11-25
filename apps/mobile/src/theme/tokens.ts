@@ -83,6 +83,32 @@ export const columnsFor = (bp: Breakpoint, columns: Partial<GridColumns> = {}): 
 export const cellWidth = (containerWidth: number, columns: number, gap: number): number =>
   Math.max(0, Math.floor((containerWidth - gap * (columns - 1)) / columns));
 
+/**
+ * Motion. Every animation uses these, so the app moves as one thing. Pure data (easings are cubic-bezier points).
+ * `slide` is how far a step travels while it enters; a whole step transition stays under about 300 ms.
+ */
+export const motion = {
+  duration: { fast: 150, base: 250, slow: 400 },
+  easing: {
+    /** Default for things that move on screen. */
+    standard: [0.2, 0, 0, 1],
+    /** Things arriving: start fast, settle gently. */
+    enter: [0, 0, 0, 1],
+    /** Things leaving: speed up as they go. */
+    exit: [0.3, 0, 1, 1],
+  },
+  /** Delay between a step's title, text and options entering (ms). */
+  stagger: 40,
+  /** A pressed button shrinks to this. */
+  pressScale: 0.97,
+  /** The "pop" a chosen chip or finished step makes. */
+  popScale: 1.08,
+  /** Horizontal travel of a step entering (px). */
+  slide: 24,
+} as const;
+export type MotionDuration = keyof typeof motion.duration;
+export type MotionEasing = keyof typeof motion.easing;
+
 export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
 
 export const typography = {

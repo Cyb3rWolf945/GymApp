@@ -4,6 +4,7 @@ import { buildPlanInputs, isComplete, toProfileUpdate } from '@gymapp/shared';
 import { trackEvent } from '../../src/analytics/track';
 import { SignInForm } from '../../src/auth/SignInForm';
 import { en } from '../../src/copy/en';
+import { FadeSlideIn } from '../../src/motion';
 import { ACCOUNT_MODAL_DELAY_MS, accountModalReducer } from '../../src/onboarding/accountModal';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
@@ -51,10 +52,13 @@ export default function GeneratingSignedOut() {
       framed
       footer={modal === 'closed' ? <Button label={t.accountCta} onPress={() => dispatch('reopen')} /> : null}
     >
-      <Text variant="display">{t.title}</Text>
+      {/* Arrives with a fade, as if the last question dissolves into the plan being built. */}
+      <FadeSlideIn>
+        <Text variant="display">{t.title}</Text>
+      </FadeSlideIn>
       <GenerationSteps
         steps={[{ id: 'calories', state: 'done' }, { id: 'exercises', state: 'pending' }, { id: 'meals', state: 'pending' }]}
-        caloriesNote={kcal ? t.caloriesDone(kcal.toLocaleString('en-US')) : undefined}
+        caloriesCount={kcal ? { kcal, format: (n) => t.caloriesDone(n.toLocaleString('en-US')) } : undefined}
       />
       {/* Tapping the dimmed background does nothing; Escape (web) or the back button (Android) closes it. */}
       <BottomSheet

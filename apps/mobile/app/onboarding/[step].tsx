@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type StepId, getStep, isStepId, nextStepId, prevStepId, progressOf, validateStep } from '@gymapp/shared';
 import { trackOnboarding } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
+import { FadeSlideIn, createTapLock, staggerDelay, stepDirection, useConfirmPulse, useReducedMotion, useShake } from '../../src/motion';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
 import { STEP_BODIES } from '../../src/onboarding/steps';
 import { useTheme } from '../../src/theme';
 import { Button, ProgressBar, Screen, Text } from '../../src/ui';
 
 const t = en.onboarding;
+/** The step shown before this one, so a step knows whether it is entering going forward or back. Lives as long as the app. */
+let previousStep: StepId | null = null;
 type StepCopy = { title: string; body?: string; skip?: string; cta?: string };
 const copyFor = (id: StepId) => (t.steps as Record<StepId, StepCopy>)[id];
 
@@ -20,6 +23,18 @@ export default function OnboardingStep() {
   const { spacing } = useTheme();
   const [showError, setShowError] = useState(false);
   const id = isStepId(step) ? step : null;
+  const reduced = useReducedMotion();
+  const shake = useShake();
+  const confirm = useConfirmPulse();
+  // One navigation per screen: extra taps while the next step comes in are ignored.
+  const lock = useRef(createTapLock()).current;
+  // Read the previous step once, when this screen first appears, then remember this one for the next.
+  const direction = useMemo(() => {
+    if (!id) return 'none' as const;
+    const d = stepDirection(previousStep, id);
+    previousStep = id;
+    return d;
+  }, [id]);
 
   useEffect(() => {
     if (!id || !hydrated) return;
@@ -48,8 +63,20 @@ export default function OnboardingStep() {
     }
   };
   const onContinue = () => {
-    if (!valid) return setShowError(true);
-    goNext('onboarding_step_completed');
+    if (lock.locked) return;
+    if (!valid) {
+      setShowError(true); // the message fades in
+      shake.run();
+      return;
+    }
+    if (!lock.take()) return;
+    confirm.run(() => goNext('onboarding_step_completed')); // a short pulse, then the next step comes in
+  };
+  const onSkip = () => {
+    if (lock.take()) goNext('onboarding_step_skipped');
+  };
+  const onBack = (to: StepId) => {
+    if (lock.take()) router.replace(`/onboarding/${to}`);
   };
   const errorText = id === 'consents' ? t.errors.needConsents : id === 'equipment' ? t.errors.pickAtLeastOne : t.errors.pickOne;
 
@@ -66,21 +93,32 @@ export default function OnboardingStep() {
           <>
             <Button label={text.cta ?? en.common.continue} onPress={onContinue} />
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              {prev ? <View style={{ flex: 1 }}><Button label={en.common.back} variant="ghost" onPress={() => router.replace(`/onboarding/${prev}`)} /></View> : null}
-              {def.skippable ? <View style={{ flex: 1 }}><Button label={text.skip ?? en.common.skip} variant="ghost" onPress={() => goNext('onboarding_step_skipped')} /></View> : null}
+              {prev ? <View style={{ flex: 1 }}><Button label={en.common.back} variant="ghost" onPress={() => onBack(prev)} /></View> : null}
+              {def.skippable ? <View style={{ flex: 1 }}><Button label={text.skip ?? en.common.skip} variant="ghost" onPress={onSkip} /></View> : null}
             </View>
           </>
         )
       }
     >
-      <View style={{ gap: spacing.sm }}>
-        <Text variant="display">{text.title}</Text>
-        {text.body ? <Text tone="muted">{text.body}</Text> : null}
-      </View>
-      <View style={{ gap: spacing.lg }}>
-        <Body answers={answers} update={update} onContinue={onContinue} />
-      </View>
-      {showError && !valid ? <Text tone="danger" accessibilityRole="alert">{errorText}</Text> : null}
+      {/* Title, text and options come in one after another (a short stagger), sliding the way you are going. */}
+      <FadeSlideIn direction={direction}>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="display">{text.title}</Text>
+          {text.body ? <Text tone="muted">{text.body}</Text> : null}
+        </View>
+      </FadeSlideIn>
+      <FadeSlideIn direction={direction} delay={staggerDelay(1, reduced)}>
+        <Animated.View style={[shake.style, confirm.style]}>
+          <View style={{ gap: spacing.lg }}>
+            <Body answers={answers} update={update} onContinue={onContinue} />
+          </View>
+        </Animated.View>
+      </FadeSlideIn>
+      {showError && !valid ? (
+        <FadeSlideIn>
+          <Text tone="danger" accessibilityRole="alert">{errorText}</Text>
+        </FadeSlideIn>
+      ) : null}
     </Screen>
   );
 }
