@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_TOASTS, dismissToast, fractionOf, progressFraction, pushToast, snapToStep, valueFromPosition, type ToastItem } from './logic';
+import { MAX_TOASTS, dismissToast, fractionOf, progressFraction, pushToast, selectLoadState, snapToStep, valueFromPosition, type ToastItem } from './logic';
 
 describe('slider math', () => {
   it('snaps to the step and clamps', () => {
@@ -32,5 +32,23 @@ describe('progress and toasts', () => {
     for (let i = 1; i <= MAX_TOASTS + 2; i++) list = pushToast(list, { id: i, message: `m${i}`, tone: 'info' });
     expect(list.map((t) => t.id)).toEqual([3, 4, 5]);
     expect(dismissToast(list, 4).map((t) => t.id)).toEqual([3, 5]);
+  });
+});
+
+describe('selectLoadState (loading, error, empty, ready)', () => {
+  it('is loading until the first response', () => {
+    expect(selectLoadState({ loaded: false, failed: false, count: 0 })).toBe('loading');
+  });
+  it('is error when the request failed, whatever else is true', () => {
+    expect(selectLoadState({ loaded: false, failed: true, count: 0 })).toBe('error');
+    expect(selectLoadState({ loaded: true, failed: true, count: 5 })).toBe('error');
+  });
+  it('is empty when it loaded and nothing came back, ready when something did', () => {
+    expect(selectLoadState({ loaded: true, failed: false, count: 0 })).toBe('empty');
+    expect(selectLoadState({ loaded: true, failed: false, count: 3 })).toBe('ready');
+  });
+  it('a failed refresh keeps the data that is already on screen', () => {
+    expect(selectLoadState({ loaded: true, failed: true, count: 3, hadData: true })).toBe('ready');
+    expect(selectLoadState({ loaded: true, failed: true, count: 0, hadData: true })).toBe('empty');
   });
 });

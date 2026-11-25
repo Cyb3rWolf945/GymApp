@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { scaleIngredients } from '@gymapp/shared';
 import { en } from '../../../src/copy/en';
 import { type RecipeDetail, fetchRecipeDetail } from '../../../src/plan/api';
 import { useBreakpoint, useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, ListItem, Screen, Text } from '../../../src/ui';
+import { Button, Card, EmptyState, ListItem, Screen, ScreenSkeleton, Text } from '../../../src/ui';
 
 const r = en.nutrition.recipe;
 
@@ -30,7 +30,7 @@ export default function RecipeScreen() {
   }, [slug]);
 
   const body = () => {
-    if (state.status === 'loading') return <ActivityIndicator color={colors.accent} />;
+    if (state.status === 'loading') return <ScreenSkeleton title={false} label={en.common.loading} />;
     if (state.status === 'error') return <EmptyState title={r.loadError} actionLabel={en.common.retry} onAction={() => router.replace({ pathname: '/recipe/[slug]', params: { slug: String(slug), portions: String(portions) } })} />;
     if (!state.recipe) return <EmptyState title={r.missing} />;
     const rec = state.recipe;

@@ -11,7 +11,7 @@ import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const n = en.nutrition;
@@ -53,7 +53,7 @@ function Nutrition({ data }: { data: PlanData }) {
   const [saving, setSaving] = useState(false);
 
   if (entitled === null) {
-    return <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}><ActivityIndicator color={colors.accent} /></SafeAreaView>;
+    return <Screen variant="dashboard"><ScreenSkeleton label={en.common.loading} /></Screen>;
   }
   if (!entitled) {
     return (

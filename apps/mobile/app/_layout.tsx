@@ -1,7 +1,9 @@
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { TrackingBanner } from '../src/marketing/TrackingBanner';
+import { OfflineBanner } from '../src/net/OfflineBanner';
 import { AccountModalProvider } from '../src/onboarding/AccountModalProvider';
 import { OnboardingProvider } from '../src/onboarding/OnboardingProvider';
 import { useSaveOnboarding } from '../src/onboarding/useSaveOnboarding';
@@ -54,7 +56,10 @@ export default function RootLayout() {
           <OnboardingProvider>
             <ThemedStatusBar />
             <AccountModalProvider>
-              <RootStack />
+              <View style={{ flex: 1 }}>
+                <OfflineBanner />
+                <RootStack />
+              </View>
             </AccountModalProvider>
             <TrackingBanner />
           </OnboardingProvider>

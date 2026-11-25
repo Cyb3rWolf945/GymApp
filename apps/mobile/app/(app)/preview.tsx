@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
@@ -8,7 +8,7 @@ import { FadeSlideIn, staggerDelay, useReducedMotion } from '../../src/motion';
 import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, Screen, StatTile, Text } from '../../src/ui';
+import { Button, Card, EmptyState, ListItem, Screen, ScreenSkeleton, StatTile, Text } from '../../src/ui';
 
 const t = en.plan.preview;
 
@@ -18,7 +18,7 @@ type State = { kind: 'loading' } | { kind: 'ready'; preview: PlanPreview } | { k
 export default function Preview() {
   const { user } = useAuth();
   const router = useRouter();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [entitled, setEntitled] = useState(false);
   const reduced = useReducedMotion();
@@ -49,7 +49,7 @@ export default function Preview() {
   }, [user]);
 
   if (state.kind === 'loading') {
-    return <Screen center><ActivityIndicator color={colors.accent} /></Screen>;
+    return <Screen><ScreenSkeleton label={en.common.loading} /></Screen>;
   }
   if (state.kind === 'error') {
     return (

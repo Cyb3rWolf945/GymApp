@@ -37,3 +37,16 @@ export function pushToast(list: ToastItem[], item: ToastItem): ToastItem[] {
   return [...list, item].slice(-MAX_TOASTS);
 }
 export const dismissToast = (list: ToastItem[], id: number): ToastItem[] => list.filter((t) => t.id !== id);
+
+/** What a data screen should show: still loading, failed, loaded with nothing in it, or loaded. Error wins over everything. */
+export type LoadState = 'loading' | 'error' | 'empty' | 'ready';
+
+/**
+ * `loaded` is false until the first response; `failed` is true when the request failed; `count` is how many things came
+ * back. A failed refresh over data already on screen keeps the data (`hadData`), so a flaky connection doesn't wipe it.
+ */
+export function selectLoadState({ loaded, failed, count, hadData = false }: { loaded: boolean; failed: boolean; count: number; hadData?: boolean }): LoadState {
+  if (failed && !hadData) return 'error';
+  if (!loaded) return 'loading';
+  return count === 0 ? 'empty' : 'ready';
+}

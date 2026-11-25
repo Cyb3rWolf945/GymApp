@@ -34,7 +34,7 @@ export interface Backend {
   writes: Recorded[];
   /** Calls to Edge Functions, by name. */
   functionCalls: string[];
-  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown>; /** One workout whose sets can be corrected and deleted (History). Writes to `set_logs` / `workout_sessions` change it. */ editable: ReturnType<typeof editableWorkout> | null; /** Writes to the tables fail (no connection); reads still work. */ offline: boolean; /** Weekly check-ins already sent (`weekly-checkin` adds one). */ checkins: { week_start: string }[] };
+  state: { entitled: boolean; jobs: unknown[]; profile: Record<string, unknown> | null; checked: string[]; /** Weights, sets and workouts from the last weeks (Progress screen, store screenshots). Off by default. */ history: Date | null; /** Answers of `rpc` calls by function name (default: an empty list). */ rpc: Record<string, unknown>; /** One workout whose sets can be corrected and deleted (History). Writes to `set_logs` / `workout_sessions` change it. */ editable: ReturnType<typeof editableWorkout> | null; /** Writes to the tables fail (no connection); reads still work. */ offline: boolean; /** Weekly check-ins already sent (`weekly-checkin` adds one). */ checkins: { week_start: string }[]; /** Tables whose reads fail with a 500 (a request that fails). Remove a name to let "Try again" succeed. */ failing: string[]; /** Milliseconds to hold table reads, by table (to see the loading skeletons). */ delay: Record<string, number> };
   /** What the Stripe webhook would do after a successful payment. */
   completeCheckout(): void;
   writesTo(path: string): Recorded[];
@@ -79,7 +79,7 @@ export function applyFilters(rows: unknown[], params: URLSearchParams): unknown[
 }
 
 export async function installFakeBackend(page: Page, opts: { checkoutUrl: string }): Promise<Backend> {
-  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {}, editable: null, offline: false, checkins: [] };
+  const state: Backend['state'] = { entitled: false, jobs: [], profile: null, checked: [], history: null, rpc: {}, editable: null, offline: false, checkins: [], failing: [], delay: {} };
   const writes: Recorded[] = [];
   const functionCalls: string[] = [];
   const auth: AuthState = { confirmEmails: false, accounts: new Map(), identities: ['email'], mailbox: [] };
@@ -219,7 +219,11 @@ export async function installFakeBackend(page: Page, opts: { checkoutUrl: string
     // ---- Tables
     if (path.startsWith('/rest/v1/')) {
       const table = path.replace('/rest/v1/', '');
-      if (method === 'GET' || method === 'HEAD') return json(route, applyFilters((tables[table] ?? (() => []))(), url.searchParams));
+      if (method === 'GET' || method === 'HEAD') {
+        if (state.delay[table]) await new Promise((r) => setTimeout(r, state.delay[table]));
+        if (state.failing.includes(table)) return json(route, { message: 'The fake backend is set to fail this table.' }, 500);
+        return json(route, applyFilters((tables[table] ?? (() => []))(), url.searchParams));
+      }
       const body = parseBody(req);
       if (state.offline && (table === 'set_logs' || table === 'workout_sessions')) return route.fulfill({ status: 503, headers: { ...CORS, 'content-type': 'application/json' }, body: '{"message":"offline"}' });
       writes.push({ method, path, body });

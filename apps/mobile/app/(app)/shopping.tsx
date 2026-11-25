@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { NutritionPlanSchema, WorkoutPlanSchema, activeChecked, buildShoppingList, trainingWeekdays, type ShoppingRecipe } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
@@ -8,12 +7,12 @@ import { PlanGate } from '../../src/home/PlanGate';
 import { type PlanData, PlanDataProvider } from '../../src/home/usePlanData';
 import { clearCheckedItems, fetchCheckedItems, fetchShoppingRecipes, setItemChecked } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, Text } from '../../src/ui';
+import { Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text } from '../../src/ui';
 
 const t = en.nutrition.shopping;
 
 function Shopping({ data }: { data: PlanData }) {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
   const [recipes, setRecipes] = useState<Map<string, ShoppingRecipe> | null>(null);
@@ -73,9 +72,10 @@ function Shopping({ data }: { data: PlanData }) {
     <Screen variant="dashboard">
         <Text variant="display">{t.title}</Text>
         <Text tone="muted">{t.body}</Text>
-        {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
-        {!recipes && !error ? <ActivityIndicator color={colors.accent} /> : null}
-        {recipes && total === 0 ? <EmptyState title={t.empty} /> : null}
+        {error && !recipes ? <EmptyState title={error} actionLabel={en.common.retry} onAction={() => void load()} /> : null}
+        {error && recipes ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
+        {!recipes && !error ? <ScreenSkeleton title={false} cards={3} label={en.common.loading} /> : null}
+        {recipes && total === 0 ? <EmptyState title={t.empty} actionLabel={en.home.tabs.nutrition} onAction={() => router.replace('/nutrition')} /> : null}
         {total > 0 ? <Text tone="muted">{t.checkedCount(done.size, total)}</Text> : null}
         <ResponsiveGrid gap={spacing.lg}>
         {groups.map((g) => (

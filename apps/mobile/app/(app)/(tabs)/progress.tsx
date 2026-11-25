@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import {
   type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
   e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, trendChange, trendLifts, weightTrend,
@@ -13,7 +13,7 @@ import { MuscleMap } from '../../../src/progress/MuscleMap';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
-import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, Text, TextField, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
 const p = t.progress;
@@ -33,7 +33,7 @@ const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toL
 export default function ProgressScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const toast = useToast();
   const { pending } = useWorkout();
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -119,11 +119,11 @@ export default function ProgressScreen() {
   return (
     <Screen variant="dashboard" style={{ flexGrow: 1 }}>
         <Text variant="display">{t.progressTitle}</Text>
-        {rows === null ? <ActivityIndicator color={colors.accent} /> : null}
-        {failed ? <Text tone="danger" accessibilityRole="alert">{p.loadError}</Text> : null}
+        {rows === null ? <ScreenSkeleton title={false} label={en.common.loading} /> : null}
+        {failed ? <EmptyState title={p.loadError} actionLabel={en.common.retry} onAction={() => void load()} /> : null}
 
         <ResponsiveGrid gap={spacing.xl} columns={{ expanded: 2 }}>
-        {rows !== null ? (
+        {rows !== null && !failed ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.weightTitle}</Text>
             {trend.length === 0 ? (
@@ -152,7 +152,7 @@ export default function ProgressScreen() {
           </Card>
         ) : null}
 
-        {rows !== null ? (
+        {rows !== null && !failed ? (
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{p.prsTitle}</Text>
             {prs.length === 0 ? (
@@ -168,7 +168,7 @@ export default function ProgressScreen() {
           </Card>
         ) : null}
 
-        {rows !== null ? (
+        {rows !== null && !failed ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.trendTitle}</Text>
             {lifts.length === 0 ? (
@@ -191,7 +191,7 @@ export default function ProgressScreen() {
           </Card>
         ) : null}
 
-        {rows !== null ? (
+        {rows !== null && !failed ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.mapTitle}</Text>
             <Text tone="muted">{p.mapBody}</Text>
@@ -212,11 +212,11 @@ export default function ProgressScreen() {
 
         {empty ? (
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            <EmptyState title={t.progressEmptyTitle} body={t.progressEmptyBody} />
+            <EmptyState title={t.progressEmptyTitle} body={t.progressEmptyBody} actionLabel={t.startWorkout} onAction={() => router.push('/')} />
           </View>
         ) : null}
 
-        {rows && rows.length > 0 ? (
+        {rows && !failed && rows.length > 0 ? (
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{h.title}</Text>
             {rows.map((r) => (
