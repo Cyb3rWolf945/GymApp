@@ -90,6 +90,11 @@ describe('handleStripeEvent', () => {
 });
 
 describe('patchFromSubscription', () => {
+  it('keeps the price key so the admin can tell monthly from annual', () => {
+    expect(patchFromSubscription(sub())).toMatchObject({ price_key: 'pro_monthly' });
+    expect(patchFromSubscription(sub({ items: { data: [{ price: { lookup_key: 'elite_annual' } }] } }))).toMatchObject({ tier: 'elite', price_key: 'elite_annual' });
+    expect(patchFromSubscription(sub({ status: 'canceled' }))).toMatchObject({ price_key: null });
+  });
   it('maps dead statuses to no tier', () => {
     for (const status of ['canceled', 'unpaid', 'incomplete_expired']) expect(patchFromSubscription(sub({ status }))).toMatchObject({ tier: 'none', status: 'canceled' });
   });

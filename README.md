@@ -59,3 +59,10 @@ Next.js (App Router) + Tailwind + shadcn/ui-style components + Recharts. Run it 
 ## Deploying to production
 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md): database, Edge Functions (`supabase/scripts/deploy-functions.sh`), secrets, Vercel, the AI smoke test (`scripts/smoke-ai.ts`), the Stripe live approval gate, the launch checklist and rollback. `MODEL_PROFILE=prod` only works together with `APP_ENV=production`.
+
+### Admin metrics (Overview, Funnel, AI health)
+
+- **Overview:** MRR (list prices, annual / 12, trials excluded), subscribers by tier, trials, trial to paid, churn this month, ARPU, net revenue 7 and 30 days, today and this month against costs (AI calls plus `cost_entries`) with margin, new users per day, ad spend and cost per trial. Churn and MRR are estimates: the table keeps the latest state, not a history, and coupons are ignored.
+- **Funnel:** landing to purchase with a source (UTM) and period filter, plus the drop-off for onboarding screens 1 to 13. Anonymous quiz events and the signed-in events of the same person are joined (`analytics_events_attributed`).
+- **AI health:** generations, first-pass, retry, escalation and fallback rates, p50 and p95 latency per role, cost per generation, user and in total, failures by type, refusals and the active prompt versions.
+- Apply migration `20261125000017_admin_metrics.sql` (`supabase/scripts/apply-remote.ts`) before opening these pages; the webhook starts storing the price key (`entitlements.price_key`) after it.

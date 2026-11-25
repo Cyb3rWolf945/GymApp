@@ -199,6 +199,7 @@ export type Database = {
           source: string;
           updated_at: string;
           past_due_since: string | null;
+          price_key: string | null;
         };
         Insert: {
           user_id: string;
@@ -211,6 +212,7 @@ export type Database = {
           source?: string;
           updated_at?: string;
           past_due_since?: string | null;
+          price_key?: string | null;
         };
         Update: Partial<Database['public']['Tables']['entitlements']['Insert']>;
       };
