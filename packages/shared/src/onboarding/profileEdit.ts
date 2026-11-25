@@ -18,7 +18,8 @@ export const isEditableStep = (v: unknown): v is StepId => typeof v === 'string'
 /** The answers stored in `profiles.onboarding`, ready for the step components. Anything that is not a valid answer is dropped. */
 export function answersFromProfile(onboarding: unknown): PartialAnswers {
   if (!onboarding || typeof onboarding !== 'object') return {};
-  const { version: _version, ...rest } = onboarding as Record<string, unknown>;
+  const rest = { ...(onboarding as Record<string, unknown>) };
+  delete rest.version;
   const parsed = OnboardingAnswersSchema.partial().safeParse(rest);
   return parsed.success ? parsed.data : {};
 }
