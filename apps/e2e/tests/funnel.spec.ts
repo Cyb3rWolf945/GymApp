@@ -19,8 +19,7 @@ test('landing → quiz → account → plan generated → preview → paywall �
   await completeQuiz(page);
   await signUpWithMagicLink(page);
 
-  // The profile is saved with the ad attribution and the consents, then the plan is generated.
-  await expect(shown(page, en.plan.generating.title)).toBeVisible();
+  // The profile is saved with the ad attribution and the consents, then the plan is generated (the fake is instant).
   await expect.poll(() => backend.functionCalls.filter((f) => f === 'generate-plan').length).toBe(2); // workout + meals
   const profile = backend.writesTo('/profiles')[0]?.body as { attribution?: Record<string, string>; goal?: string } | undefined;
   expect(profile?.attribution).toMatchObject({ utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'e2e' });

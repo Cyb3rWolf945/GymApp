@@ -15,7 +15,8 @@ export const FIXED_NOW = new Date('2026-11-23T10:00:00Z');
 export async function start(page: Page): Promise<Backend> {
   await page.clock.setFixedTime(FIXED_NOW);
   // The fake "Stripe Checkout" page: Stripe's hosted page is not part of this suite.
-  await page.route(`**${CHECKOUT_PATH}**`, (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Stripe Checkout (test stub)</h1>' }));
+  // On the context, not the page: Checkout opens in a new tab.
+  await page.context().route(`**${CHECKOUT_PATH}**`, (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Stripe Checkout (test stub)</h1>' }));
   return installFakeBackend(page, { checkoutUrl: `http://localhost:${process.env.E2E_PORT ?? 4173}${CHECKOUT_PATH}` });
 }
 

@@ -6,7 +6,7 @@ import { NutritionPlanSchema, WorkoutPlanSchema, activeChecked, buildShoppingLis
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { PlanGate } from '../../src/home/PlanGate';
-import type { PlanData } from '../../src/home/usePlanData';
+import { type PlanData, PlanDataProvider } from '../../src/home/usePlanData';
 import { clearCheckedItems, fetchCheckedItems, fetchShoppingRecipes, setItemChecked } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
 import { Button, Card, EmptyState, ListItem, Text } from '../../src/ui';
@@ -99,6 +99,11 @@ function Shopping({ data }: { data: PlanData }) {
   );
 }
 
+/** Outside the tabs, so it brings its own plan data: without a provider `usePlanData` stays on "loading" forever. */
 export default function ShoppingScreen() {
-  return <PlanGate>{(data) => <Shopping data={data} />}</PlanGate>;
+  return (
+    <PlanDataProvider>
+      <PlanGate>{(data) => <Shopping data={data} />}</PlanGate>
+    </PlanDataProvider>
+  );
 }
