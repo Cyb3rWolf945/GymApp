@@ -150,6 +150,7 @@ Every issue carries one label:
 - Open, and every `Depends on: E-xx` issue is closed.
 - No human assignee, and not `status:blocked`.
 - Order: `priority:must` before `should`, then lower `day:`, then lowest number.
+- `day:` only sets the order. Never skip or postpone an eligible issue because of its `day:` label: if a `day:3` issue is the only eligible one, take it now.
 - If nothing is eligible, write "Pipeline idle: waiting on …" in #36 and stop.
 
 ## Conventions
