@@ -6,6 +6,9 @@ import { signedInWithPlan } from '../support/app';
 const TABS = [en.home.tabs.today, en.home.tabs.plan, en.home.tabs.nutrition, en.home.tabs.progress, en.home.tabs.settings];
 
 /** Position and size of each of the five tabs on screen. */
+/** Number of distinct rows the tabs are in: 1 = a bottom bar, 5 = a side column. Waits for a resize to settle. */
+const rowsOf = async (page: Page) => new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size;
+
 async function tabBoxes(page: Page) {
   const boxes = [];
   for (const name of TABS) {
@@ -50,17 +53,16 @@ test.describe('responsive navigation', () => {
     page.on('load', () => reloads++);
 
     await page.setViewportSize({ width: 1100, height: 900 });
-    const wide = await tabBoxes(page);
-    expect(new Set(wide.map((b) => Math.round(b.y))).size).toBe(5); // now a column
+    await expect.poll(() => rowsOf(page)).toBe(5); // now a column
 
     // Exact edges: 599 is a bottom bar, 600 a side navigation.
     await page.setViewportSize({ width: 599, height: 900 });
-    expect(new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(1);
+    await expect.poll(() => rowsOf(page)).toBe(1);
     await page.setViewportSize({ width: 600, height: 900 });
-    expect(new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(5);
+    await expect.poll(() => rowsOf(page)).toBe(5);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect.poll(async () => new Set((await tabBoxes(page)).map((b) => Math.round(b.y))).size).toBe(1);
+    await expect.poll(() => rowsOf(page)).toBe(1);
     expect(reloads).toBe(0);
 
     // Navigation still works in the rail and shows where you are.

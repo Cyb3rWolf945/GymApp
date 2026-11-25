@@ -1,9 +1,10 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { type LayoutChangeEvent, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { scaleSeries, toPath } from '@gymapp/shared';
 import { useTheme } from '../theme';
 
-const W = 320;
+const DEFAULT_W = 320;
 const H = 140;
 
 interface Props {
@@ -18,13 +19,16 @@ interface Props {
 /** A small line chart: no axes, just the shape of the trend. The numbers are shown in text next to it. */
 export function LineChart({ values, dots, label }: Props) {
   const { colors } = useTheme();
+  // Draw at the container's real width (re-measured on resize) so dots stay round and the line fills the card.
+  const [measured, setMeasured] = useState(0);
+  const W = measured > 0 ? measured - 12 : DEFAULT_W;
   // The line and the dots share the y-scale (so they line up) but each spreads over the full width on its own.
   const all = [...values, ...(dots ?? [])];
   const range = all.length ? { min: Math.min(...all), max: Math.max(...all) } : undefined;
   const line = scaleSeries(values, W, H, 8, range);
   const raw = scaleSeries(dots ?? [], W, H, 8, range);
   return (
-    <View accessible accessibilityRole="image" accessibilityLabel={label}>
+    <View accessible accessibilityRole="image" accessibilityLabel={label} onLayout={(e: LayoutChangeEvent) => setMeasured(Math.round(e.nativeEvent.layout.width))}>
       <Svg width="100%" height={H} viewBox={`-6 0 ${W + 12} ${H}`} preserveAspectRatio="none">
         {raw.map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5} />

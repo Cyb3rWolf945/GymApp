@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -11,7 +11,7 @@ import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, EmptyState, ListItem, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const n = en.nutrition;
@@ -95,13 +95,13 @@ function Nutrition({ data }: { data: PlanData }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
+    <Screen variant="dashboard">
         <Text variant="display">{t.nutritionTitle}</Text>
         {plan ? <Text tone="muted">{n.swapNote}</Text> : null}
         {plan ? <Button label={n.shoppingList} variant="secondary" onPress={() => router.push('/shopping')} /> : null}
-        {plan
-          ? WEEKDAYS.map((weekday) => {
+        {plan ? (
+          <ResponsiveGrid gap={spacing.xl}>
+            {WEEKDAYS.map((weekday) => {
               const di = dayFor(weekday);
               const d = plan.days[di];
               const totals = nutritionDayTotals(d, bySlug);
@@ -136,11 +136,10 @@ function Nutrition({ data }: { data: PlanData }) {
                   })}
                 </Card>
               );
-            })
-          : null}
+            })}
+          </ResponsiveGrid>
+        ) : null}
         {plan ? <Text tone="muted">{plan.rationale}</Text> : null}
-      </ScrollView>
-
       <BottomSheet visible={!!target} onClose={() => setTarget(null)} title={target ? n.swapTitle(target.name) : undefined} closeLabel={en.common.close}>
         <Text tone="muted">{n.swapBody}</Text>
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
@@ -150,7 +149,7 @@ function Nutrition({ data }: { data: PlanData }) {
           <Button key={o.slug} label={n.swapPick(o.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />
         ))}
       </BottomSheet>
-    </SafeAreaView>
+    </Screen>
   );
 }
 

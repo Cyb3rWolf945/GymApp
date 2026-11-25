@@ -1,0 +1,73 @@
+import { expect, test, type Page } from '@playwright/test';
+import { en } from '../../mobile/src/copy/en';
+import { signedInWithPlan } from '../support/app';
+
+const TABS = [en.home.tabs.today, en.home.tabs.plan, en.home.tabs.nutrition, en.home.tabs.progress, en.home.tabs.settings];
+const WIDTHS = [320, 390, 600, 768, 1024, 1366, 1920];
+
+const openTab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true }).click();
+/** The page must not scroll sideways: nothing wider than the window. */
+const overflowX = (page: Page) => page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+
+test.describe('responsive main tabs', () => {
+  test('no horizontal scrolling on any tab from 320 to 1920 px', async ({ page }) => {
+    await signedInWithPlan(page);
+    for (const tab of TABS) {
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 900 });
+        await openTab(page, tab);
+        await expect(page.getByRole('tab', { name: tab, exact: true })).toHaveAttribute('aria-selected', 'true');
+        await page.waitForTimeout(150);
+        expect(await overflowX(page), `${tab} at ${width}px`).toBeLessThanOrEqual(0);
+      }
+    }
+  });
+
+  test('Today: workout and meals are side by side from 600 px, stacked on phones', async ({ page }) => {
+    await signedInWithPlan(page);
+    const workout = page.getByText(en.home.startWorkout, { exact: true }).filter({ visible: true }).first();
+    const meals = page.getByText(en.home.mealsTitle, { exact: true }).filter({ visible: true }).first();
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expect(workout).toBeVisible();
+    const phone = { w: (await workout.boundingBox())!, m: (await meals.boundingBox())! };
+    expect(phone.m.y, 'phone: meals below the workout').toBeGreaterThan(phone.w.y);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect.poll(async () => Math.abs((await meals.boundingBox())!.y - (await page.getByText(en.home.workoutMeta(2, 15), { exact: false }).filter({ visible: true }).first().boundingBox())!.y)).toBeLessThan(80);
+    expect((await meals.boundingBox())!.x, 'desktop: meals to the right of the workout').toBeGreaterThan((await workout.boundingBox())!.x + 100);
+  });
+
+  test('Plan: "Swap exercise" is a bottom sheet on phones and a capped, centred dialog on desktop', async ({ page }) => {
+    await signedInWithPlan(page);
+    await openTab(page, en.home.tabs.plan);
+    const close = page.getByRole('button', { name: en.common.close, exact: true });
+    const swap = page.getByText(en.home.swap.action, { exact: true }).filter({ visible: true }).first();
+    const heading = () => page.getByText(en.home.swap.body, { exact: true }).filter({ visible: true }).first();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await swap.click();
+    await expect(heading()).toBeVisible();
+    expect((await heading().boundingBox())!.y, 'phone: sheet content sits low on the screen').toBeGreaterThan(844 / 3);
+    await close.click({ force: true });
+    await expect(heading()).toBeHidden();
+
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await swap.click();
+    await expect(heading()).toBeVisible();
+    const box = (await heading().boundingBox())!;
+    expect(box.width, 'desktop: dialog is capped').toBeLessThanOrEqual(520);
+    expect(Math.abs(box.x + box.width / 2 - 1366 / 2), 'desktop: horizontally centred').toBeLessThan(60);
+    expect(box.y, 'desktop: not stuck to the bottom').toBeLessThan(900 / 2);
+  });
+
+  test('Progress: the chart redraws at the new width', async ({ page }) => {
+    await signedInWithPlan(page);
+    await openTab(page, en.home.tabs.progress);
+    const chart = page.getByRole('img').filter({ visible: true }).first();
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expect(chart).toBeVisible();
+    const narrow = (await chart.boundingBox())!.width;
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await expect.poll(async () => (await chart.boundingBox())!.width).toBeGreaterThan(narrow + 100);
+  });
+});

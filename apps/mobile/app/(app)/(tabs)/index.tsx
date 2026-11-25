@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { WEEKDAY_LABELS, buildToday, dateKey, mealProgress, toggleEaten } from '@gymapp/shared';
 import { PastDueBanner } from '../../../src/billing/PastDueBanner';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
 import { PlanGate } from '../../../src/home/PlanGate';
 import type { PlanData } from '../../../src/home/usePlanData';
-import { useTheme } from '../../../src/theme';
+import { useBreakpoint, useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
-import { Button, Card, ListItem, StatTile, Text } from '../../../src/ui';
+import { Button, Card, ListItem, Screen, StatTile, Text } from '../../../src/ui';
 
 const t = en.home;
 
 function Today({ data }: { data: PlanData }) {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
+  const wide = useBreakpoint() !== 'compact';
   const { active, start } = useWorkout();
   const now = useMemo(() => new Date(), []);
   const day = dateKey(now);
@@ -40,11 +40,12 @@ function Today({ data }: { data: PlanData }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
-        <Text variant="display">{t.title}</Text>
-        <PastDueBanner />
-
+    <Screen variant="dashboard">
+      <Text variant="display">{t.title}</Text>
+      <PastDueBanner />
+      {/* Workout and meals side by side from `medium` up, stacked on phones. */}
+      <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
+        <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>
         {workout?.kind === 'workout' ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{workout.dayName}</Text>
@@ -69,8 +70,10 @@ function Today({ data }: { data: PlanData }) {
             {workout.next ? <Text variant="bodyStrong">{t.nextWorkout(WEEKDAY_LABELS[workout.next.weekday], workout.next.dayName)}</Text> : null}
           </Card>
         ) : null}
+        </View>
 
         {meals && progress ? (
+          <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%' }}>
           <Card style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Text variant="heading">{t.mealsTitle}</Text>
@@ -97,9 +100,10 @@ function Today({ data }: { data: PlanData }) {
               />
             ))}
           </Card>
+          </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
