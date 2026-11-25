@@ -396,6 +396,27 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['nutrition_plans']['Insert']>;
       };
+      plan_prices: {
+        Row: {
+          lookup_key: string;
+          variant: string;
+          tier: Database['public']['Enums']['tier'];
+          interval: string;
+          cents: number;
+          stripe_price_id: string | null;
+          active: boolean;
+        };
+        Insert: {
+          lookup_key: string;
+          variant?: string;
+          tier: Database['public']['Enums']['tier'];
+          interval: string;
+          cents: number;
+          stripe_price_id?: string | null;
+          active?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['plan_prices']['Insert']>;
+      };
       plan_swaps: {
         Row: {
           id: string;

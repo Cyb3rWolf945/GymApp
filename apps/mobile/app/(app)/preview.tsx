@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
-import { fetchCatalogNames, fetchEntitled, fetchJobs } from '../../src/plan/api';
+import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
 import { Button, Card, EmptyState, ListItem, StatTile, Text } from '../../src/ui';
 
@@ -31,7 +31,7 @@ export default function Preview() {
         const n = jobs.nutrition_plan?.result as { plan?: { days?: { meals?: { recipeSlug: string }[] }[] } } | undefined;
         const exerciseSlugs = (w?.plan?.days?.[0]?.exercises ?? []).map((e) => e.exerciseSlug);
         const recipeSlugs = (n?.plan?.days?.[0]?.meals ?? []).map((m) => m.recipeSlug);
-        const [{ exerciseNames, recipes }, isEntitled] = await Promise.all([fetchCatalogNames(exerciseSlugs, recipeSlugs), fetchEntitled(user.id)]);
+        const [{ exerciseNames, recipes }, isEntitled] = await Promise.all([fetchCatalogNames(exerciseSlugs, recipeSlugs), fetchAccess('basic')]);
         if (!active) return;
         const preview = buildPreview(jobs.workout_plan?.result, jobs.nutrition_plan?.result, exerciseNames, recipes);
         setEntitled(isEntitled);

@@ -1,4 +1,4 @@
-import { type Allergen, type JobRow, type ShoppingRecipe, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment, isEntitled } from '@gymapp/shared';
+import { type Allergen, type JobRow, type PlanPriceRow, resolvePrices, type ShoppingRecipe, type PlanKind, type RecipeCandidate, PLAN_KINDS, deriveAllergens, expandEquipment } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 export async function fetchJobs(userId: string): Promise<JobRow[]> {
@@ -24,9 +24,10 @@ export async function startGeneration(kind: PlanKind): Promise<StartResult> {
 
 export const START_KINDS = PLAN_KINDS;
 
-export async function fetchEntitled(userId: string): Promise<boolean> {
-  const { data } = await supabase.from('entitlements').select('tier,status').eq('user_id', userId).maybeSingle();
-  return isEntitled(data);
+/** Server-side answer (`my_access` RPC) to "may this user use this feature?". */
+export async function fetchAccess(feature: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('my_access', { p_feature: feature } as never);
+  return !error && data === true;
 }
 
 /** Catalog names for the slugs in a plan. */
@@ -155,4 +156,32 @@ export async function setItemChecked(userId: string, jobId: string, label: strin
 export async function clearCheckedItems(jobId: string): Promise<boolean> {
   const { error } = await supabase.from('shopping_list_items').update({ checked: false } as never).eq('job_id', jobId).eq('checked', true);
   return !error;
+}
+
+export interface PaywallData {
+  variant: string;
+  prices: PlanPriceRow[];
+  /** Subscription is past due: show the "update your payment method" banner. */
+  pastDue: boolean;
+}
+
+/** Prices (with the user's A/B variant) from `plan_prices`, plus the billing state for the banner. */
+export async function fetchPaywall(userId: string): Promise<PaywallData> {
+  const [prices, ent] = await Promise.all([
+    supabase.from('plan_prices').select('lookup_key,tier,interval,cents,variant,stripe_price_id,active'),
+    supabase.from('entitlements').select('status').eq('user_id', userId).maybeSingle(),
+  ]);
+  if (prices.error) throw prices.error;
+  const { variant, prices: rows } = resolvePrices((prices.data ?? []) as unknown as PlanPriceRow[], userId);
+  return { variant, prices: rows, pastDue: (ent.data as { status?: string } | null)?.status === 'past_due' };
+}
+
+/** Stripe Checkout (web) or Customer Portal URL from the Edge Functions. Null on failure. */
+export async function startCheckout(priceKey: string, founding = false): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-checkout', { body: { priceKey, founding } });
+  return error ? null : ((data as { url?: string } | null)?.url ?? null);
+}
+export async function openPortal(): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('stripe-portal', { body: {} });
+  return error ? null : ((data as { url?: string } | null)?.url ?? null);
 }

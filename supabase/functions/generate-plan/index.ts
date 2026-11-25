@@ -11,12 +11,12 @@ import {
   extractFreeText,
   runGuardrails,
   callStructured,
-  canGenerate,
+  decideGeneration,
+  startOfMonthUtc,
   expandEquipment,
   runPipeline,
   swapSignals,
   getModelProfile,
-  isEntitled,
   type PlanKind,
 } from '../../../packages/shared/src/ai/index.ts';
 
@@ -46,7 +46,12 @@ Deno.serve(async (req) => {
 
   // Access is always checked server-side. Entitled users always; everyone else gets one free
   // generation per kind (failed jobs do not count), so the plan preview can come before the paywall.
-  const { data: ent } = await admin.from('entitlements').select('tier,status').eq('user_id', user.id).maybeSingle();
+  const { data: ent } = await admin.from('entitlements').select('tier,status,current_period_end,past_due_since').eq('user_id', user.id).maybeSingle();
+  const { data: month } = await admin
+    .from('generation_jobs')
+    .select('status')
+    .eq('user_id', user.id)
+    .gte('created_at', startOfMonthUtc());
   const { data: prior } = await admin
     .from('generation_jobs')
     .select('id,status,created_at')
@@ -65,8 +70,15 @@ Deno.serve(async (req) => {
   const running = jobs.find((j: { status: string }) => j.status === 'queued' || j.status === 'running');
   if (running) return json(202, { jobId: running.id });
 
-  if (!canGenerate(isEntitled(ent), jobs).allow) {
-    return json(403, { error: 'Start your trial to generate plans.' });
+  // Tier and quota rules (E-18): see decideGeneration. Everything is decided here, never in the app.
+  const decision = decideGeneration(ent as never, kind, jobs, month ?? []);
+  if (!decision.allow) {
+    const error = {
+      needs_trial: 'Start your trial to generate plans.',
+      upgrade: 'Upgrade to Pro to build your meal plan.',
+      quota: "You've used this month's plan generations. They reset next month.",
+    }[decision.reason];
+    return json(403, { error, reason: decision.reason });
   }
 
   const { data: job, error: jobErr } = await admin
