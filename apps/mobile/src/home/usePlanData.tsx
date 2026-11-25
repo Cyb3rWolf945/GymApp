@@ -3,6 +3,7 @@ import {
   type Allergen, type Diet, type MealSwapRow, type Macros, NutritionPlanSchema, applyMealSwaps, type RecipeCandidate, type SwapRow, type Weekday, WorkoutPlanSchema, applySwaps, buildPlanInputs, latestJobs,
 } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
+import { onPlanChanged } from './planVersion';
 import { fetchCatalogNames, fetchJobs } from '../plan/api';
 import { supabase } from '../supabase';
 
@@ -48,11 +49,13 @@ export function PlanDataProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PlanState>({ status: 'loading' });
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  useEffect(() => onPlanChanged(reload), [reload]);
 
   useEffect(() => {
     if (!user) return;
     let active = true;
-    setState({ status: 'loading' });
+    // Keep showing the current plan while a refresh runs.
+    setState((cur) => (cur.status === 'ready' ? cur : { status: 'loading' }));
     void (async () => {
       try {
         const rows = await fetchJobs(user.id);

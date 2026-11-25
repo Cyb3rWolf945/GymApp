@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WEEKDAY_LABELS, WorkoutPlanSchema, formatReps, trainingWeekdays } from '@gymapp/shared';
@@ -21,6 +22,7 @@ interface Target {
 
 function Plan({ data }: { data: PlanData }) {
   const { colors, spacing } = useTheme();
+  const router = useRouter();
   const { user } = useAuth();
   const { reload } = usePlanData();
   const toast = useToast();
@@ -61,6 +63,10 @@ function Plan({ data }: { data: PlanData }) {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.xl }}>
         <Text variant="display">{t.planTitle}</Text>
+        <Card style={{ gap: spacing.sm }}>
+          <Text tone="muted">{t.update.hint}</Text>
+          <Button label={t.update.action} variant="secondary" onPress={() => router.push('/update-plan')} />
+        </Card>
         {plan?.days.map((d, i) => (
           <Card key={`${d.name}-${i}`} style={{ gap: spacing.sm }}>
             <Text variant="small" tone="muted">{WEEKDAY_LABELS[weekdays[i]]}</Text>

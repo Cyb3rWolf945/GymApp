@@ -16,6 +16,9 @@ import {
   expandEquipment,
   runPipeline,
   knownSwapSignals,
+  formatUserHistory,
+  UserHistorySchema,
+  buildUpdateSummary,
   getRuntimeModelProfile,
   aiCallRow,
   guardrailRow,
@@ -98,11 +101,13 @@ Deno.serve(withCors(async (req) => {
     .single();
   if (jobErr || !job) return json(500, { error: 'Could not start the job.' });
 
-  EdgeRuntime.waitUntil(run(admin, user.id, job.id, kind));
+  // "Update my plan": regenerate through the same pipeline and keep a diff against the previous plan.
+  const update = body?.update === true;
+  EdgeRuntime.waitUntil(run(admin, user.id, job.id, kind, update));
   return json(202, { jobId: job.id });
 }, () => originsFromEnv((k) => Deno.env.get(k))));
 
-async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind) {
+async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false) {
   const fail = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId);
   try {
@@ -141,13 +146,6 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
         : await admin.rpc('candidate_recipes', { p_allergens: inputs.allergens, p_diet: inputs.diet });
     if (cErr || !candidates?.length) return await fail('No suitable options found.');
 
-    const { data: facts } = await admin
-      .from('memory_facts')
-      .select('fact')
-      .eq('user_id', userId)
-      .eq('obsolete', false)
-      .order('created_at', { ascending: false })
-      .limit(20);
     // Swap signal: exercises the user keeps swapping out (catalog names only, never free text).
     const { data: swaps } = await admin.from('plan_swaps').select('from_slug').eq('user_id', userId);
     const { data: known } = swaps?.length
@@ -156,21 +154,66 @@ async function run(admin: ReturnType<typeof createClient>, userId: string, jobId
     // Only slugs that exist in the catalog may reach the prompt.
     const swapped = knownSwapSignals(swaps ?? [], new Set((known ?? []).map((k: { slug: string }) => k.slug)));
     const swapLines = swapped.length ? [`- The user often swaps out these exercises (avoid them): ${swapped.join(', ')}`] : [];
-    const memorySummary = [...(facts ?? []).map((f: { fact: string }) => `- ${f.fact}`), ...swapLines].join('\n');
+
+    // Last 4 weeks, built in SQL: adherence, e1RM and weight trends, swaps and the active facts.
+    // The facts live in the history block, so <memory> only carries the swap signal.
+    const { data: historyRaw } = await admin.rpc('user_history', { p_user: userId, p_days: 28 });
+    const history = formatUserHistory(historyRaw);
+    const memorySummary = swapLines.join('\n');
 
     const result = await runPipeline({
-      kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary },
+      kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary, history },
       library: candidates, // already filtered in SQL; the validator re-checks every item
       canEscalate: profile.escalation !== null,
       call: (c) => callStructured(cfg, c),
     });
+
+    // "Update my plan": a diff against the previous plan, with one line of why per change.
+    let updateSummary: unknown = null;
+    if (update) {
+      const { data: prev } = await admin
+        .from('generation_jobs')
+        .select('id,result')
+        .eq('user_id', userId)
+        .eq('kind', kind)
+        .eq('status', 'done')
+        .neq('id', jobId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prev) {
+        const slugsOf = (r: unknown) => JSON.stringify(r ?? {}).match(/"(?:exerciseSlug|recipeSlug)":"([a-z0-9-]+)"/g) ?? [];
+        const slugs = [...new Set([...slugsOf(prev.result), ...slugsOf(result)].map((m) => m.split(':')[1].replace(/"/g, '')))];
+        const [{ data: ex }, { data: rc }] = await Promise.all([
+          admin.from('exercises').select('slug,name').in('slug', slugs),
+          admin.from('recipes').select('slug,name,diet,kcal,protein_g,carbs_g,fat_g').in('slug', slugs),
+        ]);
+        updateSummary = await buildUpdateSummary({
+          kind,
+          previousJobId: prev.id,
+          previousResult: prev.result,
+          nextResult: result,
+          names: {
+            exercises: new Map((ex ?? []).map((e: { slug: string; name: string }) => [e.slug, e.name])),
+            recipes: new Map((rc ?? []).map((r: { slug: string; name: string }) => [r.slug, r.name])),
+          },
+          recipes: (rc ?? []).map((r: Record<string, unknown>) => ({ ...r, allergens: [] })) as never,
+          historyRaw: UserHistorySchema.safeParse(historyRaw).success ? historyRaw : {},
+          historyText: history,
+          goal: inputs.goal,
+          call: ((c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c)) as never,
+          userId,
+          jobId,
+        });
+      }
+    }
     // Plan + QA scores + attempt log live in generation_jobs.result.
     await admin
       .from('generation_jobs')
       .update({
         status: 'done',
         // Disclaimer + professional suggestion travel with the plan when a red flag was seen.
-        result: { ...result, guardrails: { conservative: guard.conservative, disclaimer: guard.disclaimer } },
+        result: { ...result, update: updateSummary, guardrails: { conservative: guard.conservative, disclaimer: guard.disclaimer } },
         needs_review: result.needsReview || guard.conservative,
         finished_at: new Date().toISOString(),
       })

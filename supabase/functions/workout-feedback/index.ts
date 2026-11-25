@@ -9,6 +9,7 @@ import {
   aiCallRow,
   guardrailRow,
   callStructured,
+  factsForNote,
   getRuntimeModelProfile,
   runGuardrails,
 } from '../../../packages/shared/src/ai/index.ts';
@@ -59,8 +60,28 @@ Deno.serve(withCors(async (req) => {
       await admin.from('guardrail_events').insert(guard.events.map((e) => guardrailRow(user.id, null, e)));
     }
     if (guard.notes) {
-      const { error } = await admin.from('memory_facts').insert({ user_id: user.id, kind: 'workout_feedback', fact: guard.notes });
-      remembered = !error;
+      // The light model turns the cleared note into durable facts and says which current facts it contradicts.
+      const { data: existing } = await admin
+        .from('memory_facts')
+        .select('id,fact')
+        .eq('user_id', user.id)
+        .eq('obsolete', false)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      const { facts, obsoleteIds } = await factsForNote({
+        call: ((c: Parameters<typeof callStructured>[1]) => callStructured(cfg, c)) as never,
+        note: guard.notes,
+        existing: existing ?? [],
+        userId: user.id,
+      });
+      if (obsoleteIds.length > 0) {
+        // Own facts only: the ids come from the list we just loaded for this user.
+        await admin.from('memory_facts').update({ obsolete: true }).eq('user_id', user.id).in('id', obsoleteIds);
+      }
+      if (facts.length > 0) {
+        const { error } = await admin.from('memory_facts').insert(facts.map((fact) => ({ user_id: user.id, kind: 'workout_feedback', fact })));
+        remembered = !error;
+      }
     }
   }
   return json(200, { ok: true, remembered });
