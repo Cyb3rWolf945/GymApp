@@ -29,7 +29,7 @@ export default function Profile() {
       <Text variant="display" accessibilityRole="header">{t.title}</Text>
       <Text tone="muted">{t.intro}</Text>
       {answers === undefined ? <ScreenSkeleton title={false} cards={3} label={en.common.loading} /> : null}
-      {answers === null ? <EmptyState title={t.loadError} actionLabel={t.retry} onAction={load} /> : null}
+      {answers === null ? <EmptyState kind="error" title={t.loadError} actionLabel={t.retry} onAction={load} /> : null}
       {answers ? (
         <Card style={{ gap: spacing.xs }}>
           {profileRows(answers).map((id) => (

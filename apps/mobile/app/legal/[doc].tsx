@@ -33,7 +33,7 @@ export default function LegalScreen() {
             ))}
           </>
         ) : (
-          <EmptyState title={t.missing} />
+          <EmptyState kind="missing" title={t.missing} />
         )}
         <Button label={t.back} variant="secondary" onPress={back} />
     </Screen>

@@ -46,7 +46,7 @@ function Editor({ id }: { id: StepId }) {
   }, [user]);
 
   if (stored === undefined) return <Screen><ScreenSkeleton label={en.common.loading} /></Screen>;
-  if (stored === null) return <Screen center><EmptyState title={t.loadError} actionLabel={t.retry} onAction={() => router.replace(`/profile/${id}`)} /></Screen>;
+  if (stored === null) return <Screen center><EmptyState kind="error" title={t.loadError} actionLabel={t.retry} onAction={() => router.replace(`/profile/${id}`)} /></Screen>;
 
   const copy = (o.steps as Record<StepId, StepCopy>)[id];
   const Body = STEP_BODIES[id];

@@ -55,7 +55,7 @@ export default function Preview() {
   if (state.kind === 'error') {
     return (
       <Screen center>
-        <EmptyState title={t.missing} actionLabel={en.plan.generating.retry} onAction={() => router.replace('/generating')} />
+        <EmptyState kind="error" title={t.missing} actionLabel={en.plan.generating.retry} onAction={() => router.replace('/generating')} />
       </Screen>
     );
   }
