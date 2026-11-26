@@ -42,6 +42,8 @@ export function Button({ label, variant = 'primary', loading = false, disabled, 
         styles.base,
         { backgroundColor: bg, minHeight: Math.max(minTapTarget, 52), borderRadius: radius.md, paddingHorizontal: spacing.xl },
         variant === 'secondary' && { borderWidth: 1, borderColor: colors.border },
+        // A soft halo in the brand colour under the main button (the palette leaves it empty where it would look dirty).
+        variant === 'primary' && !inactive && colors.accentGlow !== '' && { boxShadow: `0 6px 20px ${colors.accentGlow}` },
         {
           // Pressed: shrink a little (not with reduced motion) and dim a little.
           opacity: Animated.multiply(press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }), inactive ? 0.5 : 1),

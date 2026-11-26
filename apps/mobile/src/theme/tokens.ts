@@ -9,47 +9,83 @@ export interface Palette {
   border: string;
   text: string;
   muted: string;
+  /** The brand colour: neon lime in dark, a deep green in light (so it still reads as text on white). */
   accent: string;
   /** Text/icon colour on top of `accent`. */
   onAccent: string;
+  /** The soft halo under the main button: the brand colour, translucent. Empty (no halo) where it would look dirty. */
+  accentGlow: string;
+  /** Secondary accent (electric violet): charts, highlights and decoration next to the brand colour, never a second "primary". */
+  accent2: string;
+  /** Text/icon colour on top of `accent2`. */
+  onAccent2: string;
   danger: string;
   success: string;
   overlay: string;
+  /** Two-stop gradients (top-left to bottom-right unless noted). Decoration only: text never sits on a gradient edge. */
+  gradient: {
+    /** Progress fills and highlights: brand colour to mint. */
+    brand: readonly [string, string];
+    /** A raised card: a hair lighter at the top. */
+    card: readonly [string, string];
+    /** The glow behind a screen header (top to bottom): the secondary accent fading into the page. */
+    glow: readonly [string, string];
+  };
 }
 
 export const palettes: Record<Scheme, Palette> = {
   dark: {
-    background: '#0B0B0F',
-    surface: '#16161D',
-    surfaceAlt: '#1F1F29',
-    border: '#2E2E3B',
-    text: '#F5F5F7',
-    muted: '#A1A1AE',
+    background: '#0A0B10',
+    surface: '#14161D',
+    surfaceAlt: '#1D202A',
+    border: '#2A2E3C',
+    text: '#F5F6FA',
+    muted: '#A6AABC',
     accent: '#C6FF3D',
-    onAccent: '#0B0B0F',
+    onAccent: '#0A0B10',
+    accentGlow: 'rgba(198,255,61,0.22)',
+    accent2: '#9A8CFF',
+    onAccent2: '#0A0B10',
     danger: '#FF7A7A',
     success: '#4ADE80',
     overlay: 'rgba(0,0,0,0.6)',
+    gradient: {
+      brand: ['#C6FF3D', '#5BE3B0'],
+      card: ['#1B1E28', '#14161D'],
+      glow: ['rgba(154,140,255,0.22)', 'rgba(10,11,16,0)'],
+    },
   },
   light: {
-    background: '#F6F6F8',
+    background: '#F5F6FA',
     surface: '#FFFFFF',
-    surfaceAlt: '#EEEEF2',
-    border: '#D4D4DC',
-    text: '#0B0B0F',
-    muted: '#585866',
+    surfaceAlt: '#ECEEF4',
+    border: '#D3D7E2',
+    text: '#0B0D14',
+    muted: '#575C6E',
     accent: '#3F6212',
     onAccent: '#FFFFFF',
+    accentGlow: '',
+    accent2: '#5B45E8',
+    onAccent2: '#FFFFFF',
     danger: '#B91C1C',
     success: '#166534',
     overlay: 'rgba(0,0,0,0.4)',
+    gradient: {
+      brand: ['#3F6212', '#0F766E'],
+      card: ['#FFFFFF', '#F7F8FC'],
+      glow: ['rgba(91,69,232,0.12)', 'rgba(245,246,250,0)'],
+    },
   },
 };
 
 /** One-handed gym use: every tappable thing is at least this big (px). */
 export const MIN_TAP_TARGET = 48;
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
+/**
+ * Spacing on an 8-pt grid (4 is the half step for tight gaps, 12 the one in-between for list rows). Everything else is a
+ * multiple of 8, so layouts line up on every screen.
+ */
+export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48, huge: 64 } as const;
 // ---- Responsive layout. Widths in px (CSS pixels on web, dp on devices). Phones stay `compact`.
 export const BREAKPOINTS = { compact: 0, medium: 600, expanded: 1024 } as const;
 export type Breakpoint = keyof typeof BREAKPOINTS;
@@ -109,16 +145,50 @@ export const motion = {
 export type MotionDuration = keyof typeof motion.duration;
 export type MotionEasing = keyof typeof motion.easing;
 
-export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
+export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 } as const;
 
+/**
+ * Elevation: how far a surface floats above the page. A soft shadow (`boxShadow`, the same on web and phones) instead of
+ * a hard border alone. Light mode uses lighter shadows. `none` is flat.
+ */
+export type Elevation = 'none' | 'low' | 'mid' | 'high';
+export const elevations: Record<Scheme, Record<Elevation, { boxShadow?: string }>> = {
+  dark: {
+    none: {},
+    low: { boxShadow: '0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.25)' },
+    mid: { boxShadow: '0 2px 4px rgba(0,0,0,0.4), 0 10px 24px rgba(0,0,0,0.35)' },
+    high: { boxShadow: '0 4px 8px rgba(0,0,0,0.45), 0 20px 48px rgba(0,0,0,0.5)' },
+  },
+  light: {
+    none: {},
+    low: { boxShadow: '0 1px 2px rgba(15,18,32,0.06), 0 4px 12px rgba(15,18,32,0.06)' },
+    mid: { boxShadow: '0 2px 4px rgba(15,18,32,0.08), 0 10px 24px rgba(15,18,32,0.1)' },
+    high: { boxShadow: '0 4px 8px rgba(15,18,32,0.1), 0 20px 48px rgba(15,18,32,0.16)' },
+  },
+};
+
+/**
+ * Two typefaces. Space Grotesk has the character (display, titles, headings: numbers look great in it); Inter does the
+ * reading (body, buttons, captions). One file per weight: custom fonts on phones need a family name per weight, so there
+ * is no `fontWeight` here. They are loaded once at the root (`app/_layout.tsx`).
+ */
+export const fonts = {
+  displayBold: 'SpaceGrotesk_700Bold',
+  displaySemiBold: 'SpaceGrotesk_600SemiBold',
+  uiRegular: 'Inter_400Regular',
+  uiMedium: 'Inter_500Medium',
+  uiSemiBold: 'Inter_600SemiBold',
+} as const;
+
+/** The type scale (px): 12, 14, 16, 20, 24, 34. Line heights sit on a 4-pt grid. */
 export const typography = {
-  display: { fontSize: 32, lineHeight: 38, fontWeight: '800' },
-  title: { fontSize: 24, lineHeight: 30, fontWeight: '700' },
-  heading: { fontSize: 20, lineHeight: 26, fontWeight: '700' },
-  body: { fontSize: 16, lineHeight: 22, fontWeight: '400' },
-  bodyStrong: { fontSize: 16, lineHeight: 22, fontWeight: '600' },
-  small: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  display: { fontFamily: fonts.displayBold, fontSize: 34, lineHeight: 40, letterSpacing: -0.6 },
+  title: { fontFamily: fonts.displayBold, fontSize: 24, lineHeight: 32, letterSpacing: -0.3 },
+  heading: { fontFamily: fonts.displaySemiBold, fontSize: 20, lineHeight: 28, letterSpacing: -0.1 },
+  body: { fontFamily: fonts.uiRegular, fontSize: 16, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.uiSemiBold, fontSize: 16, lineHeight: 24 },
+  small: { fontFamily: fonts.uiRegular, fontSize: 14, lineHeight: 20 },
+  caption: { fontFamily: fonts.uiMedium, fontSize: 12, lineHeight: 16, letterSpacing: 0.2 },
 } as const;
 export type TypographyVariant = keyof typeof typography;
 
@@ -128,6 +198,8 @@ export interface Theme {
   spacing: typeof spacing;
   radius: typeof radius;
   typography: typeof typography;
+  /** Shadows for this scheme, by elevation level. */
+  elevation: Record<Elevation, { boxShadow?: string }>;
   minTapTarget: number;
 }
 
@@ -137,6 +209,7 @@ export const createTheme = (scheme: Scheme): Theme => ({
   spacing,
   radius,
   typography,
+  elevation: elevations[scheme],
   minTapTarget: MIN_TAP_TARGET,
 });
 

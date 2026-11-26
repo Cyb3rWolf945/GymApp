@@ -1,4 +1,8 @@
 import { View } from 'react-native';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
@@ -48,7 +52,13 @@ function RootStack() {
   );
 }
 
+/** The two typefaces and the icon font, loaded once before the first screen so nothing shows in a fallback face. */
+const FONTS = { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold, ...Ionicons.font };
+
 export default function RootLayout() {
+  const [loaded, error] = useFonts(FONTS);
+  // If a font fails to load the app still opens (in the system face); it never sits on a blank screen.
+  if (!loaded && !error) return null;
   return (
     <AppThemeProvider>
       <ToastProvider>

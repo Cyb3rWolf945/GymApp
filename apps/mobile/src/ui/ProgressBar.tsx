@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { durationFor, easing, useReducedMotion } from '../motion';
 import { useTheme } from '../theme';
 import { progressFraction } from './logic';
@@ -26,8 +27,10 @@ export function ProgressBar({ step, total, label }: { step: number; total: numbe
       aria-valuemax={total}
       aria-valuenow={Math.min(step, total)}
     >
-      <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt }}>
-        <Animated.View style={{ width, height: 6, borderRadius: 3, backgroundColor: colors.accent }} />
+      <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' }}>
+        <Animated.View style={{ width, height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.accent }}>
+          <LinearGradient colors={[...colors.gradient.brand]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1 }} />
+        </Animated.View>
       </View>
       {label ? <Text variant="caption" tone="muted" style={{ marginTop: spacing.xs }}>{label}</Text> : null}
     </View>

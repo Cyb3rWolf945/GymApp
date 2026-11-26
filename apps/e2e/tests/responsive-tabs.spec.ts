@@ -2,6 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
 import { FIXED_NOW, signedInWithPlan } from '../support/app';
 import { ownViewports } from '../support/projects';
+import { palettes } from '../../mobile/src/theme/tokens';
+
+/** The light page colour as the browser reports it, from the tokens. */
+const lightBg = `rgb(${[1, 3, 5].map((i) => parseInt(palettes.light.background.slice(i, i + 2), 16)).join(', ')})`;
 
 const TABS = [en.home.tabs.today, en.home.tabs.plan, en.home.tabs.nutrition, en.home.tabs.progress, en.home.tabs.settings];
 const WIDTHS = [320, 390, 600, 768, 1024, 1366, 1920];
@@ -103,7 +107,7 @@ test.describe('responsive main tabs in light mode', () => {
         await page.waitForTimeout(100);
         expect(await overflowX(page), `${tab} at ${width}px`).toBeLessThanOrEqual(0);
       }
-      expect(await scheme(page), tab).toEqual({ scheme: 'light', bg: 'rgb(246, 246, 248)' });
+      expect(await scheme(page), tab).toEqual({ scheme: 'light', bg: lightBg });
     }
   });
 });
