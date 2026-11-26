@@ -108,11 +108,22 @@ test('the progress bar moves to the new step', async ({ page }) => {
 
 test('a chosen chip shows a check', async ({ page }) => {
   await atGoalStep(page);
-  const c = chip(page, o.goal.options.recomp);
+  await chip(page, o.goal.options.recomp).click();
+  await button(page, en.common.continue).click();
+  const c = chip(page, o.basics.sex.male);
   await expect(c).not.toContainText('✓');
   await c.click();
   await expect(c).toContainText('✓');
   await expect(c).toHaveAttribute('aria-checked', 'true');
+});
+
+test('a chosen card is outlined in the brand colour', async ({ page }) => {
+  await atGoalStep(page);
+  const card = chip(page, o.goal.options.recomp);
+  const border = () => card.locator('div').first().evaluate((e) => getComputedStyle(e).borderTopColor);
+  expect(await border()).not.toBe('rgb(198, 255, 61)');
+  await card.click();
+  await expect.poll(border).toBe('rgb(198, 255, 61)');
 });
 
 test('switching tabs cross-fades the new screen in', async ({ page }) => {
@@ -248,9 +259,9 @@ test.describe('reduced motion', () => {
       }, text);
     expect(await opacity(o.goal.title)).toBe(1);
     expect(await opacity(o.goal.options.recomp)).toBe(1);
-    // The chip is already in its chosen colours (no fade between states).
-    const bg = await chip(page, o.goal.options.recomp).locator('div').first().evaluate((e) => getComputedStyle(e).backgroundColor);
-    expect(bg).toBe('rgb(198, 255, 61)');
+    // The card is already in its chosen colours (no fade between states).
+    const border = await chip(page, o.goal.options.recomp).locator('div').first().evaluate((e) => getComputedStyle(e).borderTopColor);
+    expect(border).toBe('rgb(198, 255, 61)');
     await button(page, en.common.continue).click();
     await expect(page).toHaveURL(/\/onboarding\/basics/); // no pulse delay, no slide
     expect(await opacity(o.basics.title)).toBe(1);

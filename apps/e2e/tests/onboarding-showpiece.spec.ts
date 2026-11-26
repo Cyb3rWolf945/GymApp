@@ -54,8 +54,9 @@ test('the calorie target shows up once it can be worked out, and changes with th
 
 test('"Building your plan…" has the pulsing orb above the steps', async ({ page }) => {
   await start(page);
-  await page.goto('/onboarding/goal');
+  await page.goto('/');
   await button(page, en.tracking.reject).click();
+  await button(page, en.landing.cta).click();
   await completeQuiz(page);
   await expect(page.getByTestId('building-orb')).toHaveCount(1);
   await expect(page.getByText(en.plan.generating.title, { exact: true })).toBeVisible();
