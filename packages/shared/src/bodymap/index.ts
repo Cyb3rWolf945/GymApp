@@ -5,7 +5,8 @@ import { BACK_DETAILS, BACK_MUSCLES, FRONT_DETAILS, FRONT_MUSCLES, type MuscleSh
 export { smoothClosed, smoothOpen } from './geometry.ts';
 
 export const MAP_WIDTH = 120;
-export const MAP_HEIGHT = 260;
+/** 264, not 260: the feet need room below the ankles, and the figure stays fully inside the box. */
+export const MAP_HEIGHT = 264;
 export type MapView = 'front' | 'back';
 /** Which body is drawn: from the profile's `sex`, or a neutral one when it is unknown. Same muscles on all three. */
 export type BodyVariant = 'male' | 'female' | 'neutral';
