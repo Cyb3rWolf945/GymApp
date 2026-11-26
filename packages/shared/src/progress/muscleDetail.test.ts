@@ -176,4 +176,21 @@ describe('muscleSequence and muscleView', () => {
     expect(muscleSequence('front')).toContain('quadriceps');
     expect(muscleSequence('back')).toContain('hamstrings');
   });
+  it('keeps the side being shown when it draws the muscle, and the arrows are inverses on both sides', () => {
+    const both = muscleSequence('front').filter((m) => muscleSequence('back').includes(m));
+    expect(both.length).toBeGreaterThan(0);
+    for (const m of both) {
+      expect(muscleView(m, 'back')).toBe('back');
+      expect(muscleView(m, 'front')).toBe('front');
+    }
+    expect(muscleView('quadriceps', 'back')).toBe('front'); // not drawn on the back: falls back
+    for (const view of ['front', 'back'] as const) {
+      const seq = muscleSequence(view);
+      seq.forEach((m, i) => {
+        const next = seq[(i + 1) % seq.length];
+        expect(seq[(seq.indexOf(next) - 1 + seq.length) % seq.length]).toBe(m);
+        expect(muscleView(m, view)).toBe(view);
+      });
+    }
+  });
 });

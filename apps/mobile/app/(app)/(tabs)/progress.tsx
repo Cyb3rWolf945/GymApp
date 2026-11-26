@@ -55,7 +55,7 @@ function ProgressTab() {
   // Choosing a muscle (a tap, or the sheet's arrows) also turns the map to the side that shows it.
   const selectMuscle = (m: MuscleId) => {
     setSelected(m);
-    const v = muscleView(m);
+    const v = muscleView(m, view); // stay on the side being shown when it draws the muscle
     if (v) setView(v);
   };
   const [period, setPeriod] = useState<7 | 30>(7);
@@ -280,7 +280,7 @@ function ProgressTab() {
             ))}
           </Card>
         ) : null}
-      <MuscleSheet muscle={selected} period={period} muscleSets={sets.muscleSets} onSelect={selectMuscle} onClose={() => setSelected(null)} />
+      <MuscleSheet muscle={selected} view={view} period={period} muscleSets={sets.muscleSets} onSelect={selectMuscle} onClose={() => setSelected(null)} />
     </Screen>
   );
 }

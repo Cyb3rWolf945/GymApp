@@ -172,9 +172,11 @@ export function muscleSequence(view: 'front' | 'back'): MuscleId[] {
   return [...seen];
 }
 
-/** The view that draws this muscle (the front when both do), or `null` when neither does (a deep muscle). */
-export function muscleView(muscle: MuscleId): 'front' | 'back' | null {
-  if (bodyRegions('front').some((r) => r.muscle === muscle)) return 'front';
-  if (bodyRegions('back').some((r) => r.muscle === muscle)) return 'back';
+/** The view to show this muscle on: `prefer` when it draws the muscle (many are drawn on both sides), else the front, else the back, or `null` when neither draws it (a deep muscle). */
+export function muscleView(muscle: MuscleId, prefer?: 'front' | 'back'): 'front' | 'back' | null {
+  const draws = (v: 'front' | 'back') => bodyRegions(v).some((r) => r.muscle === muscle);
+  if (prefer && draws(prefer)) return prefer;
+  if (draws('front')) return 'front';
+  if (draws('back')) return 'back';
   return null;
 }

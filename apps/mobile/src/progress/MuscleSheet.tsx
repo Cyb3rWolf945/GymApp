@@ -18,6 +18,8 @@ const d = p.detail;
 
 interface Props {
   muscle: MuscleId | null;
+  /** The side of the body the map shows: the arrows step through its muscles. */
+  view: 'front' | 'back';
   period: 7 | 30;
   muscleSets: MuscleSet[];
   /** Steps to another muscle (the arrows): the map follows. */
@@ -40,7 +42,7 @@ function ago(days: number | null): string {
  * sets against a general guideline, the exercises that work it and what to train next. A bottom sheet on a phone, a
  * centred dialog from 600 px wide. The arrows step through the muscles of the view; the content cross-fades between them.
  */
-export function MuscleSheet({ muscle, period, muscleSets, onSelect, onClose }: Props) {
+export function MuscleSheet({ muscle, view, period, muscleSets, onSelect, onClose }: Props) {
   const { colors, radius, spacing, minTapTarget } = useTheme();
   const router = useRouter();
   const plan = usePlanData();
@@ -69,7 +71,7 @@ export function MuscleSheet({ muscle, period, muscleSets, onSelect, onClose }: P
   }, [muscleSets]);
   const next = useMemo(() => (muscle && library ? trainNextCandidates(muscle, library, profile, lastDone) : []), [muscle, library, profile, lastDone]);
 
-  const sequence = muscle ? muscleSequence(muscleView(muscle) ?? 'front') : [];
+  const sequence = muscle ? muscleSequence(muscleView(muscle, view) ?? 'front') : [];
   const at = muscle ? sequence.indexOf(muscle) : -1;
   const step = (by: 1 | -1) => (at < 0 ? null : sequence[(at + by + sequence.length) % sequence.length]);
   const previous = step(-1);
@@ -101,7 +103,7 @@ export function MuscleSheet({ muscle, period, muscleSets, onSelect, onClose }: P
     const paint = heatPaint(HEAT_INTENSITY[level], colors.heat);
     const week = detail.weeks[detail.weeks.length - 1].sets;
     const values = detail.weeks.map((w) => w.sets);
-    const view = muscleView(muscle) ?? 'front';
+    const side = muscleView(muscle, view) ?? 'front';
     const solo = new Map([[muscle, { muscle, sets: detail.sets, lastTrained: detail.lastTrained, topExercises: [] }]]);
     const days = daysSinceTrained(detail.lastTrained, now);
     return (
@@ -110,7 +112,7 @@ export function MuscleSheet({ muscle, period, muscleSets, onSelect, onClose }: P
           {/* Header: the muscle on a small body, its heat level, and the arrows. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
             <View testID="muscle-thumbnail" accessible accessibilityRole="image" accessibilityLabel={d.thumbnail(muscleLabel(muscle))} style={{ width: 72 }}>
-              <MuscleMap view={view} stats={solo} selected={muscle} height={128} />
+              <MuscleMap view={side} stats={solo} selected={muscle} height={128} />
             </View>
             <View style={{ flex: 1, gap: spacing.md }}>
               <View

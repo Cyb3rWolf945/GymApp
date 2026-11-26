@@ -140,3 +140,21 @@ test('closing the sheet leaves the map as it was', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Quadriceps' })).toHaveCount(0);
   await expect(page.getByText(p.weightTitle, { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
+
+test('a muscle drawn on both sides stays on the Back map, and the arrows step through the back muscles and return', async ({ page }) => {
+  await progress(page);
+  await chip(page, p.back).filter({ visible: true }).first().click();
+  await page.waitForTimeout(600);
+  await tapMuscle(page, 'Trapezius');
+  const dialog = sheet(page, 'Trapezius');
+  await expect(dialog).toBeVisible();
+  // The map is still the back view, and the thumbnail is too.
+  await expect(page.locator('svg[aria-label="Muscle map, back view"]').filter({ visible: true }).first()).toBeVisible();
+  await expect(page.locator('svg[aria-label="Muscle map, front view"]').filter({ visible: true })).toHaveCount(0);
+  const nextName = ((await dialog.getByTestId('muscle-next').getAttribute('aria-label')) ?? '').replace('Next muscle: ', '');
+  await dialog.getByTestId('muscle-next').click();
+  await expect(sheet(page, nextName)).toBeVisible();
+  await expect(page.locator('svg[aria-label="Muscle map, front view"]').filter({ visible: true })).toHaveCount(0);
+  await sheet(page, nextName).getByTestId('muscle-prev').click();
+  await expect(sheet(page, 'Trapezius')).toBeVisible();
+});
