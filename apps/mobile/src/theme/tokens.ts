@@ -69,7 +69,7 @@ export const palettes: Record<Scheme, Palette> = {
     accent: '#C6FF3D',
     onAccent: '#0A0B10',
     accentText: '#C6FF3D',
-    accentSubtle: '#1F2A1C',
+    accentSubtle: '#293221',
     accentBorder: '#C6FF3D',
     accentGlow: 'rgba(198,255,61,0.22)',
     accent2: '#9A8CFF',
@@ -87,7 +87,8 @@ export const palettes: Record<Scheme, Palette> = {
     skeleton: { base: '#1D202A', highlight: '#2A2E3C' },
     shadow: { color: '#000000', sm: 0.3, md: 0.4, lg: 0.5 },
     chart: ['#C6FF3D', '#9A8CFF', '#5BE3B0', '#FFB74D', '#FF7A7A'],
-    heat: ['#2A2E3C', '#3F5A1A', '#6C9A1F', '#A7E02E', '#FFE14D'],
+    // The look the body map had before the tokens: the accent over the body tone at growing opacity, the top band hot orange.
+    heat: ['#2B2E3B', '#75923B', '#92B93C', '#AFE03C', '#FF8A3D'],
     gradient: {
       brand: ['#C6FF3D', '#5BE3B0'],
       card: ['#1B1E28', '#14161D'],

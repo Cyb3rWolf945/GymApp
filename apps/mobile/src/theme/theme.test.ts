@@ -192,10 +192,13 @@ describe.each(['dark', 'light'] as const)('%s palette: tokens by job (E-70)', (s
     for (const col of c.chart) expect(contrastRatio(col, c.surface), `${col} on card`).toBeGreaterThanOrEqual(3);
     expect(c.chart[0]).toBe(scheme === 'dark' ? c.accent : c.accentText.replace('3F6212', '4D7C0F'));
   });
-  it('the heat ramp is ordered by brightness, so it works in greyscale', () => {
+  it('the heat ramp is ordered by brightness, so it works in greyscale (dark: up to the hot top band)', () => {
     const l = c.heat.map(luminance);
-    for (let i = 1; i < l.length; i++) expect(scheme === 'dark' ? l[i] > l[i - 1] : l[i] < l[i - 1], `step ${i}`).toBe(true);
+    // Dark keeps the look the map always had: lime bands that brighten, then a hot orange top band (a hue step, not a brightness step).
+    const steps = scheme === 'dark' ? 3 : l.length - 1;
+    for (let i = 1; i <= steps; i++) expect(scheme === 'dark' ? l[i] > l[i - 1] : l[i] < l[i - 1], `step ${i}`).toBe(true);
     expect(c.heat[0]).not.toBe(c.heat[1]);
+    if (scheme === 'dark') expect(c.heat[4]).toBe('#FF8A3D');
   });
   it('shadows grow with the level', () => {
     expect(c.shadow.sm).toBeLessThan(c.shadow.md);
@@ -244,4 +247,9 @@ describe('no colour literals outside the tokens (E-70)', () => {
   it('the fixed brand colours exist in one place', () => {
     expect(brandAssets.mark.lime).toBe(palettes.dark.accent);
   });
+});
+
+it('dark keeps its look: the selected tint is the old accent-over-card mix', () => {
+  const old = mixColors(palettes.dark.surface, palettes.dark.accent, 0.12);
+  expect(palettes.dark.accentSubtle.toLowerCase()).toBe(old.toLowerCase());
 });
