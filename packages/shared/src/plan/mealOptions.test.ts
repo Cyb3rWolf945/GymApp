@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeCandidate } from '../ai/prompts.ts';
 import { applyMealSwaps } from './meals.ts';
-import { INLINE_OPTIONS, MAX_OPTIONS, type MealOptionsInput, clearEatenSlot, mealOptions, portionsFor, seededUnit, withoutSwap } from './mealOptions.ts';
+import { INLINE_OPTIONS, MAX_OPTIONS, MIN_OPTION_CARD_WIDTH, type MealOptionsInput, clearEatenSlot, mealOptions, optionRowLayout, portionsFor, seededUnit, withoutSwap } from './mealOptions.ts';
 
 const r = (slug: string, kcal: number, extra: Partial<RecipeCandidate> = {}): RecipeCandidate => ({
   slug, name: slug, diet: 'omnivore', kcal, protein_g: 30, carbs_g: 40, fat_g: 15, allergens: [], meal_types: ['breakfast', 'lunch', 'dinner', 'snack'], ...extra,
@@ -110,5 +110,34 @@ describe('choosing, undoing and "eaten"', () => {
   it('choosing another meal clears "eaten" for that slot only, and says whether it did', () => {
     expect(clearEatenSlot([0, 2], 2)).toEqual({ eaten: [0], cleared: true });
     expect(clearEatenSlot([0], 1)).toEqual({ eaten: [0], cleared: false });
+  });
+});
+
+describe('optionRowLayout (equal columns only where each card is wide enough)', () => {
+  const gap = 8;
+  it('uses equal columns when every card gets at least the minimum width', () => {
+    // 3 cards in 482 px: (482 - 16) / 3 = 155.3 each.
+    expect(optionRowLayout(482, 3, gap)).toBe('equal');
+    expect(optionRowLayout(3 * MIN_OPTION_CARD_WIDTH + 2 * gap, 3, gap)).toBe('equal'); // exactly the minimum
+    expect(optionRowLayout(2 * MIN_OPTION_CARD_WIDTH + gap, 2, gap)).toBe('equal');
+  });
+  it('scrolls when a card would be narrower than the minimum', () => {
+    expect(optionRowLayout(3 * MIN_OPTION_CARD_WIDTH + 2 * gap - 1, 3, gap)).toBe('scroll'); // one px short
+    // The widths QA measured between 600 and 1024 px: cards of 39, 76 and 97 px.
+    expect(optionRowLayout(39 * 3 + 16, 3, gap)).toBe('scroll');
+    expect(optionRowLayout(76 * 3 + 16, 3, gap)).toBe('scroll');
+    expect(optionRowLayout(97 * 3 + 16, 3, gap)).toBe('scroll');
+  });
+  it('keeps equal columns at the 1440 px desktop width (163 px cards)', () => {
+    expect(optionRowLayout(163 * 3 + 16, 3, gap)).toBe('equal');
+  });
+  it('scrolls while the container is not measured yet, or when there are no cards', () => {
+    expect(optionRowLayout(0, 3, gap)).toBe('scroll');
+    expect(optionRowLayout(Number.NaN, 3, gap)).toBe('scroll');
+    expect(optionRowLayout(600, 0, gap)).toBe('scroll');
+  });
+  it('a single card gets the whole width, so it only needs the minimum for itself', () => {
+    expect(optionRowLayout(MIN_OPTION_CARD_WIDTH, 1, gap)).toBe('equal');
+    expect(optionRowLayout(MIN_OPTION_CARD_WIDTH - 1, 1, gap)).toBe('scroll');
   });
 });
