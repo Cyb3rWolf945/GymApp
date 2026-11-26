@@ -23,6 +23,8 @@ export default defineConfig({
     trace: 'off',
     // The helpers freeze the clock for stable dates, which would freeze entrance animations half way: no motion here.
     reducedMotion: 'reduce',
+    // The app is dark first and the listing should show that look, whatever the machine rendering it prefers.
+    colorScheme: 'dark',
     isMobile: true,
     hasTouch: true,
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},

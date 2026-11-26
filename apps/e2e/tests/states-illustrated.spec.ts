@@ -26,6 +26,9 @@ test('nothing logged yet: Progress shows a workout picture and the next step', a
   await expect(shown(page, en.home.progressEmptyTitle)).toBeVisible();
   await expect(art(page, 'workout')).toBeVisible();
   await expect(button(page, en.home.startWorkout)).toBeVisible();
+  // The picture and the next step come first, so they are on the first screen without scrolling.
+  await expect(art(page, 'workout')).toBeInViewport();
+  await expect(button(page, en.home.startWorkout)).toBeInViewport();
 });
 
 test('a recipe that does not exist shows the "missing" picture', async ({ page }) => {

@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import { en } from '../copy/en';
 import { FadeSlideIn } from '../motion';
 import { useTheme } from '../theme';
+import { BrandMark } from './BrandMark';
 import { Text } from './Text';
 
 /**
@@ -13,7 +14,10 @@ export function Splash() {
   return (
     <View accessibilityRole="progressbar" accessibilityLabel={en.common.loading} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
       <FadeSlideIn>
-        <Text variant="display" tone="accent">Fuelift</Text>
+        <View style={{ alignItems: 'center', gap: 16 }}>
+          <BrandMark size={96} />
+          <Text variant="display" tone="accent">Fuelift</Text>
+        </View>
       </FadeSlideIn>
     </View>
   );

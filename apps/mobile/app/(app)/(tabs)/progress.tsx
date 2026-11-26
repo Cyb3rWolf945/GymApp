@@ -127,6 +127,12 @@ function ProgressTab() {
         {rows === null ? <ScreenSkeleton title={false} label={en.common.loading} /> : null}
         {failed ? <EmptyState kind="error" title={p.loadError} actionLabel={en.common.retry} onAction={() => void load()} /> : null}
 
+        {empty ? (
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <EmptyState kind="workout" title={t.progressEmptyTitle} body={t.progressEmptyBody} actionLabel={t.startWorkout} onAction={() => router.push('/')} />
+          </View>
+        ) : null}
+
         <ResponsiveGrid gap={spacing.xl} columns={{ expanded: 2 }}>
         {rows !== null && !failed ? (
           <Reveal first={first} index={0}>
@@ -246,11 +252,6 @@ function ProgressTab() {
         ) : null}
         </ResponsiveGrid>
 
-        {empty ? (
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <EmptyState kind="workout" title={t.progressEmptyTitle} body={t.progressEmptyBody} actionLabel={t.startWorkout} onAction={() => router.push('/')} />
-          </View>
-        ) : null}
 
         {rows && !failed && rows.length > 0 ? (
           <Card style={{ gap: spacing.xs }}>
