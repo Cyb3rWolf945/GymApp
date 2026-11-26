@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_TAP_TARGET, contrastRatio, createTheme, elevations, fonts, palettes, radius, spacing, typography } from './tokens';
+import { MIN_TAP_TARGET, contrastRatio, createTheme, elevations, fonts, mixColors, palettes, radius, spacing, typography } from './tokens';
 
 describe('theme tokens', () => {
   it('dark and light palettes define the same keys', () => {
@@ -118,4 +118,27 @@ it('the button halo is the brand colour, translucent, in dark; light has none', 
   const hex = '#' + [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('').toUpperCase();
   expect(hex).toBe(palettes.dark.accent);
   expect(palettes.light.accentGlow).toBe('');
+});
+
+describe('mixColors (E-65)', () => {
+  it('blends two colours', () => {
+    expect(mixColors('#000000', '#ffffff', 0)).toBe('#000000');
+    expect(mixColors('#000000', '#ffffff', 1)).toBe('#ffffff');
+    expect(mixColors('#000000', '#ffffff', 0.5)).toBe('#808080');
+    expect(mixColors('rgba(0,0,0,0.6)', '#ff0000', 0.5)).toBe('#800000');
+  });
+  it('clamps, and returns the first colour when it cannot read one', () => {
+    expect(mixColors('#102030', '#ffffff', 9)).toBe('#ffffff');
+    expect(mixColors('#102030', '#ffffff', -1)).toBe('#102030');
+    expect(mixColors('red', '#ffffff', 0.5)).toBe('red');
+    expect(mixColors('#102030', 'blue', 0.5)).toBe('#102030');
+  });
+  it('a selected-card tint of the accent stays readable in both themes', () => {
+    for (const scheme of ['dark', 'light'] as const) {
+      const c = palettes[scheme];
+      const tinted = mixColors(c.surface, c.accent, 0.12);
+      expect(contrastRatio(c.text, tinted)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.muted, tinted)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

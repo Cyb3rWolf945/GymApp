@@ -230,3 +230,22 @@ export function contrastRatio(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
+
+/**
+ * A colour between `a` and `b` (`t` 0 = a, 1 = b), for hover and selected tints. Reads `#rrggbb` and `rgba(r,g,b,a)`; anything
+ * else returns `a` unchanged. Pure, so it is unit-tested.
+ */
+export function mixColors(a: string, b: string, t: number): string {
+  const parse = (c: string): [number, number, number] | null => {
+    const hex = /^#([0-9a-f]{6})$/i.exec(c.trim());
+    if (hex) return [parseInt(hex[1].slice(0, 2), 16), parseInt(hex[1].slice(2, 4), 16), parseInt(hex[1].slice(4, 6), 16)];
+    const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(c.trim());
+    return rgb ? [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])] : null;
+  };
+  const x = parse(a);
+  const y = parse(b);
+  if (!x || !y) return a;
+  const k = Math.min(1, Math.max(0, t));
+  const m = (i: number) => Math.round(x[i] + (y[i] - x[i]) * k).toString(16).padStart(2, '0');
+  return `#${m(0)}${m(1)}${m(2)}`;
+}
