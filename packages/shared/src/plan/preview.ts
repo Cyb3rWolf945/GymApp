@@ -39,6 +39,14 @@ export const formatReps = (min: number, max: number): string => (min === max ? `
  * First workout + first day of meals for the preview screen.
  * `exerciseNames` and `recipes` come from the catalog; unknown slugs fall back to the slug.
  */
+/**
+ * True when either plan is the starter template: no model produced a usable plan, so the user got the generic one
+ * (`result.source === 'template'`). They are told, and can update the plan later for a personal one.
+ */
+export function usedStarterPlan(...results: readonly unknown[]): boolean {
+  return results.some((r) => !!r && typeof r === 'object' && (r as { source?: unknown }).source === 'template');
+}
+
 export function buildPreview(
   workoutResult: unknown,
   nutritionResult: unknown,

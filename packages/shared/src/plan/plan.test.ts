@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FREE_GENERATIONS, GENERATION_TIMEOUT_MS, buildPreview, canGenerate, deriveProgress, formatReps, isEntitled, isInFlight,
-  latestJobs, type JobRow, type RecipeCandidate,
+  FREE_GENERATIONS, GENERATION_TIMEOUT_MS, STALE_JOB_MS, buildPreview, canGenerate, deriveProgress, effectiveStatus, formatReps, generationTimedOut, isEntitled, isInFlight,
+  isStaleJob, latestJobs, pollDelayMs, usedStarterPlan, type JobRow, type RecipeCandidate,
 } from '../index';
 
 const job = (kind: JobRow['kind'], status: JobRow['status'], created_at = '2026-11-25T00:00:00Z'): JobRow => ({ id: `${kind}-${status}-${created_at}`, kind, status, created_at });
@@ -40,10 +40,55 @@ describe('deriveProgress', () => {
     expect(deriveProgress(rows, T0, T0).phase).toBe('running');
   });
   it('knows which jobs can be waited on', () => {
-    expect(isInFlight(job('workout_plan', 'queued'))).toBe(true);
-    expect(isInFlight(job('workout_plan', 'running'))).toBe(true);
-    expect(isInFlight(job('workout_plan', 'done'))).toBe(false);
-    expect(isInFlight(undefined)).toBe(false);
+    const now = Date.parse('2026-11-25T00:01:00Z');
+    expect(isInFlight(job('workout_plan', 'queued'), now)).toBe(true);
+    expect(isInFlight(job('workout_plan', 'running'), now)).toBe(true);
+    expect(isInFlight(job('workout_plan', 'done'), now)).toBe(false);
+    expect(isInFlight(undefined, now)).toBe(false);
+  });
+});
+
+// E-64: a job whose function died stays `running` in the table. The app reads it as failed once it is past the stale limit.
+describe('stale jobs', () => {
+  const created = '2026-11-25T22:00:00Z';
+  const t0 = Date.parse(created);
+  it('a fresh job is waited on, a stale one is dead', () => {
+    expect(isStaleJob(job('nutrition_plan', 'running', created), t0 + STALE_JOB_MS - 1)).toBe(false);
+    expect(isStaleJob(job('nutrition_plan', 'running', created), t0 + STALE_JOB_MS + 1)).toBe(true);
+    expect(isInFlight(job('nutrition_plan', 'running', created), t0 + 60_000)).toBe(true);
+    expect(isInFlight(job('nutrition_plan', 'running', created), t0 + STALE_JOB_MS + 1)).toBe(false);
+    expect(isInFlight(job('nutrition_plan', 'queued', created), t0 + STALE_JOB_MS + 1)).toBe(false);
+  });
+  it('done and failed jobs are never stale', () => {
+    for (const status of ['done', 'failed'] as const) expect(isStaleJob(job('workout_plan', status, created), t0 + 10 * STALE_JOB_MS)).toBe(false);
+    expect(effectiveStatus(job('workout_plan', 'done', created), t0 + 10 * STALE_JOB_MS)).toBe('done');
+    expect(effectiveStatus(undefined, t0)).toBeUndefined();
+  });
+  it('the screen ends in the error state, not an endless spinner: workout done, nutrition stuck "running"', () => {
+    const rows = [job('workout_plan', 'done', created), job('nutrition_plan', 'running', created)];
+    expect(deriveProgress(rows, t0, t0 + 60_000).phase).toBe('running');
+    expect(deriveProgress(rows, t0, t0 + STALE_JOB_MS + 1).phase).toBe('failed');
+  });
+  it('mixed: a dead old job does not hide the new one that replaced it', () => {
+    const rows = [job('nutrition_plan', 'running', created), job('nutrition_plan', 'queued', '2026-11-25T22:09:00Z'), job('workout_plan', 'done', '2026-11-25T22:09:00Z')];
+    const now = Date.parse('2026-11-25T22:09:30Z');
+    expect(deriveProgress(rows, now - 30_000, now).phase).toBe('running'); // the new nutrition job is alive
+    expect(deriveProgress(rows, now - 30_000, now + 100_000).phase).toBe('running');
+    expect(deriveProgress(rows, now - 30_000, now + STALE_JOB_MS + 1).phase).toBe('failed');
+  });
+});
+
+describe('the timeout and the polling gaps', () => {
+  it('times out 3 minutes after the attempt started, and only then', () => {
+    expect(generationTimedOut(T0, T0 + GENERATION_TIMEOUT_MS)).toBe(false);
+    expect(generationTimedOut(T0, T0 + GENERATION_TIMEOUT_MS + 1)).toBe(true);
+    // A later "start" (a re-run of the effect) would move the deadline: the caller keeps the first one.
+    expect(generationTimedOut(T0, T0 + GENERATION_TIMEOUT_MS + 1)).not.toBe(generationTimedOut(T0 + 120_000, T0 + GENERATION_TIMEOUT_MS + 1));
+  });
+  it('polls every 2 s, then 3 s, then every 5 s', () => {
+    expect([0, 1, 2, 3, 10, 1000].map(pollDelayMs)).toEqual([2000, 3000, 5000, 5000, 5000, 5000]);
+    expect(pollDelayMs(-1)).toBe(2000);
+    expect(pollDelayMs(1.9)).toBe(3000);
   });
 });
 
@@ -108,5 +153,14 @@ describe('buildPreview', () => {
   it('formats reps', () => {
     expect(formatReps(5, 5)).toBe('5');
     expect(formatReps(6, 10)).toBe('6–10');
+  });
+});
+
+describe('starter plan notice (E-64)', () => {
+  it('is shown when any plan is the template fallback, and only then', () => {
+    expect(usedStarterPlan({ source: 'template' }, { source: 'planner' })).toBe(true);
+    expect(usedStarterPlan({ source: 'planner' }, { source: 'template' })).toBe(true);
+    expect(usedStarterPlan({ source: 'planner' }, { source: 'escalation' })).toBe(false);
+    for (const bad of [undefined, null, 'template', 3, {}]) expect(usedStarterPlan(bad)).toBe(false);
   });
 });

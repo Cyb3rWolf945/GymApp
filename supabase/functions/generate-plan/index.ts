@@ -19,6 +19,8 @@ import {
   aiCallRow,
   guardrailRow,
   GENERATION_BUDGET_MS,
+  HARD_LIMIT_MS,
+  siblingWaitMs,
   STALE_JOB_MS,
   STALE_JOB_ERROR,
   missingProfileFields,
@@ -35,10 +37,8 @@ import { originsFromEnv, resolveCaller, withCors } from '../../../packages/share
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
-/** The whole run is cut off here, under the Edge Function's wall-clock limit (about 120 s), so a job always ends. */
-const HARD_LIMIT_MS = 110_000;
-/** One model call never runs longer than this (a free model can take 30 s or more). */
-const CALL_TIMEOUT_MS = 40_000;
+/** One model call never runs longer than this. Calls that finish do so in under 10 s; the ones that hang are cut at 25 s and retried once, then the template is used. */
+const CALL_TIMEOUT_MS = 25_000;
 /** The cheap guardrail classifier gets less: if it is slow the field is dropped (fail closed). */
 const LIGHT_TIMEOUT_MS = 15_000;
 
@@ -67,7 +67,7 @@ Deno.serve(withCors(async (req) => {
   const kind = body?.kind as PlanKind;
   if (!PLAN_KINDS.includes(kind)) return json(400, { error: 'Unknown plan kind.' });
 
-  // No job stays `running` forever: anything queued or running for over 5 minutes died with its function, so close it.
+  // No job stays `running` forever: anything queued or running for over `STALE_JOB_MS` (3 minutes) died with its function, so close it.
   await sweepStaleJobs(admin as never);
 
   // Access is always checked server-side. Entitled users always; everyone else gets one free
@@ -85,7 +85,7 @@ Deno.serve(withCors(async (req) => {
     .eq('kind', kind)
     .order('created_at', { ascending: false });
 
-  // A job stuck in queued/running for over 5 minutes (the function died) counts as failed.
+  // A job stuck in queued/running past the stale limit (the function died) counts as failed.
   const jobs = (prior ?? []).map((j: { id: string; status: string; created_at: string }) =>
     (j.status === 'queued' || j.status === 'running') && Date.now() - new Date(j.created_at).getTime() > STALE_JOB_MS
       ? { ...j, status: 'failed' }
@@ -128,6 +128,23 @@ Deno.serve(withCors(async (req) => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Waits up to `maxMs` for the user's workout job to finish (never on a dead one: see STALE_JOB_MS). */
+async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId: string, maxMs: number) {
+  const until = Date.now() + maxMs;
+  while (Date.now() < until) {
+    const { data } = await admin
+      .from('generation_jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kind', 'workout_plan')
+      .in('status', ['queued', 'running'])
+      .gte('created_at', new Date(Date.now() - STALE_JOB_MS).toISOString())
+      .limit(1);
+    if (!data || data.length === 0) return;
+    await sleep(2_000);
+  }
+}
+
 /**
  * Runs one generation and always ends the job: done, or failed with a plain reason. The work races a hard time limit
  * under the runtime's own, so an overrun is recorded instead of leaving the job `running` until the function is killed.
@@ -135,21 +152,32 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
   const failJob = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId).neq('status', 'done');
+  // One clock for the whole run, started now: the wait below and the work after it share GENERATION_BUDGET_MS, and the
+  // hard limit is measured from here too (the numbers: see ai/budget.ts), so a run can never outlive the runtime's limit.
+  const runStartedAt = Date.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<'timeout'>((resolve) => {
     timer = setTimeout(() => resolve('timeout'), HARD_LIMIT_MS);
   });
   try {
-    const outcome = await Promise.race([generate(admin, userId, jobId, kind, update, adaptOfWeek).then(() => 'finished' as const), limit]);
+    const work = (async () => {
+      // The two plan kinds run one after the other: on the free `dev` models, two long calls at once hit provider rate
+      // limits (HTTP 429 or a timeout) and both fall back. The nutrition job waits (as `queued`) for the workout job, at
+      // most 30 s and never past the budget. Paid models finish in seconds, so this costs nothing there.
+      if (kind === 'nutrition_plan') await waitForWorkoutPlan(admin, userId, siblingWaitMs(runStartedAt, Date.now()));
+      await generate(admin, userId, jobId, kind, update, adaptOfWeek, runStartedAt);
+    })();
+    const outcome = await Promise.race([work.then(() => 'finished' as const), limit]);
     if (outcome === 'timeout') await failJob(STALE_JOB_ERROR);
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function generate(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
-  const startedAt = Date.now();
-  const deadlineAt = startedAt + GENERATION_BUDGET_MS;
+async function generate(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null, runStartedAt = Date.now()) {
+  const startedAt = runStartedAt;
+  // The budget runs from the start of the run, so time spent waiting for the workout job is already counted.
+  const deadlineAt = runStartedAt + GENERATION_BUDGET_MS;
   const fail = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId);
   try {
@@ -265,6 +293,10 @@ async function generate(admin: ReturnType<typeof createClient>, userId: string, 
           jobId,
         });
       }
+    }
+    // No model produced a usable plan: the starter template is what the user gets. Leave a trace (metadata only).
+    if (result.source === 'template') {
+      await admin.from('ai_call_logs').insert(aiCallRow({ userId, jobId, role: 'planner', model: 'template', tokensIn: null, tokensOut: null, costUsd: null, latencyMs: Date.now() - startedAt, status: 'template_fallback' }));
     }
     // Plan + QA scores + attempt log live in generation_jobs.result.
     await admin
