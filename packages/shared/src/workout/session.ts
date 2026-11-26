@@ -57,6 +57,12 @@ export function formatRest(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** The share of the rest still to go, from 1 (just started) to 0 (done). Never outside that range, 0 for a zero-length rest. */
+export function restFraction(left: number, total: number): number {
+  if (!(total > 0)) return 0;
+  return Math.min(1, Math.max(0, left / total));
+}
+
 /** "Set 3 of 4 · 80 kg × 8" */
 export function setLine(setNumber: number, total: number, weightKg: number, reps: number): string {
   const load = weightKg > 0 ? `${trim(weightKg)} kg × ${reps}` : `${reps} reps`;
