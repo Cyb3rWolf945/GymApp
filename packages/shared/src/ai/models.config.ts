@@ -37,8 +37,9 @@ export const MODEL_PROFILES: Record<ModelProfileName, ModelProfile> = {
   dev: {
     name: 'dev',
     roles: {
-      planner: { primary: DEV_MODELS[0], fallbacks: [DEV_MODELS[1], DEV_MODELS[2]] },
-      qa: { primary: DEV_MODELS[1], fallbacks: [DEV_MODELS[0], DEV_MODELS[2]] },
+      // Live data, last 12 h (ai_call_logs): nemotron timed out (40 s) on 5 of 12 calls, ernie answered 4 of 4 in about 3 s. Fastest first.
+      planner: { primary: DEV_MODELS[1], fallbacks: [DEV_MODELS[0], DEV_MODELS[2]] },
+      qa: { primary: DEV_MODELS[0], fallbacks: [DEV_MODELS[1], DEV_MODELS[2]] }, // a different family than the planner (QA is skipped on dev)
       light: { primary: DEV_MODELS[2], fallbacks: [DEV_MODELS[1], DEV_MODELS[0]] },
     },
     escalation: null,

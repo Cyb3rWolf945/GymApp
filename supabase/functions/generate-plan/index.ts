@@ -37,8 +37,8 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 /** The whole run is cut off here, under the Edge Function's wall-clock limit (about 120 s), so a job always ends. */
 const HARD_LIMIT_MS = 110_000;
-/** One model call never runs longer than this (a free model can take 30 s or more). */
-const CALL_TIMEOUT_MS = 40_000;
+/** One model call never runs longer than this. Calls that finish do so in under 10 s; the ones that hang are cut at 25 s and retried once, then the template is used. */
+const CALL_TIMEOUT_MS = 25_000;
 /** The cheap guardrail classifier gets less: if it is slow the field is dropped (fail closed). */
 const LIGHT_TIMEOUT_MS = 15_000;
 
