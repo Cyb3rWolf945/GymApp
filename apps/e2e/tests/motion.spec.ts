@@ -169,7 +169,8 @@ async function pressRow(page: Page, name: RegExp) {
 
 test('a list row keeps its layout and springs in a touch when pressed', async ({ page }) => {
   await signedInWithPlan(page, { fixedTime: false });
-  await expect(shown(page, en.home.title)).toBeVisible();
+  await page.goto('/plan'); // lists every exercise of the plan, whatever day it is
+  await expect(shown(page, en.home.planTitle)).toBeVisible();
   const r = await pressRow(page, /Barbell bench press/);
   expect(r.layout.height, 'min height of a row').toBeGreaterThanOrEqual(56);
   expect(r.layout.direction).toBe('row');
@@ -197,7 +198,8 @@ test.describe('reduced motion', () => {
 
   test('a list row keeps its layout and does not move when pressed', async ({ page }) => {
     await signedInWithPlan(page);
-    await expect(shown(page, en.home.title)).toBeVisible();
+    await page.goto('/plan');
+    await expect(shown(page, en.home.planTitle)).toBeVisible();
     const r = await pressRow(page, /Barbell bench press/);
     expect(r.layout.height).toBeGreaterThanOrEqual(56);
     expect(r.layout.direction).toBe('row');
