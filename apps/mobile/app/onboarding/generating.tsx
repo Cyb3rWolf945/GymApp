@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Redirect } from 'expo-router';
 import { buildPlanInputs, isComplete, toProfileUpdate } from '@gymapp/shared';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { FadeSlideIn } from '../../src/motion';
 import { ACCOUNT_MODAL_DELAY_MS } from '../../src/onboarding/accountModal';
@@ -19,6 +20,7 @@ const t = en.plan.generating;
  */
 export default function GeneratingSignedOut() {
   const { hydrated, answers } = useOnboarding();
+  const { session } = useAuth();
   const { state: modal, dispatch } = useAccountModal();
 
   const kcal = useMemo(() => {
@@ -39,6 +41,9 @@ export default function GeneratingSignedOut() {
   }, [hydrated, dispatch]);
 
   if (!hydrated) return null;
+  // The account now exists (made in the modal): on to the signed-in flow, which saves the answers and builds the plan.
+  // The modal lives above this screen and stays open on step 2.
+  if (session) return <Redirect href="/generating" />;
   if (!isComplete(answers)) return <Redirect href="/onboarding" />;
 
   return (

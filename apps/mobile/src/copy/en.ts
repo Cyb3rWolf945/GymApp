@@ -192,6 +192,7 @@ export const en = {
         exercises: 'Picking your exercises…',
         meals: 'Planning your meals…',
       },
+      needsAnswers: 'Finish a few questions first so we can build your plan.',
       caloriesDone: (kcal: string) => `About ${kcal} kcal a day`,
       accountTitle: 'Create your account to see your plan.',
       accountBody: 'We save your answers to your account, so you never start over.',

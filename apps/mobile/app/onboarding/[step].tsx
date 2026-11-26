@@ -3,6 +3,7 @@ import { Animated, type ScrollView, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type StepId, getStep, isStepId, nextStepId, prevStepId, progressOf, validateStep } from '@gymapp/shared';
 import { trackOnboarding } from '../../src/analytics/track';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { FieldErrorsProvider, useStepErrors } from '../../src/onboarding/FieldErrors';
 import { FadeSlideIn, createTapLock, staggerDelay, stepDirection, useConfirmPulse, useReducedMotion, useShake } from '../../src/motion';
@@ -22,6 +23,7 @@ export default function OnboardingStep() {
   const { step } = useLocalSearchParams<{ step: string }>();
   const { hydrated, answers, update, setStepId, resumeStep } = useOnboarding();
   const router = useRouter();
+  const { session } = useAuth();
   const { spacing } = useTheme();
   const id = isStepId(step) ? step : null;
   const reduced = useReducedMotion();
@@ -62,7 +64,8 @@ export default function OnboardingStep() {
     if (next) router.replace(`/onboarding/${next}`);
     else {
       trackOnboarding('onboarding_finished', id);
-      router.replace('/onboarding/generating');
+      // Signed in there is no account to create: straight to building the plan (the answers are saved from there).
+      router.replace(session ? '/generating' : '/onboarding/generating');
     }
   };
   const onContinue = () => {
@@ -91,7 +94,7 @@ export default function OnboardingStep() {
       header={id !== 'welcome' ? <ProgressBar step={n} total={total} label={t.progress(n, total)} /> : null}
       footer={
         id === 'welcome' ? (
-          <Button label={t.haveAccount} variant="ghost" onPress={() => router.replace('/sign-in?mode=login')} />
+          session ? null : <Button label={t.haveAccount} variant="ghost" onPress={() => router.replace('/sign-in?mode=login')} />
         ) : (
           <>
             <Button label={text.cta ?? en.common.continue} onPress={onContinue} />

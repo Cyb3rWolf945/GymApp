@@ -1,11 +1,12 @@
 import { type ReactNode, useRef } from 'react';
 import { View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { en } from '../copy/en';
 import { FadeSlideIn } from '../motion';
 import { useTheme } from '../theme';
 import { EmptyState, ScreenSkeleton, Screen } from '../ui';
 import { type PlanData, usePlanData } from './usePlanData';
+import { NewAccountRedirect } from './NewAccountRedirect';
 
 /** Loading, error and empty states shared by the plan tabs; renders `children` once the plan is ready. */
 export function PlanGate({ children }: { children: (data: PlanData) => ReactNode }) {
@@ -25,8 +26,8 @@ export function PlanGate({ children }: { children: (data: PlanData) => ReactNode
     return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}><EmptyState kind="error" title={t.loadError} actionLabel={en.common.retry} onAction={reload} /></View>;
   }
   if (state.status === 'empty') {
-    // A brand-new account goes straight to plan generation (screen 14).
-    if (!state.hasJobs) return <Redirect href="/generating" />;
+    // A brand-new account goes to plan generation (screen 14), or to the quiz when its profile is incomplete (E-73).
+    if (!state.hasJobs) return <NewAccountRedirect />;
     return (
       <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
         <EmptyState kind="workout" title={t.emptyTitle} body={t.emptyBody} actionLabel={t.emptyCta} onAction={() => router.push('/generating')} />

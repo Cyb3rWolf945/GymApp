@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { usePathname } from 'expo-router';
 import { type PartialAnswers, consentRows, isComplete, toProfileUpdate } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { getAttribution, getTrackingChoice, marketingIds } from '../marketing/tracking';
@@ -40,9 +41,12 @@ export function useSaveOnboarding(): void {
   const { session } = useAuth();
   const { hydrated, answers, clear } = useOnboarding();
   const userId = session?.user.id;
+  // While a signed-in user is answering the quiz the answers stay on the device (saving would clear them under their hands).
+  // They are saved when the quiz ends, from "Building your plan…". The signed-out end screen (`/onboarding/generating`) saves as before.
+  const inQuiz = /^\/onboarding(\/(?!generating$).*)?$/.test(usePathname());
 
   useEffect(() => {
-    if (!userId || !hydrated || !isComplete(answers)) return;
+    if (!userId || !hydrated || inQuiz || !isComplete(answers)) return;
     void saveProfileOnce(userId, answers).then((ok) => {
       // On failure keep the local copy: the next launch tries again.
       if (ok) {
@@ -51,5 +55,5 @@ export function useSaveOnboarding(): void {
         void clear();
       }
     });
-  }, [userId, hydrated, answers, clear]);
+  }, [userId, hydrated, inQuiz, answers, clear]);
 }
