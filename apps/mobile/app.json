@@ -6,7 +6,7 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#0B0B0F",
+    "backgroundColor": "#0A0B10",
     "web": {
       "bundler": "metro",
       "output": "single",
@@ -20,8 +20,8 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#0B0B0F",
-          "imageWidth": 200
+          "backgroundColor": "#0A0B10",
+          "imageWidth": 240
         }
       ]
     ],
@@ -40,7 +40,7 @@
       "package": "app.fuelift.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B0B0F"
+        "backgroundColor": "#0A0B10"
       },
       "permissions": []
     },

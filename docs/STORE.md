@@ -37,11 +37,14 @@ npx eas-cli build --profile production --platform android   # EAS generates and 
 
 ## 3. Assets and listing
 
-- **Icon:** the one in the repo is a placeholder (a lime "F" on the dark brand colour). Replace the SVGs in
-  `apps/mobile/assets/src/` or the PNGs with the designer's logo: icon 1024 x 1024 without transparency, adaptive
-  icon foreground with the mark inside the central 66%.
-- **Screenshots:** `pnpm --filter e2e screenshots` writes six per device to `apps/e2e/store/screenshots/<device>/`
-  (today, plan, meals, recipe, shopping list, progress), all with synthetic data:
+- **Icon:** the identity-v2 icon is in the repo: an original "F" with a violet spark on the brand gradient tile, over the
+  dark brand colour. The SVG sources are in `apps/mobile/assets/src/` and `pnpm --filter e2e icons` renders them to the
+  PNGs (icon 1024 x 1024 without transparency, adaptive icon foreground with the mark inside the central 66%, splash
+  mark inside the circle Android 12 crops to). The splash and adaptive-icon background is the dark palette's
+  background (`#0A0B10`), and a unit test keeps it equal to the theme. Replace the SVGs if the designer delivers a
+  final logo; the in-app splash mark (`src/ui/BrandMark.tsx`) should then change with it.
+- **Screenshots:** `pnpm --filter e2e screenshots` writes seven per device to `apps/e2e/store/screenshots/<device>/`
+  (today, plan, meals, recipe, shopping list, progress, plans), all with synthetic data:
   `ios-6.9in` 1320 x 2868, `ios-6.5in` 1284 x 2778, `android-phone` 1080 x 1920. They are renders of the web build, so
   fonts and safe areas can differ slightly from the native app. Replace them with simulator screenshots before
   submitting if you want them pixel-exact. Apple also asks for iPad screenshots only if the app supports iPad (it does not:

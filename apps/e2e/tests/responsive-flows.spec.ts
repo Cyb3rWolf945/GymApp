@@ -61,8 +61,10 @@ test.describe('responsive flows', () => {
     await start(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/onboarding/goal');
-    const progress = page.getByRole('progressbar').first();
+    // The onboarding bar has a value range; the loading skeleton (also a progressbar) does not, and it is replaced a moment later.
+    const progress = page.locator('[role="progressbar"][aria-valuemax]').first();
     await expect(progress).toBeVisible();
+    await expect.poll(async () => (await progress.boundingBox())?.width ?? 0).toBeGreaterThan(0);
     const box = (await progress.boundingBox())!;
     expect(box.width, 'reading width').toBeLessThanOrEqual(720);
     expect(Math.abs(box.x + box.width / 2 - 720), 'centred').toBeLessThan(40);

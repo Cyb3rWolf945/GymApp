@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { palettes } from '../theme/tokens';
 
 // Guards the store build config: the profiles exist, the assets the config points at are there, nothing secret is
 // committed, and the app asks for no permissions it does not use.
@@ -48,8 +49,30 @@ describe('app.json', () => {
     expect(app.ios.supportsTablet).toBe(false);
   });
   it('keeps the dark brand colour for the splash and the adaptive icon', () => {
-    expect(app.backgroundColor).toBe('#0B0B0F');
-    expect(app.android.adaptiveIcon.backgroundColor).toBe('#0B0B0F');
+    // The splash and the adaptive icon sit on the dark palette's background, so the app opens without a colour jump.
+    expect(app.backgroundColor).toBe(palettes.dark.background);
+    expect(app.android.adaptiveIcon.backgroundColor).toBe(palettes.dark.background);
+    const splash = app.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-splash-screen')[1];
+    expect(splash.backgroundColor).toBe(palettes.dark.background);
+  });
+  it('has icon sources that draw the brand colours, and no transparency in the store icon', () => {
+    const icon = read('assets/src/icon.svg');
+    expect(icon).toMatch(/#C6FF3D/i); // the brand accent
+    expect(icon).toMatch(new RegExp(`<rect width="1024" height="1024" fill="${palettes.dark.background}"`, 'i')); // opaque background
+  });
+  it('has PNGs of the sizes the stores need', () => {
+    const size = (file: string) => {
+      const b = readFileSync(join(root, 'assets', file));
+      return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), colourType: b[25] };
+    };
+    expect(size('icon.png')).toMatchObject({ w: 1024, h: 1024 });
+    expect(size('adaptive-icon.png')).toMatchObject({ w: 1024, h: 1024 });
+    expect(size('splash-icon.png')).toMatchObject({ w: 1024, h: 1024 });
+    expect(size('favicon.png')).toMatchObject({ w: 48, h: 48 });
+    // PNG colour type 2 is RGB (no alpha channel: Apple rejects an icon with transparency), 6 is RGBA.
+    expect(size('icon.png').colourType).toBe(2);
+    expect(size('adaptive-icon.png').colourType).toBe(6); // the launcher draws its own background behind it
+    expect(size('splash-icon.png').colourType).toBe(6);
   });
   it('keeps the Android service account key out of git', () => {
     const gitignore = readFileSync(join(root, '..', '..', '.gitignore'), 'utf8');

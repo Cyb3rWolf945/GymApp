@@ -12,6 +12,7 @@ const SHOTS: { file: string; path: string; ready: (page: import('@playwright/tes
   { file: '04-recipe', path: '/recipe/chicken-rice-bowl?portions=1', ready: (p) => expect(shown(p, 'Chicken breast', false)).toBeVisible() },
   { file: '05-shopping-list', path: '/shopping', ready: (p) => expect(shown(p, 'Rolled oats')).toBeVisible() },
   { file: '06-progress', path: '/progress', ready: (p) => expect(shown(p, en.home.progress.prsTitle)).toBeVisible() },
+  { file: '07-plans', path: '/paywall', ready: (p) => expect(shown(p, en.paywall.title)).toBeVisible() },
 ];
 
 test('store screenshots', async ({ page }, info) => {
