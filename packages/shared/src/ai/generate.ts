@@ -16,6 +16,10 @@ export const OnboardingSchema = z.object({
   contraindications: z.array(z.enum(CONTRAINDICATIONS)).default([]),
   allergens: z.array(z.enum(ALLERGENS)).default([]),
   diet: z.enum(DIETS).default('omnivore'),
+  mealsPerDay: z.number().int().min(3).max(6).optional(),
+  dislikes: z.array(z.string()).default([]),
+  budget: z.enum(['low', 'medium', 'high']).optional(),
+  cookingMinutes: z.number().int().min(5).max(240).optional(),
   flags: z.array(z.enum(['under_18', 'pregnant', 'breastfeeding', 'eating_disorder_history', 'medical_condition'])).default([]),
 });
 
@@ -101,6 +105,10 @@ export function buildPlanInputs(row: ProfileRow, today = new Date(), opts: PlanI
     allergens: ob.allergens,
     diet: ob.diet,
     coachStyle: parseCoachStyle(row.coach_style),
+    mealsPerDay: ob.mealsPerDay,
+    dislikes: ob.dislikes,
+    budget: ob.budget,
+    cookingMinutes: ob.cookingMinutes,
     targets: trainingRestSplit(target.kcal, Number(row.weight_kg), ob.goalType, ob.daysPerWeek, row.sex),
   };
 }

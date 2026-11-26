@@ -52,10 +52,29 @@ test('polling stops once the preview is open', async ({ page }) => {
   expect(backend.reads.generation_jobs ?? 0).toBe(reads);
 });
 
-test('the starter plan is announced when the models could not make a personal one', async ({ page }) => {
+test('a template meal plan: the starter note with its button, and the meal slots by name (preview and Nutrition)', async ({ page }) => {
   await building(page, (b) => {
-    for (const j of b.state.jobs as { result: Record<string, unknown> }[]) j.result = { ...j.result, source: 'template' };
+    const nutrition = (b.state.jobs as { kind: string; result: Record<string, unknown> }[]).find((j) => j.kind === 'nutrition_plan')!;
+    const meal = (name: string, recipeSlug: string) => ({ name, recipeSlug, portions: 1 });
+    const day = (dayType: string) => ({ dayType, meals: [meal('Breakfast', 'oats-and-berries'), meal('Lunch', 'chicken-rice-bowl'), meal('Afternoon snack', 'oats-and-berries'), meal('Dinner', 'lentil-curry')], kcal: 2400, proteinG: 140, carbsG: 260, fatG: 70 });
+    // What `generate-plan` stores when it falls back to the template: source 'template', four meals a day with slot names.
+    nutrition.result = { source: 'template', relaxed: [], plan: { days: [day('training'), day('rest')], rationale: 'Four meals a day around 2,400 kcal and 140 g protein on training days, 30 minutes or less to cook. Swap any meal you like less.' } };
   });
   await page.goto('/preview');
   await expect(shown(page, en.plan.starterPlan)).toBeVisible();
+  for (const name of ['Breakfast', 'Lunch', 'Afternoon snack', 'Dinner']) await expect(shown(page, name)).toBeVisible();
+  await expect(shown(page, 'Four meals a day around 2,400 kcal', false)).toBeVisible();
+
+  // The same note on Nutrition, and its button leads to "Update my plan".
+  await page.goto('/nutrition');
+  await expect(shown(page, en.plan.starterPlan)).toBeVisible();
+  await button(page, en.plan.starterPlanCta).click();
+  await expect(page).toHaveURL(/\/update-plan/);
+});
+
+test('a plan made by the models has no starter note', async ({ page }) => {
+  await building(page, () => {});
+  await page.goto('/preview');
+  await expect(shown(page, en.plan.preview.title)).toBeVisible();
+  await expect(shown(page, en.plan.starterPlan)).toHaveCount(0);
 });

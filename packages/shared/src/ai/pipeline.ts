@@ -2,7 +2,8 @@ import { AiCallError } from './openrouter.ts';
 import type { CallFn } from './generate.ts';
 import { type ExerciseCandidate, type PlanInputs, type RecipeCandidate, SYSTEM_PROMPTS, type UserText, buildUserMessage } from './prompts.ts';
 import { type QaVerdict, qaFeedback, runQa, verdictPasses } from './qa.ts';
-import { nutritionTemplate, workoutTemplate } from './templates.ts';
+import { type MealTemplateResult, type TemplateContext, buildNutritionTemplate } from './mealTemplate.ts';
+import { workoutTemplate } from './templates.ts';
 import { type NutritionPlan, PLAN_SCHEMAS, type PlanKind, type WorkoutPlan } from './schemas.ts';
 import { validateNutrition, validateWorkout } from './validator.ts';
 
@@ -31,6 +32,8 @@ export interface PipelineResult {
   attempts: AttemptRecord[];
   /** True when a human should look at this plan (template used, or QA was unavailable). */
   needsReview: boolean;
+  /** Template meal plan only: the soft filters (cooking time, budget, earlier swaps, dislikes) that had to be relaxed. */
+  relaxed?: string[];
 }
 
 export interface PipelineArgs {
@@ -49,6 +52,8 @@ export interface PipelineArgs {
   maxRetries?: number;
   /** `skip`: no QA call, the validator alone accepts a plan (dev profile). Default `enforce`. */
   qa?: 'enforce' | 'skip';
+  /** Soft signals for the template meal plan (seed, earlier swaps, memory facts). */
+  templateContext?: TemplateContext;
   /** Epoch ms by which everything must be over. When too little is left the pipeline stops and returns the template. */
   deadlineAt?: number;
   /** Clock, for tests. */
@@ -147,9 +152,7 @@ export async function runPipeline(args: PipelineArgs): Promise<PipelineResult> {
     if (done) return done;
   }
 
-  const plan =
-    kind === 'workout_plan'
-      ? workoutTemplate(inputs, args.library as ExerciseCandidate[])
-      : nutritionTemplate(inputs, args.library as RecipeCandidate[]);
-  return { plan, qa: null, source: 'template', attempts, needsReview: true };
+  if (kind === 'workout_plan') return { plan: workoutTemplate(inputs, args.library as ExerciseCandidate[]), qa: null, source: 'template', attempts, needsReview: true };
+  const meals: MealTemplateResult = buildNutritionTemplate(inputs, args.library as RecipeCandidate[], args.templateContext);
+  return { plan: meals.plan, qa: null, source: 'template', attempts, needsReview: true, relaxed: meals.relaxed };
 }

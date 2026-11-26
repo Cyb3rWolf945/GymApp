@@ -75,6 +75,7 @@ describe('red-team set', () => {
       { slug: 'oats', name: 'o', diet: 'omnivore', kcal: 500, protein_g: 30, carbs_g: 60, fat_g: 15, allergens: [] },
       { slug: 'satay', name: 's', diet: 'omnivore', kcal: 600, protein_g: 30, carbs_g: 40, fat_g: 30, allergens: ['nuts'] },
       { slug: 'rice', name: 'r', diet: 'omnivore', kcal: 550, protein_g: 35, carbs_g: 70, fat_g: 10, allergens: [] },
+      { slug: 'lentils', name: 'l', diet: 'omnivore', kcal: 450, protein_g: 28, carbs_g: 65, fat_g: 8, allergens: [] },
     ];
     const inp = inputs({ contraindications: ['knee'], allergens: ['nuts'] });
     const line = (exerciseSlug: string) => ({ exerciseSlug, sets: 3, repsMin: 8, repsMax: 12, rpe: 8, restSeconds: 90 });

@@ -205,7 +205,8 @@ export const en = {
       timeout: 'This is taking longer than usual. Try again.',
       retry: 'Try again',
     },
-    starterPlan: 'We used a starter plan. Update your plan later for a personal one.',
+    starterPlan: 'We built a starter plan from your answers. Update your plan for a fully personal one.',
+    starterPlanCta: 'Update my plan',
     preview: {
       title: 'Your plan is ready.',
       workoutTitle: 'Your first workout',

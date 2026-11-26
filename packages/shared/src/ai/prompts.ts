@@ -50,6 +50,11 @@ export interface PlanInputs {
   conservative: boolean;
   /** Tone of the rationale (E-55). Defaults to Calm. */
   coachStyle?: CoachStyle;
+  /** Meal habits (E-66): used by the template meal plan. Not sent to the models. */
+  mealsPerDay?: number;
+  dislikes?: string[];
+  budget?: 'low' | 'medium' | 'high';
+  cookingMinutes?: number;
 }
 
 /** Free text that reached the planner: already limited, classified and sanitised. */
@@ -80,6 +85,11 @@ export interface RecipeCandidate {
   fat_g: number | null;
   /** Derived from the recipe's ingredients. */
   allergens: string[];
+  /** E-66, from `recipes` and its ingredients. Missing on older data: the template then treats the recipe as fitting any slot. */
+  meal_types?: string[];
+  prep_minutes?: number;
+  cost_tier?: string;
+  ingredients?: string[];
 }
 
 /** Strip anything that could close or fake our delimiter tags. */
