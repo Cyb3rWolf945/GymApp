@@ -13,6 +13,8 @@ export interface Palette {
   accent: string;
   /** Text/icon colour on top of `accent`. */
   onAccent: string;
+  /** The soft halo under the main button: the brand colour, translucent. Empty (no halo) where it would look dirty. */
+  accentGlow: string;
   /** Secondary accent (electric violet): charts, highlights and decoration next to the brand colour, never a second "primary". */
   accent2: string;
   /** Text/icon colour on top of `accent2`. */
@@ -41,6 +43,7 @@ export const palettes: Record<Scheme, Palette> = {
     muted: '#A6AABC',
     accent: '#C6FF3D',
     onAccent: '#0A0B10',
+    accentGlow: 'rgba(198,255,61,0.22)',
     accent2: '#9A8CFF',
     onAccent2: '#0A0B10',
     danger: '#FF7A7A',
@@ -61,6 +64,7 @@ export const palettes: Record<Scheme, Palette> = {
     muted: '#575C6E',
     accent: '#3F6212',
     onAccent: '#FFFFFF',
+    accentGlow: '',
     accent2: '#5B45E8',
     onAccent2: '#FFFFFF',
     danger: '#B91C1C',

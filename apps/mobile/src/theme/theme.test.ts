@@ -111,3 +111,11 @@ describe('identity v2: type, spacing and radius', () => {
     expect(typography.bodyStrong.fontFamily).toBe(fonts.uiSemiBold);
   });
 });
+
+it('the button halo is the brand colour, translucent, in dark; light has none', () => {
+  const m = palettes.dark.accentGlow.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*0\.\d+\)$/)!;
+  expect(m).not.toBeNull();
+  const hex = '#' + [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('').toUpperCase();
+  expect(hex).toBe(palettes.dark.accent);
+  expect(palettes.light.accentGlow).toBe('');
+});

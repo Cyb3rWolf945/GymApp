@@ -3,6 +3,7 @@ import { AccessibilityInfo, Platform, ScrollView, View, findNodeHandle } from 'r
 import { type PartialAnswers, type StepId, stepFieldErrors } from '@gymapp/shared';
 import { trackEvent } from '../analytics/track';
 import { en } from '../copy/en';
+import { FadeSlideIn } from '../motion';
 import { useTheme } from '../theme';
 import { Text } from '../ui';
 import { fieldMessage, unitsOf } from './fieldMessages';
@@ -21,10 +22,13 @@ export const FieldErrorsProvider = FieldErrorsContext.Provider;
 function InlineError({ id, message }: { id: string; message: string }) {
   const { spacing } = useTheme();
   return (
-    <View nativeID={id} accessibilityRole="alert" aria-live="assertive" style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start' }}>
-      <Text variant="small" tone="danger" accessibilityElementsHidden importantForAccessibility="no">⚠</Text>
-      <Text variant="small" tone="danger" style={{ flex: 1 }}>{message}</Text>
-    </View>
+    // It fades in (E-45: "the message fades in"); with reduced motion it is simply there. The alert is announced as it appears.
+    <FadeSlideIn>
+      <View nativeID={id} accessibilityRole="alert" aria-live="assertive" style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start' }}>
+        <Text variant="small" tone="danger" accessibilityElementsHidden importantForAccessibility="no">⚠</Text>
+        <Text variant="small" tone="danger" style={{ flex: 1 }}>{message}</Text>
+      </View>
+    </FadeSlideIn>
   );
 }
 
