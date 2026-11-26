@@ -31,8 +31,9 @@ export default function Generating() {
       ? view.progress.steps
       : [{ id: 'calories' as const, state: 'done' as const }, { id: 'exercises' as const, state: view.kind === 'starting' ? ('active' as const) : ('pending' as const) }, { id: 'meals' as const, state: 'pending' as const }];
 
+  const needsAnswers = view.kind === 'error' && view.reason === 'incomplete';
   const error =
-    view.kind === 'error'
+    view.kind === 'error' && !needsAnswers
       ? view.reason === 'timeout'
         ? t.timeout
         : view.reason === 'profile'
@@ -43,7 +44,12 @@ export default function Generating() {
   return (
     <Screen center framed>
       <Text variant="display">{t.title}</Text>
-      {error ? (
+      {needsAnswers ? (
+        <View style={{ gap: spacing.lg }}>
+          <Text accessibilityRole="alert">{t.needsAnswers}</Text>
+          <Button label={en.common.continue} onPress={() => router.replace('/onboarding')} />
+        </View>
+      ) : error ? (
         <View style={{ gap: spacing.lg }}>
           <Text tone="danger" accessibilityRole="alert">{error}</Text>
           <Button label={t.retry} onPress={retry} />

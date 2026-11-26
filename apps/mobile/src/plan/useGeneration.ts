@@ -11,7 +11,7 @@ export type GenerationView =
   | { kind: 'running'; progress: GenerationProgress }
   | { kind: 'done' }
   | { kind: 'needs_trial' }
-  | { kind: 'error'; reason: 'profile' | 'generate' | 'timeout' };
+  | { kind: 'error'; reason: 'profile' | 'incomplete' | 'generate' | 'timeout' };
 
 /**
  * Starts the two plan jobs (workout + meals) if they are not already done or alive, then polls `generation_jobs` until
@@ -41,7 +41,7 @@ export function useGeneration(): { view: GenerationView; retry: () => void } {
     let polls = 0;
     setView({ kind: 'starting' });
 
-    const fail = (reason: 'profile' | 'generate' | 'timeout') => active && setView({ kind: 'error', reason });
+    const fail = (reason: 'profile' | 'incomplete' | 'generate' | 'timeout') => active && setView({ kind: 'error', reason });
 
     const poll = async () => {
       if (polling || !active) return;
@@ -77,7 +77,14 @@ export function useGeneration(): { view: GenerationView; retry: () => void } {
         if (!(await saveProfileOnce(userId, answersRef.current))) return fail('profile');
         await clearRef.current();
       }
-      if (missingProfileFields(await fetchSavedProfile(userId)).length > 0) return fail('profile');
+      let saved: Awaited<ReturnType<typeof fetchSavedProfile>>;
+      try {
+        saved = await fetchSavedProfile(userId);
+      } catch {
+        return fail('profile'); // could not read it: a real failure
+      }
+      // Incomplete with nothing to save from this device: the quiz is what's missing, not the connection.
+      if (missingProfileFields(saved).length > 0) return fail(isComplete(answersRef.current) ? 'profile' : 'incomplete');
       if (!active) return;
 
       let existing: Partial<ReturnType<typeof latestJobs>>;

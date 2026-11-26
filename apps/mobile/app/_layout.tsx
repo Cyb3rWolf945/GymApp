@@ -57,9 +57,10 @@ function RootStack() {
       <Stack.Protected guard={Boolean(session)}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
+      {/* The quiz is open to everyone: signed in, it fills in what the saved profile is missing (E-73). */}
+      <Stack.Screen name="onboarding" />
       <Stack.Protected guard={!session}>
         <Stack.Screen name="landing" />
-        <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
