@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { type MotionEasing, motion } from '../theme/tokens';
-import { type StepDirection, countUpValue, durationFor, hapticsAllowed, slideOffset } from './logic';
+import { type FeedbackEvent, type StepDirection, countUpValue, durationFor, hapticFor, pressScale, slideOffset } from './logic';
 import { useReducedMotion } from './useReducedMotion';
 
 export { useReducedMotion } from './useReducedMotion';
@@ -81,10 +81,47 @@ export function useConfirmPulse() {
 
 /** A light tap on a phone when something is chosen. Never on the web, never with reduced motion. */
 export function useHaptics() {
+  const fire = useFeedback();
+  return useCallback(() => fire('choice'), [fire]);
+}
+
+/**
+ * The tap that goes with a moment (a choice, a set logged, a personal record, the plan being ready). A no-op on the
+ * web and with reduced motion.
+ */
+export function useFeedback() {
   const reduced = useReducedMotion();
-  return useCallback(() => {
-    if (hapticsAllowed(Platform.OS, reduced)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-  }, [reduced]);
+  return useCallback(
+    (event: FeedbackEvent) => {
+      const h = hapticFor(event, Platform.OS, reduced);
+      if (!h) return;
+      const run =
+        h.kind === 'notification'
+          ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          : Haptics.impactAsync(h.weight === 'medium' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+      void run.catch(() => undefined);
+    },
+    [reduced],
+  );
+}
+
+/**
+ * A press state that springs: the thing shrinks a little while pressed and springs back (a quick settle, not a timed
+ * ease). With reduced motion it does not move at all. Returns the animated scale and the two press handlers.
+ */
+export function usePressSpring(scaleTo: number = motion.pressScale) {
+  const reduced = useReducedMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = useCallback(
+    (value: number) => {
+      if (reduced) return;
+      Animated.spring(scale, { toValue: value, stiffness: motion.spring.stiffness, damping: motion.spring.damping, mass: motion.spring.mass, useNativeDriver: true }).start();
+    },
+    [reduced, scale],
+  );
+  const onPressIn = useCallback(() => to(pressScale(reduced, scaleTo)), [to, reduced, scaleTo]);
+  const onPressOut = useCallback(() => to(1), [to]);
+  return { scale, onPressIn, onPressOut };
 }
 
 /** A number that counts up to `to` when it appears (about 0.7 s). Reduced motion: shows the final number at once. */

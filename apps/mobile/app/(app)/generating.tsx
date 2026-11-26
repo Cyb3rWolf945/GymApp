@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { en } from '../../src/copy/en';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
+import { useFeedback } from '../../src/motion';
 import { useGeneration } from '../../src/plan/useGeneration';
 import { useTheme } from '../../src/theme';
 import { Button, Screen, Text } from '../../src/ui';
@@ -13,12 +14,16 @@ const t = en.plan.generating;
 export default function Generating() {
   const { view, retry } = useGeneration();
   const router = useRouter();
+  const feedback = useFeedback();
   const { spacing } = useTheme();
 
   useEffect(() => {
-    if (view.kind === 'done') router.replace('/preview');
+    if (view.kind === 'done') {
+      feedback('plan_ready'); // the success tap on a phone, then the preview
+      router.replace('/preview');
+    }
     if (view.kind === 'needs_trial') router.replace('/paywall');
-  }, [view.kind, router]);
+  }, [view.kind, router, feedback]);
 
   const steps =
     view.kind === 'running'

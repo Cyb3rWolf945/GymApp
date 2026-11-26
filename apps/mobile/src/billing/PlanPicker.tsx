@@ -1,12 +1,12 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import { FOUNDING_COUPON, PAID_TIERS, type PaidTier, TRIAL_DAYS, annualSavingsPercent, formatUsd, perDayUsd } from '@gymapp/shared';
 import { trackEvent } from '../analytics/track';
 import { useAuth } from '../auth/AuthProvider';
 import { en } from '../copy/en';
 import { type PaywallData, fetchPaywall, startCheckout } from '../plan/api';
 import { useBreakpoint, useTheme } from '../theme';
-import { Button, Card, EmptyState, ResponsiveGrid, Text } from '../ui';
+import { Button, Card, EmptyState, ResponsiveGrid, ScreenSkeleton, Text } from '../ui';
 
 const t = en.paywall;
 
@@ -89,7 +89,7 @@ export function usePlanPicker({ placement, mode, initial = DEFAULT_SELECTION, on
   if (failed || (data && data.prices.length === 0)) {
     return { body: <EmptyState title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} />, footer: null };
   }
-  if (!data) return { body: <ActivityIndicator color={colors.accent} />, footer: null };
+  if (!data) return { body: <ScreenSkeleton title={false} cards={2} label={en.common.loading} />, footer: null };
 
   const setInterval = (i: 'month' | 'year') => setSelection((s) => ({ ...s, interval: i }));
   const chosen = price(selection.tier, interval);

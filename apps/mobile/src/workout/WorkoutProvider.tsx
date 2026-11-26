@@ -3,6 +3,7 @@ import {
   type NewPR, type OutboxItem, detectPRs, enqueue, flushOutbox, summarizeHistory, volumeKg, type HistoryRow,
 } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
+import { useFeedback } from '../motion';
 import { supabase } from '../supabase';
 import { loadActive, loadOutbox, saveActive, saveOutbox } from './storage';
 import type { ActiveSet, ActiveWorkout, PlannedWithId } from './types';
@@ -68,6 +69,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<ActiveWorkout | null>(null);
   const [outbox, setOutbox] = useState<OutboxItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const feedback = useFeedback();
   const flushing = useRef(false);
   const outboxRef = useRef(outbox);
   outboxRef.current = outbox;
@@ -200,8 +202,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       });
       updateActive({ ...active, logged });
       void flush();
+      // A firmer tap for a working set, a light one for a warm-up (phones only; none with reduced motion).
+      feedback(list.every((s) => s.warmup === true) ? 'choice' : 'set_logged');
     },
-    [active, userId, updateActive, push, flush],
+    [active, userId, updateActive, push, flush, feedback],
   );
 
   const undoLast = useCallback(() => {

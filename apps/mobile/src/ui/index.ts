@@ -9,7 +9,7 @@ export { ListItem } from './ListItem';
 export { ProgressBar } from './ProgressBar';
 export { ResponsiveGrid } from './ResponsiveGrid';
 export { Screen } from './Screen';
-export { Skeleton, ScreenSkeleton } from './Skeleton';
+export { InlineSkeleton, Skeleton, ScreenSkeleton } from './Skeleton';
 export { Slider } from './Slider';
 export { StatTile } from './StatTile';
 export { Text } from './Text';

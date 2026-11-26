@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STEP_IDS } from '@gymapp/shared';
 import { motion } from '../theme/tokens';
-import { countUpValue, createTapLock, durationFor, hapticsAllowed, slideOffset, staggerDelay, stepDirection } from './logic';
+import { countUpValue, createTapLock, durationFor, hapticFor, hapticsAllowed, pressScale, slideOffset, staggerDelay, stepDirection } from './logic';
 
 describe('motion tokens', () => {
   it('durations are about 150 / 250 / 400 ms and in order', () => {
@@ -103,5 +103,43 @@ describe('createTapLock (no double navigation)', () => {
     const b = createTapLock();
     a.take();
     expect(b.take()).toBe(true);
+  });
+});
+
+describe('haptics by moment (E-138: motion and feedback)', () => {
+  it('a choice is a light tap, a set logged a firmer one, a PR and the plan being ready the success pattern', () => {
+    expect(hapticFor('choice', 'ios', false)).toEqual({ kind: 'impact', weight: 'light' });
+    expect(hapticFor('set_logged', 'android', false)).toEqual({ kind: 'impact', weight: 'medium' });
+    expect(hapticFor('pr', 'ios', false)).toEqual({ kind: 'notification', type: 'success' });
+    expect(hapticFor('plan_ready', 'ios', false)).toEqual({ kind: 'notification', type: 'success' });
+  });
+  it('never on the web, whatever the moment', () => {
+    for (const e of ['choice', 'set_logged', 'pr', 'plan_ready'] as const) expect(hapticFor(e, 'web', false), e).toBeNull();
+  });
+  it('never with reduced motion, on a phone either', () => {
+    for (const e of ['choice', 'set_logged', 'pr', 'plan_ready'] as const) expect(hapticFor(e, 'ios', true), e).toBeNull();
+  });
+  it('the celebration moments feel different from an ordinary tap', () => {
+    expect(hapticFor('pr', 'ios', false)?.kind).not.toBe(hapticFor('choice', 'ios', false)?.kind);
+  });
+});
+
+describe('spring press states', () => {
+  it('a pressed thing shrinks to the token scale, and a row less than a button', () => {
+    expect(pressScale(false, motion.pressScale)).toBe(0.97);
+    expect(motion.rowPressScale).toBeGreaterThan(motion.pressScale);
+    expect(motion.rowPressScale).toBeLessThan(1);
+  });
+  it('with reduced motion nothing shrinks', () => {
+    expect(pressScale(true, motion.pressScale)).toBe(1);
+    expect(pressScale(true, motion.rowPressScale)).toBe(1);
+  });
+  it('the spring is stiff and well damped: quick, with a slight settle and no wobble', () => {
+    const { stiffness, damping, mass } = motion.spring;
+    expect(stiffness).toBeGreaterThanOrEqual(300);
+    // Damping ratio = c / (2 * sqrt(k * m)): between 0.7 and 1.2 reads as a settle, not a wobble.
+    const ratio = damping / (2 * Math.sqrt(stiffness * mass));
+    expect(ratio).toBeGreaterThan(0.5);
+    expect(ratio).toBeLessThan(1.2);
   });
 });

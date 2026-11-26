@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
-import { button, chip, start } from '../support/app';
+import { button, chip, shown, signedInWithPlan, start } from '../support/app';
 import { ownViewports } from '../support/projects';
 
 // The one place animation is on: every other spec runs with reduced motion (playwright.config.ts) so nothing is
@@ -115,8 +115,61 @@ test('a chosen chip shows a check', async ({ page }) => {
   await expect(c).toHaveAttribute('aria-checked', 'true');
 });
 
+test('switching tabs cross-fades the new screen in', async ({ page }) => {
+  await signedInWithPlan(page, { fixedTime: false });
+  await expect(shown(page, en.home.title)).toBeVisible();
+  const seen = lowestOpacity(page, en.home.planTitle, 700);
+  await page.getByRole('tab', { name: en.home.tabs.plan, exact: true }).click();
+  const { min, final } = await seen;
+  expect(min, 'the Plan screen faded in').toBeLessThan(0.9);
+  expect(final).toBe(1);
+});
+
+/** The scale of the element as the browser draws it (1 = no transform). */
+const scaleOf = (page: Page, label: string) =>
+  page.evaluate((name) => {
+    const el = Array.from(document.querySelectorAll('[role="button"]')).find((b) => b.getAttribute('aria-label') === name);
+    const m = el ? getComputedStyle(el).transform.match(/matrix\(([^,]+),/) : null;
+    return m ? Number(m[1]) : 1;
+  }, label);
+
+test('a pressed button springs in, and springs back when let go', async ({ page }) => {
+  await atGoalStep(page);
+  await chip(page, o.goal.options.recomp).click();
+  const target = button(page, en.common.continue);
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect.poll(() => scaleOf(page, en.common.continue), 'shrinks while pressed').toBeLessThan(0.99);
+  expect(await scaleOf(page, en.common.continue)).toBeGreaterThan(0.9); // a touch, not a collapse
+  await page.mouse.move(box.x + box.width / 2, box.y - 40); // slide off so releasing does not press it
+  await page.mouse.up();
+  await expect.poll(() => scaleOf(page, en.common.continue), 'springs back').toBeGreaterThan(0.999);
+});
+
 test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
+
+  test('a pressed button does not move, and switching tabs does not fade', async ({ page }) => {
+    await atGoalStep(page);
+    await chip(page, o.goal.options.recomp).click();
+    const box = (await button(page, en.common.continue).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(300);
+    expect(await scaleOf(page, en.common.continue)).toBe(1);
+    await page.mouse.move(box.x + box.width / 2, box.y - 40);
+    await page.mouse.up();
+  });
+
+  test('switching tabs shows the new screen at once', async ({ page }) => {
+    await signedInWithPlan(page);
+    await expect(shown(page, en.home.title)).toBeVisible();
+    const seen = lowestOpacity(page, en.home.planTitle, 500);
+    await page.getByRole('tab', { name: en.home.tabs.plan, exact: true }).click();
+    const { min } = await seen;
+    expect(min, 'no fade').toBeGreaterThan(0.99);
+  });
 
   test('nothing animates: content is fully visible at once, even with the clock frozen', async ({ page }) => {
     await start(page); // frozen clock: any animation would stay stuck at its first frame

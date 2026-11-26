@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { authCopy } from './copy';
 import { type OAuthProvider, type SignInMethodId, canUnlink, fetchIdentities, linkProvider, linkedMethods, unlinkProvider } from './authService';
 import { openAuthSession } from './browser';
@@ -7,7 +7,7 @@ import { visibleProviders } from './logic';
 import { authRedirect, oauthEnabled } from './redirects';
 import { supabase } from '../supabase';
 import { useTheme } from '../theme';
-import { Button, Card, Text, useToast } from '../ui';
+import { Button, Card, InlineSkeleton, Text, useToast } from '../ui';
 
 const t = authCopy.methods;
 const isWeb = Platform.OS === 'web';
@@ -15,7 +15,7 @@ type Identity = Awaited<ReturnType<typeof fetchIdentities>>[number];
 
 /** Settings → "Sign-in methods": which ways you can log in (email, Google, Apple), link another, unlink one but never the last. */
 export function SignInMethods() {
-  const { spacing, colors } = useTheme();
+  const { spacing } = useTheme();
   const toast = useToast();
   const [identities, setIdentities] = useState<Identity[] | null | undefined>(undefined); // undefined = loading, null = failed
   const [busy, setBusy] = useState<OAuthProvider | null>(null);
@@ -57,7 +57,7 @@ export function SignInMethods() {
     <Card style={{ gap: spacing.sm }}>
       <Text variant="heading">{t.title}</Text>
       <Text tone="muted">{t.body}</Text>
-      {identities === undefined ? <ActivityIndicator color={colors.accent} /> : null}
+      {identities === undefined ? <InlineSkeleton lines={3} label={authCopy.loading} /> : null}
       {identities === null ? <Text tone="danger" accessibilityRole="alert">{t.loadError}</Text> : null}
       {identities
         ? shown.map((m: SignInMethodId) => {

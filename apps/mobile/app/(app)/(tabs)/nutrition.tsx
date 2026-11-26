@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -11,7 +10,7 @@ import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, InlineSkeleton, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const n = en.nutrition;
@@ -143,7 +142,7 @@ function Nutrition({ data }: { data: PlanData }) {
       <BottomSheet visible={!!target} onClose={() => setTarget(null)} title={target ? n.swapTitle(target.name) : undefined} closeLabel={en.common.close}>
         <Text tone="muted">{n.swapBody}</Text>
         {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
-        {!options && !error ? <ActivityIndicator color={colors.accent} /> : null}
+        {!options && !error ? <InlineSkeleton lines={3} label={en.common.loading} /> : null}
         {options && options.length === 0 ? <Text>{n.swapNone}</Text> : null}
         {options?.map((o) => (
           <Button key={o.slug} label={n.swapPick(o.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />
