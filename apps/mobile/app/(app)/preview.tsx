@@ -84,12 +84,12 @@ export default function Preview() {
         <Card style={{ gap: spacing.md }}>
           <Text variant="heading">{t.mealsTitle}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <StatTile label={t.kcal} value={n(meals!.totals.kcal)} />
-            <StatTile label={t.protein} value={n(meals!.totals.proteinG)} unit="g" />
+            <StatTile label={t.kcal} value={n(meals!.totals.kcal)} countTo={Math.round(meals!.totals.kcal)} />
+            <StatTile label={t.protein} value={n(meals!.totals.proteinG)} countTo={Math.round(meals!.totals.proteinG)} unit="g" />
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <StatTile label={t.carbs} value={n(meals!.totals.carbsG)} unit="g" />
-            <StatTile label={t.fat} value={n(meals!.totals.fatG)} unit="g" />
+            <StatTile label={t.carbs} value={n(meals!.totals.carbsG)} countTo={Math.round(meals!.totals.carbsG)} unit="g" />
+            <StatTile label={t.fat} value={n(meals!.totals.fatG)} countTo={Math.round(meals!.totals.fatG)} unit="g" />
           </View>
           {meals!.meals.map((m, i) => (
             <ListItem key={`${m.name}-${i}`} title={m.name} subtitle={`${m.recipe} · ${t.portions(m.portions)} · ${m.kcal} kcal`} />

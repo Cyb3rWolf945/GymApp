@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { detectPRs, pickLine, seedOf, volumeKg } from '@gymapp/shared';
+import { PopIn, useCelebrateOnce } from '../../src/motion';
 import { useCoachStyle } from '../../src/coach/useCoachStyle';
 import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
@@ -12,6 +13,12 @@ import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout.summary;
 const RATINGS = t.ratings.map((label, i) => ({ value: String(i + 1), label }));
+
+/** A new record pops in once (never again when the screen re-renders or is opened later). */
+function PrPop({ id, children }: { id: string; children: ReactNode }) {
+  const once = useCelebrateOnce(id);
+  return <PopIn active={once}>{children}</PopIn>;
+}
 
 /** After a workout: PR celebration, totals, and optional feedback (rating + short note). */
 export default function WorkoutSummary() {
@@ -78,11 +85,13 @@ export default function WorkoutSummary() {
         <Text variant="display">{pickLine(en.coach.summaryTitle, style, seedOf(active.id))}</Text>
 
         {stats.prs.map((p) => (
-          <Card key={p.slug} style={{ gap: spacing.xs, borderColor: colors.accent }}>
+          <PrPop key={p.slug} id={`${active.id}:${p.slug}`}>
+          <Card style={{ gap: spacing.xs, borderColor: colors.accent }}>
             <Text variant="heading" tone="accent">{t.pr(nameOf(p.slug), p.e1rm)}</Text>
             <Text tone="muted">{pickLine(en.coach.prCheer, style, seedOf(p.slug))}</Text>
             <Text tone="muted">{t.prDelta(Math.round((p.e1rm - p.previous) * 10) / 10)}</Text>
           </Card>
+          </PrPop>
         ))}
 
         <Text tone="muted">{t.stats(stats.sets, stats.minutes, stats.volume)}</Text>

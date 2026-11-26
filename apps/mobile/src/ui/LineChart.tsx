@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type LayoutChangeEvent, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { scaleSeries, toPath } from '@gymapp/shared';
+import { drawDash, lineProgress, pointsOpacity, polylineLength, useRunProgress } from '../motion';
 import { useTheme } from '../theme';
 
 const DEFAULT_W = 320;
@@ -27,14 +28,18 @@ export function LineChart({ values, dots, label }: Props) {
   const range = all.length ? { min: Math.min(...all), max: Math.max(...all) } : undefined;
   const line = scaleSeries(values, W, H, 8, range);
   const raw = scaleSeries(dots ?? [], W, H, 8, range);
+  // The line draws left to right, then the points appear. New data (a newly logged weight) draws it again, ending on the new last point.
+  const t = useRunProgress(`${values.length}:${values[values.length - 1] ?? ''}`, 700);
+  const dash = drawDash(polylineLength(line), lineProgress(t));
+  const dotsOpacity = pointsOpacity(t);
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label} onLayout={(e: LayoutChangeEvent) => setMeasured(Math.round(e.nativeEvent.layout.width))}>
       <Svg width="100%" height={H} viewBox={`-6 0 ${W + 12} ${H}`} preserveAspectRatio="none">
         {raw.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5} />
+          <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5 * dotsOpacity} />
         ))}
-        <Path d={toPath(line)} stroke={colors.accent} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
-        {line.length > 0 ? <Circle cx={line[line.length - 1].x} cy={line[line.length - 1].y} r={4} fill={colors.accent} /> : null}
+        <Path d={toPath(line)} stroke={colors.accent} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={dash.dasharray} strokeDashoffset={dash.dashoffset} />
+        {line.length > 0 ? <Circle cx={line[line.length - 1].x} cy={line[line.length - 1].y} r={4} fill={colors.accent} opacity={dotsOpacity} /> : null}
       </Svg>
     </View>
   );
