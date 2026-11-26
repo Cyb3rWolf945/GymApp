@@ -4,9 +4,11 @@ A long-lived cloud session on the collaborator's account (team B's account) that
 
 - **Cadence:** one daily run (scheduled task "GymApp SOCIAL daily (Instagram)"), one feed post or Reel a day, plus a Story on some days.
 - **Autonomy:** fully automatic. The collaborator chose this: posts go live without approval. The hard rules below are what keeps that safe; when in doubt, **don't publish** and say why in the log.
-- **Mode:**
-  - **Drafts only** until the Instagram token works: create everything, upload the media, log it as a draft.
-  - **Publishing** once `GET https://graph.instagram.com/me?fields=user_id,username` (header `Authorization: Bearer proxy-injected`) returns 200. The network proxy injects the real token, which is saved as a network secret for `graph.instagram.com`. Check this at the start of every run. The token lasts about 60 days. When the check starts failing (401/403) after publishing has worked, switch back to drafts only and log "Instagram token expired: save a new one for graph.instagram.com" at the top of the #146 comment.
+- **Account:** Instagram **@fueliftapp** (Instagram account ID `17841480917024565`), linked to the Facebook Page **Fuelift**. It uses the **Instagram API with Facebook Login** through `graph.facebook.com` (API version `v21.0`). The Meta token is saved as a network secret for `graph.facebook.com`, and the proxy injects it: send `Authorization: Bearer proxy-injected`. Use `curl -g`, because curl otherwise treats `{}` in field lists as a pattern.
+- **Mode:** at the start of every run, call `GET https://graph.facebook.com/v21.0/17841480917024565?fields=username`.
+  - **200** → **publishing** mode.
+  - **401/403 or an OAuth error** → **drafts only**: create everything, upload the media, and log it as a draft. If publishing worked before, put "Meta token expired or revoked: save a new one for graph.facebook.com" at the top of the #146 comment.
+- **Permissions on the current token** (2026-11-26): `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`, `business_management`. **Missing:** `instagram_manage_insights` and `instagram_manage_comments`. Until they're added, skip the insights and comments steps, and add one line to each #146 comment: "Insights/comments off: the token lacks those permissions."
 
 ## Zero cost (the collaborator's rule)
 Marketing must cost **nothing**:
@@ -56,15 +58,21 @@ Stories (1080×1920, image or short video) on 2–3 days a week: reshare-style t
 - **Meta policies:** Instagram Community Guidelines, and the health and fitness rules in `docs/SPEC.md` section C6.
 - **When unsure, don't publish.** Log it as a draft with the reason.
 
-## Publishing (Instagram API with Instagram Login, `graph.instagram.com`)
-1. Create a container: `POST /<IG_USER_ID>/media` with `image_url` (single image), `media_type=REELS` + `video_url` (Reel, `share_to_feed=true`), `media_type=STORIES` + `image_url`/`video_url` (Story), or carousel children (`is_carousel_item=true`, then a parent with `media_type=CAROUSEL` and `children`). Add `caption` and, for images, `alt_text`.
-2. For video, poll `GET /<container_id>?fields=status_code` until `FINISHED` (give up after about 5 minutes and log it).
-3. `POST /<IG_USER_ID>/media_publish` with `creation_id`. Then read the `permalink`.
-4. Respect the publishing limit (`GET /<IG_USER_ID>/content_publishing_limit`); at most 2 API posts a day from this runner.
-5. Best time: run at the scheduled time and publish straight away. Don't wait inside the session.
+## Publishing (Instagram API with Facebook Login, `https://graph.facebook.com/v21.0`)
+`IG` = `17841480917024565`.
+1. **Create a container:** `POST /IG/media` with:
+   - single image: `image_url`, `caption`, `alt_text`;
+   - Reel: `media_type=REELS`, `video_url`, `caption`, `share_to_feed=true`;
+   - Story: `media_type=STORIES` and `image_url` or `video_url`;
+   - carousel: each child as `POST /IG/media` with `image_url` (or `video_url` + `media_type=VIDEO`) and `is_carousel_item=true`, then the parent with `media_type=CAROUSEL`, `children=<id1,id2,…>` and `caption`.
+2. **For video and carousels,** poll `GET /<container_id>?fields=status_code` until it's `FINISHED`. Give up after about 5 minutes and log it.
+3. **Publish:** `POST /IG/media_publish` with `creation_id=<container_id>`, then read `GET /<media_id>?fields=permalink`.
+4. **Limits:** check `GET /IG/content_publishing_limit?fields=config,quota_usage`. This runner publishes at most 2 posts a day, whatever the quota allows.
+5. **Media URLs** must be public HTTPS (the Supabase Storage public URL). Instagram fetches the file itself.
+6. **Insights** (only once `instagram_manage_insights` is granted): `GET /<media_id>/insights?metric=reach,likes,comments,saved,shares,total_interactions` (Reels also `views`), and `GET /IG/insights?metric=reach&period=day` for the account.
 
 ## Comments
-- Read new comments on posts from the last 14 days.
+- (Only once `instagram_manage_comments` is granted.) Read new comments on posts from the last 14 days: `GET /<media_id>/comments?fields=id,text,username,timestamp`. Reply with `POST /<comment_id>/replies` (`message`) and hide spam with `POST /<comment_id>` (`hide=true`).
 - Reply briefly and kindly to questions about the app (what it does, price, platforms, trial). Use only facts from the app and `docs/SPEC.md`.
 - **Never** give personal medical, injury or diet advice in replies: say "Talk to a doctor or registered dietitian about that" and point to the app's health disclaimer where it helps.
 - Hide obvious spam and scams. Don't reply to trolls. Log complaints and bug reports in #146 (the human decides on follow-up; real app bugs can become issues for the pipeline).
