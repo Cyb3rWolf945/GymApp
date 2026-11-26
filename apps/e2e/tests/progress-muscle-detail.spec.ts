@@ -145,7 +145,10 @@ test('a muscle drawn on both sides stays on the Back map, and the arrows step th
   await progress(page);
   await chip(page, p.back).filter({ visible: true }).first().click();
   await page.waitForTimeout(600);
-  await tapMuscle(page, 'Trapezius');
+  // Rhomboids' tap area covers the middle of Trapezius: click near the top of its shape (the neck).
+  const trap = page.getByLabel(/^Trapezius, /).filter({ visible: true }).first();
+  const box = (await trap.boundingBox())!;
+  await trap.click({ position: { x: box.width / 2, y: box.height * 0.1 } });
   const dialog = sheet(page, 'Trapezius');
   await expect(dialog).toBeVisible();
   // The map is still the back view, and the thumbnail is too.
