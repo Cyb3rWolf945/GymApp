@@ -5,9 +5,10 @@ import { Redirect, useRouter } from 'expo-router';
 import { firstBarbellCompound, formatRest, nextPosition, platesPerSide, prefillSet, setLine, toUnit, warmupSets } from '@gymapp/shared';
 import { en } from '../../src/copy/en';
 import { useBreakpoint, useTheme } from '../../src/theme';
-import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Stepper, Text } from '../../src/ui';
+import { BottomSheet, Button, Card, ChipGroup, Screen, Stepper, Text } from '../../src/ui';
 import { RestRing } from '../../src/workout/RestRing';
 import { usePlateConfig } from '../../src/workout/plateSettings';
+import { SetRow } from '../../src/workout/SetRow';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout;
@@ -139,10 +140,13 @@ export default function WorkoutScreen() {
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{t.loggedTitle}</Text>
             {active.logged.map((s) => (
-              <ListItem
+              <SetRow
                 key={s.id}
-                title={active.planned.find((p) => p.slug === s.slug)?.name ?? s.slug}
-                subtitle={`${s.warmup ? `${t.warmup.label} · ` : ''}${s.weightKg > 0 ? `${s.weightKg} kg × ` : ''}${s.reps}${s.rpe ? ` · RPE ${s.rpe}` : ''}`}
+                badge={s.warmup ? 'W' : String(s.setIndex + 1)}
+                exercise={`${s.warmup ? `${t.warmup.label} · ` : ''}${active.planned.find((p) => p.slug === s.slug)?.name ?? s.slug}`}
+                main={`${s.weightKg > 0 ? `${s.weightKg} kg × ` : ''}${s.reps}`}
+                effort={s.rpe ? `RPE ${s.rpe}` : undefined}
+                warmup={s.warmup}
               />
             ))}
             <Button label={t.undo} variant="ghost" onPress={undoLast} />

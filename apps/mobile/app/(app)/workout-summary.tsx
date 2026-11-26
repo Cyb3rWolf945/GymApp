@@ -1,11 +1,12 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { detectPRs, pickLine, seedOf, volumeKg } from '@gymapp/shared';
+import { buildShareCard, detectPRs, pickLine, seedOf, shareCardText, volumeKg } from '@gymapp/shared';
 import { PopIn, useCelebrateOnce } from '../../src/motion';
 import { useCoachStyle } from '../../src/coach/useCoachStyle';
 import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
+import { shareSummary } from '../../src/workout/shareImage';
 import { useFeedback } from '../../src/motion';
 import { useTheme } from '../../src/theme';
 import { Button, Card, Celebration, ChipGroup, Screen, Text, TextField, useToast } from '../../src/ui';
@@ -32,6 +33,7 @@ export default function WorkoutSummary() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const stats = useMemo(() => {
     if (!active) return null;
@@ -57,6 +59,20 @@ export default function WorkoutSummary() {
   const leave = () => {
     close();
     router.replace('/');
+  };
+
+  // The card people can share as an image: the day, three big numbers and up to three new records.
+  const share = async () => {
+    const k = t.shareCard;
+    const card = buildShareCard(
+      { title: active.dayName, sets: stats.sets, minutes: stats.minutes, volumeKg: stats.volume, prs: stats.prs.map((p) => ({ name: nameOf(p.slug), e1rm: p.e1rm, previous: p.previous })) },
+      { sets: k.sets, minutes: k.minutes, volume: k.volume, fallbackTitle: k.fallbackTitle },
+    );
+    setSharing(true);
+    const outcome = await shareSummary(card, { brand: k.brand, recordsTitle: k.recordsTitle, recordLine: k.record }, shareCardText(card, k.record, k.brand));
+    setSharing(false);
+    if (outcome === 'downloaded') toast.show(t.shareDownloaded, 'success');
+    else if (outcome === 'failed') toast.show(t.shareError, 'error');
   };
 
   const save = async () => {
@@ -96,6 +112,7 @@ export default function WorkoutSummary() {
 
         <Text tone="muted">{t.stats(stats.sets, stats.minutes, stats.volume)}</Text>
         {pending > 0 ? <Text variant="small" tone="muted">{t.offline}</Text> : null}
+        <Button label={t.share} variant="secondary" loading={sharing} onPress={() => void share()} />
 
         <View style={{ gap: spacing.md }}>
           <Text variant="heading">{t.feedbackTitle}</Text>
