@@ -93,8 +93,8 @@ export default function HistoryDetail() {
   const message: Record<string, string> = { weight: d.errors.weight(L.weightKg.min, L.weightKg.max), reps: d.errors.reps(L.reps.min, L.reps.max), rpe: d.errors.rpe(L.rpe.min, L.rpe.max) };
 
   if (loaded === undefined) return <Screen><ScreenSkeleton label={en.common.loading} /></Screen>;
-  if (loaded === 'error') return <Screen center><EmptyState title={d.loadError} actionLabel={en.common.retry} onAction={load} /></Screen>;
-  if (loaded === null || deleted || !detail) return <Screen center><EmptyState title={d.notFound} actionLabel={en.common.back} onAction={() => router.back()} /></Screen>;
+  if (loaded === 'error') return <Screen center><EmptyState kind="error" title={d.loadError} actionLabel={en.common.retry} onAction={load} /></Screen>;
+  if (loaded === null || deleted || !detail) return <Screen center><EmptyState kind="missing" title={d.notFound} actionLabel={en.common.back} onAction={() => router.back()} /></Screen>;
 
   const date = new Date(detail.startedAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   return (

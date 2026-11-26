@@ -85,7 +85,7 @@ export function usePlanPicker({ placement, initial = DEFAULT_SELECTION, onChecko
   };
 
   if (failed || (data && data.prices.length === 0)) {
-    return { body: <EmptyState title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} />, footer: null };
+    return { body: <EmptyState kind="error" title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} />, footer: null };
   }
   if (!data) return { body: <ScreenSkeleton title={false} cards={2} label={en.common.loading} />, footer: null };
 

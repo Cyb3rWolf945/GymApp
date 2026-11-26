@@ -89,10 +89,10 @@ function Shopping({ data }: { data: PlanData }) {
     <Screen variant="dashboard">
         <Text variant="display">{t.title}</Text>
         <Text tone="muted">{t.body}</Text>
-        {error && !recipes ? <EmptyState title={error} actionLabel={en.common.retry} onAction={() => void load()} /> : null}
+        {error && !recipes ? <EmptyState kind="error" title={error} actionLabel={en.common.retry} onAction={() => void load()} /> : null}
         {error && recipes ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
         {!recipes && !error ? <ScreenSkeleton title={false} cards={3} label={en.common.loading} /> : null}
-        {recipes && total === 0 ? <EmptyState title={t.empty} actionLabel={en.home.tabs.nutrition} onAction={() => router.replace('/nutrition')} /> : null}
+        {recipes && total === 0 ? <EmptyState kind="list" title={t.empty} actionLabel={en.home.tabs.nutrition} onAction={() => router.replace('/nutrition')} /> : null}
         {total > 0 ? <ProgressBar step={done.size} total={total} label={t.checkedCount(done.size, total)} /> : null}
         <ResponsiveGrid gap={spacing.lg}>
         {groups.map((g) => (

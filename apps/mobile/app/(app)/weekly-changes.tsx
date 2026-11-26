@@ -56,7 +56,7 @@ export default function WeeklyChangesScreen() {
       }
     >
       {data === 'loading' ? <ScreenSkeleton title={false} cards={1} label={en.common.loading} /> : null}
-      {data === 'error' ? <EmptyState title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} /> : null}
+      {data === 'error' ? <EmptyState kind="error" title={t.loadError} actionLabel={en.common.retry} onAction={() => setAttempt((n) => n + 1)} /> : null}
       {data === null ? (
         <>
           <Text variant="display">{t.title}</Text>

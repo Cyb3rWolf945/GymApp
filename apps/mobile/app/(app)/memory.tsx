@@ -50,7 +50,7 @@ export default function Memory() {
         {facts === null ? (
           <ScreenSkeleton title={false} cards={1} label={en.common.loading} />
         ) : error && facts.length === 0 ? (
-          <EmptyState title={error} actionLabel={en.common.retry} onAction={() => { setFacts(null); void load(); }} />
+          <EmptyState kind="error" title={error} actionLabel={en.common.retry} onAction={() => { setFacts(null); void load(); }} />
         ) : facts.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <EmptyState title={t.empty} />

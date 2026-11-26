@@ -31,8 +31,8 @@ export default function RecipeScreen() {
 
   const body = () => {
     if (state.status === 'loading') return <ScreenSkeleton title={false} label={en.common.loading} />;
-    if (state.status === 'error') return <EmptyState title={r.loadError} actionLabel={en.common.retry} onAction={() => router.replace({ pathname: '/recipe/[slug]', params: { slug: String(slug), portions: String(portions) } })} />;
-    if (!state.recipe) return <EmptyState title={r.missing} />;
+    if (state.status === 'error') return <EmptyState kind="error" title={r.loadError} actionLabel={en.common.retry} onAction={() => router.replace({ pathname: '/recipe/[slug]', params: { slug: String(slug), portions: String(portions) } })} />;
+    if (!state.recipe) return <EmptyState kind="missing" title={r.missing} />;
     const rec = state.recipe;
     const m = (v: number | null) => Math.round((v ?? 0) * portions);
     const steps = (rec.instructions ?? '').split('\n').map((s) => s.trim()).filter(Boolean);

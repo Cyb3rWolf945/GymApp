@@ -59,7 +59,7 @@ function Nutrition({ data }: { data: PlanData }) {
   if (!entitled) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
-        <EmptyState title={n.lockedTitle} body={n.lockedBody} actionLabel={n.lockedCta} onAction={() => router.push('/paywall')} />
+        <EmptyState kind="locked" title={n.lockedTitle} body={n.lockedBody} actionLabel={n.lockedCta} onAction={() => router.push('/paywall')} />
       </SafeAreaView>
     );
   }

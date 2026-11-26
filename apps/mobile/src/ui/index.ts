@@ -9,6 +9,7 @@ export { Chip, ChipGroup } from './Chip';
 export { ChoiceCard, ChoiceCardGroup } from './ChoiceCard';
 export { EmptyState } from './EmptyState';
 export { Icon, type IconName } from './Icon';
+export { ILLUSTRATION_KINDS, Illustration, type IllustrationKind } from './Illustration';
 export { LineChart } from './LineChart';
 export { FoodArt } from './FoodArt';
 export { ListItem } from './ListItem';
