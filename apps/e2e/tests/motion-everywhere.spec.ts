@@ -31,17 +31,19 @@ test('with animations on: sign in, Today, Plan, Progress and the plan preview al
   // Back to Today: a later visit is just the quick cross-fade, and the content is fully there.
   await tab(page, en.home.tabs.today).click();
   await expect(shown(page, en.home.startWorkout)).toBeVisible();
-  const opacity = await shown(page, en.home.startWorkout).evaluate((el) => {
-    let node: HTMLElement | null = el as HTMLElement;
-    let min = 1;
-    while (node) {
-      min = Math.min(min, Number(getComputedStyle(node).opacity));
-      node = node.parentElement;
-    }
-    return min;
-  });
-  await expect.poll(async () => shown(page, en.home.startWorkout).evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 5_000 }).toBe(1);
-  expect(opacity).toBeGreaterThan(0); // never left at zero
+  // The lowest opacity of the button and its parents. A read right after "visible" can land on the first frame of the tab's
+  // cross-fade (opacity 0) when the screen mounts slowly, so wait for the screen to settle: it must reach 1, never stay at 0.
+  const lowestOpacity = () =>
+    shown(page, en.home.startWorkout).evaluate((el) => {
+      let node: HTMLElement | null = el as HTMLElement;
+      let min = 1;
+      while (node) {
+        min = Math.min(min, Number(getComputedStyle(node).opacity));
+        node = node.parentElement;
+      }
+      return min;
+    });
+  await expect.poll(lowestOpacity, { timeout: 5_000 }).toBe(1);
 
   // The plan preview: the title, the cards and the counted-up numbers.
   await page.goto('/preview');
