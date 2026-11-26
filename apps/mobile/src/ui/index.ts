@@ -1,7 +1,9 @@
 export { BottomSheet } from './BottomSheet';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
+export { Celebration } from './Celebration';
 export { Chip, ChipGroup } from './Chip';
+export { ChoiceCard, ChoiceCardGroup } from './ChoiceCard';
 export { EmptyState } from './EmptyState';
 export { Icon, type IconName } from './Icon';
 export { LineChart } from './LineChart';

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { en } from '../../src/copy/en';
+import { BuildingOrb } from '../../src/plan/BuildingOrb';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
 import { useFeedback } from '../../src/motion';
 import { useGeneration } from '../../src/plan/useGeneration';
@@ -48,7 +49,10 @@ export default function Generating() {
           <Button label={t.retry} onPress={retry} />
         </View>
       ) : (
-        <GenerationSteps steps={steps} />
+        <>
+          <BuildingOrb />
+          <GenerationSteps steps={steps} />
+        </>
       )}
     </Screen>
   );

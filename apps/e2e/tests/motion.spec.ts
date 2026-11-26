@@ -181,7 +181,23 @@ test('a list row keeps its layout and springs in a touch when pressed', async ({
   await expect.poll(r.scale, 'springs back').toBeGreaterThan(0.999);
 });
 
+test('the plan reveal celebrates once, with confetti that never blocks taps', async ({ page }) => {
+  await signedInWithPlan(page, { fixedTime: false });
+  await page.goto('/preview');
+  const burst = page.getByTestId('celebration');
+  await expect(burst).toHaveCount(1);
+  await expect(burst).toHaveCSS('pointer-events', 'none');
+  await expect(page.getByText(en.plan.preview.title, { exact: true })).toBeVisible();
+});
+
 test.describe('reduced motion', () => {
+  test('the plan reveal has no confetti', async ({ page }) => {
+    await signedInWithPlan(page);
+    await page.goto('/preview');
+    await expect(page.getByText(en.plan.preview.title, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('celebration')).toHaveCount(0);
+  });
+
   test.use({ reducedMotion: 'reduce' });
 
   test('a pressed button does not move, and switching tabs does not fade', async ({ page }) => {
