@@ -6,6 +6,7 @@ import { FadeSlideIn } from '../../src/motion';
 import { ACCOUNT_MODAL_DELAY_MS } from '../../src/onboarding/accountModal';
 import { useAccountModal } from '../../src/onboarding/AccountModalProvider';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
+import { BuildingOrb } from '../../src/plan/BuildingOrb';
 import { GenerationSteps } from '../../src/plan/GenerationSteps';
 import { Button, Screen, Text } from '../../src/ui';
 
@@ -50,6 +51,7 @@ export default function GeneratingSignedOut() {
       <FadeSlideIn>
         <Text variant="display">{t.title}</Text>
       </FadeSlideIn>
+      <BuildingOrb />
       <GenerationSteps
         steps={[{ id: 'calories', state: 'done' }, { id: 'exercises', state: 'pending' }, { id: 'meals', state: 'pending' }]}
         caloriesCount={kcal ? { kcal, format: (n) => t.caloriesDone(n.toLocaleString('en-US')) } : undefined}

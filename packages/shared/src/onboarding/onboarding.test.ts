@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OnboardingSchema } from '../ai/generate';
+import { OnboardingSchema, buildPlanInputs } from '../ai/generate';
 import {
   ONBOARDING_STEPS, OnboardingAnswersSchema, STEP_IDS, TrackEventSchema, firstIncompleteStep, isComplete,
-  nextStepId, prevStepId, progressOf, stepEvent, toProfileUpdate, validateStep, visibleSteps, type PartialAnswers,
+  nextStepId, prevStepId, previewTargets, progressOf, stepEvent, toProfileUpdate, validateStep, visibleSteps, type PartialAnswers,
 } from './index';
 
 const full: PartialAnswers = {
@@ -105,5 +105,33 @@ describe('analytics', () => {
   });
   it('step events carry the step, never answers', () => {
     expect(stepEvent('onboarding_step_completed', 'basics', 3, 1).props).toEqual({ step: 'basics', screen: 3, version: 1 });
+  });
+});
+
+describe('previewTargets (live calories and macros)', () => {
+  it('waits for the answers that decide it', () => {
+    expect(previewTargets({})).toBeNull();
+    for (const missing of ['goalType', 'sex', 'age', 'heightCm', 'weightKg', 'activity'] as const) {
+      const a = { ...full };
+      delete a[missing];
+      expect(previewTargets(a), missing).toBeNull();
+    }
+  });
+  it('is the number the plan will use: the rest-day target from the real calc', () => {
+    const p = previewTargets(full)!;
+    const row = { id: 'u', ...toProfileUpdate(full, new Date('2026-11-25T00:00:00Z')) } as never;
+    const rest = buildPlanInputs(row, new Date('2026-11-25T00:00:00Z')).targets.rest;
+    expect(p).toEqual({ kcal: rest.kcal, proteinG: rest.proteinG, carbsG: rest.carbsG, fatG: rest.fatG });
+  });
+  it('changes as answers change: more activity, more calories; a bulk is above a cut', () => {
+    expect(previewTargets({ ...full, activity: 'very_active' })!.kcal).toBeGreaterThan(previewTargets({ ...full, activity: 'sedentary' })!.kcal);
+    expect(previewTargets({ ...full, goalType: 'bulk' })!.kcal).toBeGreaterThan(previewTargets({ ...full, goalType: 'cut' })!.kcal);
+  });
+  it('defaults the cut pace to moderate and the days to 3, like the plan', () => {
+    const noDays = { ...full, cutPace: undefined, daysPerWeek: undefined };
+    expect(previewTargets(noDays)).toEqual(previewTargets({ ...full, cutPace: 'moderate', daysPerWeek: 3 }));
+  });
+  it('never throws on nonsense: it has nothing to show', () => {
+    expect(previewTargets({ ...full, weightKg: -5 })).toBeNull();
   });
 });

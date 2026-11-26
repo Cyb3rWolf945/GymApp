@@ -8,7 +8,7 @@ import { FadeSlideIn, staggerDelay, useReducedMotion } from '../../src/motion';
 import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, Screen, ScreenSkeleton, StatTile, Text } from '../../src/ui';
+import { Button, Card, Celebration, EmptyState, ListItem, Screen, ScreenSkeleton, StatTile, Text } from '../../src/ui';
 
 const t = en.plan.preview;
 
@@ -63,6 +63,7 @@ export default function Preview() {
   const n = (v: number) => String(Math.round(v));
   return (
     <Screen footer={<Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />}>
+        <Celebration />
         <Text variant="display">{t.title}</Text>
 
         {/* The cards reveal one after another. */}

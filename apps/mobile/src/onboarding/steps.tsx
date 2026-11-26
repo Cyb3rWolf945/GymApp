@@ -8,12 +8,16 @@ import {
 } from '@gymapp/shared';
 import { en } from '../copy/en';
 import { useTheme } from '../theme';
-import { Button, Card, ChipGroup, Chip, Slider, Text, TextField } from '../ui';
+import { Button, Card, ChipGroup, Chip, ChoiceCardGroup, Slider, Text, TextField, type IconName } from '../ui';
 import { Field } from './FieldErrors';
 
 const c = en.onboarding.steps;
 type Opt<T extends string | number> = { value: T; label: string };
 const opts = <T extends string>(values: readonly T[], labels: Record<T, string>): Opt<T>[] => values.map((v) => ({ value: v, label: labels[v] }));
+const GOAL_ICONS: Record<(typeof GOALS)[number], IconName> = { cut: 'flame', bulk: 'barbell', recomp: 'sync' };
+const LEVEL_ICONS: Record<(typeof EXERCISE_LEVELS)[number], IconName> = { beginner: 'leaf', intermediate: 'trending-up', advanced: 'rocket' };
+const ACTIVITY_ICONS: Record<(typeof ACTIVITY_LEVELS)[number], IconName> = { sedentary: 'bed', light: 'walk', moderate: 'bicycle', active: 'fitness', very_active: 'flash' };
+const LOCATION_ICONS: Record<(typeof LOCATIONS)[number], IconName> = { gym: 'business', home: 'home', outdoors: 'sunny' };
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 export interface StepProps {
@@ -47,7 +51,7 @@ function Welcome({ onContinue }: StepProps) {
 function Goal({ answers, update }: StepProps) {
   return (
     <Field name="goalType">
-      <ChipGroup options={opts(GOALS, c.goal.options)} value={answers.goalType ? [answers.goalType] : []} onChange={(v) => update({ goalType: v[0] })} />
+      <ChoiceCardGroup options={opts(GOALS, c.goal.options)} icons={GOAL_ICONS} value={answers.goalType ? [answers.goalType] : []} onChange={(v) => update({ goalType: v[0] })} />
     </Field>
   );
 }
@@ -122,7 +126,7 @@ function Experience({ answers, update }: StepProps) {
   return (
     <>
       <Field name="experience">
-        <ChipGroup options={opts(EXERCISE_LEVELS, c.experience.options)} value={answers.experience ? [answers.experience] : []} onChange={(v) => update({ experience: v[0] })} />
+        <ChoiceCardGroup options={opts(EXERCISE_LEVELS, c.experience.options)} icons={LEVEL_ICONS} value={answers.experience ? [answers.experience] : []} onChange={(v) => update({ experience: v[0] })} />
       </Field>
       <Section title={c.experience.liftsTitle}>
         <Field name="referenceLifts.squatKg">
@@ -166,7 +170,7 @@ function Equipment({ answers, update }: StepProps) {
   return (
     <>
       <Field name="location">
-        <ChipGroup options={opts(LOCATIONS, c.equipment.location)} value={answers.location ? [answers.location] : []} onChange={(v) => update({ location: v[0] })} />
+        <ChoiceCardGroup options={opts(LOCATIONS, c.equipment.location)} icons={LOCATION_ICONS} value={answers.location ? [answers.location] : []} onChange={(v) => update({ location: v[0] })} />
       </Field>
       <Field name="equipment">
         <Section title={c.equipment.equipmentTitle}>
@@ -200,7 +204,7 @@ function Injuries({ answers, update }: StepProps) {
 function Activity({ answers, update }: StepProps) {
   return (
     <Field name="activity">
-      <ChipGroup options={opts(ACTIVITY_LEVELS, c.activity.options)} value={answers.activity ? [answers.activity] : []} onChange={(v) => update({ activity: v[0] })} />
+      <ChoiceCardGroup options={opts(ACTIVITY_LEVELS, c.activity.options)} icons={ACTIVITY_ICONS} value={answers.activity ? [answers.activity] : []} onChange={(v) => update({ activity: v[0] })} />
     </Field>
   );
 }

@@ -30,6 +30,11 @@ export const en = {
     progress: (step: number, total: number) => `Step ${step} of ${total}`,
     building: 'Building your plan…',
     haveAccount: 'I have an account',
+    livePreview: {
+      title: 'Your target so far',
+      kcal: (kcal: string) => `About ${kcal} kcal a day`,
+      macros: (p: number, c: number, f: number) => `${p} g protein · ${c} g carbs · ${f} g fat`,
+    },
     errors: {
       saveProfile: "Couldn't save your answers. Check your connection and try again.",
     },

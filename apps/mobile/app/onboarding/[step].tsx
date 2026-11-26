@@ -6,6 +6,7 @@ import { trackOnboarding } from '../../src/analytics/track';
 import { en } from '../../src/copy/en';
 import { FieldErrorsProvider, useStepErrors } from '../../src/onboarding/FieldErrors';
 import { FadeSlideIn, createTapLock, staggerDelay, stepDirection, useConfirmPulse, useReducedMotion, useShake } from '../../src/motion';
+import { LivePreview } from '../../src/onboarding/LivePreview';
 import { useOnboarding } from '../../src/onboarding/OnboardingProvider';
 import { STEP_BODIES } from '../../src/onboarding/steps';
 import { useTheme } from '../../src/theme';
@@ -118,6 +119,7 @@ export default function OnboardingStep() {
           </View>
         </Animated.View>
       </FadeSlideIn>
+      {id !== 'welcome' && id !== 'consents' ? <LivePreview answers={answers} /> : null}
       {stepErrors.generic ? (
         <FadeSlideIn>
           <Text tone="danger" accessibilityRole="alert">{stepErrors.generic}</Text>
