@@ -15,3 +15,6 @@ export function resolveScheme(preference: ThemePreference, system: string | null
   if (preference === 'dark' || preference === 'light') return preference;
   return system === 'light' ? 'light' : 'dark';
 }
+
+/** Where the choice is saved on the device (localStorage on the web: the page reads it before React starts). */
+export const THEME_STORAGE_KEY = 'fuelift.theme';

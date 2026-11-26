@@ -30,6 +30,8 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          // The scene behind each tab: the theme background, so the cross-fade between tabs never passes through another colour.
+          sceneStyle: { backgroundColor: colors.background },
           tabBarPosition: side ? 'left' : 'bottom',
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.muted,
