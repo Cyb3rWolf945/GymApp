@@ -12,6 +12,26 @@ export const MAX_PORTIONS = 3;
 export const INLINE_OPTIONS = 3;
 export const MAX_OPTIONS = 8;
 
+/**
+ * The narrowest an option card can be before its text breaks badly: a recipe name and a "540 kcal · 38 g protein · 15 min"
+ * line need about this much room.
+ */
+export const MIN_OPTION_CARD_WIDTH = 150;
+/** `equal`: cards share the row in equal columns. `scroll`: fixed-width cards in a row you scroll, as on a phone. */
+export type OptionRowLayout = 'equal' | 'scroll';
+
+/**
+ * How to lay out `count` option cards in a container `containerWidth` wide with `gap` between them: equal columns only when
+ * every card then gets at least `minCard` px, otherwise a scrolling row. The container is the column the cards sit in, not
+ * the screen (between 600 and about 1000 px the meals column is much narrower than the screen). An unmeasured container
+ * (0) or no cards give `scroll`.
+ */
+export function optionRowLayout(containerWidth: number, count: number, gap: number, minCard = MIN_OPTION_CARD_WIDTH): OptionRowLayout {
+  if (!(containerWidth > 0) || count < 1) return 'scroll';
+  const each = (containerWidth - gap * (count - 1)) / count;
+  return each >= minCard ? 'equal' : 'scroll';
+}
+
 export interface MealOptionsProfile {
   diet: Diet;
   allergens: readonly Allergen[];
