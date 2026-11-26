@@ -100,7 +100,29 @@ export const EXERCISE_DETAIL: Record<string, { equipment: string; instructions: 
   'barbell-bench-press': { equipment: 'barbell', instructions: '1. Lie on the bench with your eyes under the bar.\n2. Lower the bar to your chest.\n3. Press it back up.', media_url: null },
   'standing-barbell-overhead-press': { equipment: 'barbell', instructions: null, media_url: 'https://example.invalid/missing.jpg' },
 };
-export const exerciseRows = () => EXERCISES.map((e) => ({ ...e, mechanic: null, ...(EXERCISE_DETAIL[e.slug] ?? { equipment: null, instructions: null, media_url: null }), exercise_muscles: MUSCLES[e.slug] ?? [] }));
+/**
+ * More of the exercise library, beyond the plan's four: what "Train it next" (the muscle detail sheet) chooses from. Levels,
+ * equipment and injury areas differ on purpose, so the filters have something to filter.
+ */
+const library = (n: number, slug: string, name: string, equipment: string, level: string, muscles: { muscle: string; role: 'primary' | 'secondary' }[], contraindications: string[] = []) => ({
+  id: `10000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`, slug, name, mechanic: null, equipment, level, contraindications, instructions: null, media_url: null, exercise_muscles: muscles,
+});
+const prim = (muscle: string) => ({ muscle, role: 'primary' as const });
+const sec = (muscle: string) => ({ muscle, role: 'secondary' as const });
+export const LIBRARY_EXTRA = [
+  library(1, 'goblet-squat', 'Goblet squat', 'dumbbells', 'beginner', [prim('quadriceps'), sec('gluteus_maximus')]),
+  library(2, 'bodyweight-squat', 'Bodyweight squat', 'bodyweight', 'beginner', [prim('quadriceps'), sec('gluteus_maximus')]),
+  library(3, 'leg-press', 'Leg press', 'full_gym', 'beginner', [prim('quadriceps')]),
+  library(4, 'walking-lunge', 'Walking lunge', 'bodyweight', 'beginner', [prim('quadriceps'), prim('gluteus_maximus')], ['knee']),
+  library(5, 'bulgarian-split-squat', 'Bulgarian split squat', 'dumbbells', 'advanced', [prim('quadriceps')]),
+  library(6, 'plank', 'Plank', 'bodyweight', 'beginner', [prim('rectus_abdominis'), sec('transversus_abdominis')]),
+  library(7, 'dead-bug', 'Dead bug', 'bodyweight', 'beginner', [prim('rectus_abdominis')]),
+  library(8, 'cable-crunch', 'Cable crunch', 'full_gym', 'intermediate', [prim('rectus_abdominis')]),
+];
+export const exerciseRows = () => [
+  ...EXERCISES.map((e) => ({ ...e, mechanic: null, ...(EXERCISE_DETAIL[e.slug] ?? { equipment: null, instructions: null, media_url: null }), exercise_muscles: MUSCLES[e.slug] ?? [] })),
+  ...LIBRARY_EXTRA,
+];
 
 /** Sets of the last 3 weeks (an upper and a lower workout each week) with rising weights. */
 export function setLogHistory(now: Date) {

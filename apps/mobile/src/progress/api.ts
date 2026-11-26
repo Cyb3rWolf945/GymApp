@@ -1,4 +1,4 @@
-import type { MuscleSet, SetRecord, WeightPoint } from '@gymapp/shared';
+import type { LibraryExercise, MuscleSet, SetRecord, WeightPoint } from '@gymapp/shared';
 import { supabase } from '../supabase';
 
 const DAY = 86_400_000;
@@ -47,4 +47,27 @@ export async function fetchSets(userId: string): Promise<{ records: SetRecord[];
     records: rows.map((r) => ({ slug: r.exercises!.slug, name: r.exercises!.name, weightKg: Number(r.weight_kg ?? 0), reps: Number(r.reps ?? 0), loggedAt: r.logged_at })),
     muscleSets: rows.map((r) => ({ slug: r.exercises!.slug, name: r.exercises!.name, loggedAt: r.logged_at, muscles: r.exercises!.exercise_muscles ?? [] })),
   };
+}
+
+type LibraryRow = {
+  slug: string;
+  name: string;
+  equipment: string | null;
+  level: string | null;
+  contraindications: string[] | null;
+  exercise_muscles: { muscle: string; role: 'primary' | 'secondary' }[] | null;
+};
+
+/** The exercise library with what "Train it next" filters on: equipment, level, injury areas and the muscles each exercise works. */
+export async function fetchExerciseLibrary(): Promise<LibraryExercise[]> {
+  const { data, error } = await supabase.from('exercises').select('slug,name,equipment,level,contraindications,exercise_muscles(muscle,role)');
+  if (error) throw error;
+  return ((data ?? []) as unknown as LibraryRow[]).map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    equipment: r.equipment ?? null,
+    level: r.level ?? null,
+    contraindications: r.contraindications ?? [],
+    muscles: r.exercise_muscles ?? [],
+  }));
 }

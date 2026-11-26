@@ -169,6 +169,13 @@ describe('areaPath, scaleBars and recentVolumes', () => {
     const last = bars[2];
     expect(last.x + last.width).toBeCloseTo(100);
   });
+  it('shares its scale with a taller ceiling, so bars stay under a reference band', () => {
+    const bars = scaleBars([5, 10], 100, 60, 10, 0, 3, 20);
+    expect(bars[1].height).toBeCloseTo(30); // 10 of 20
+    expect(bars[0].height).toBeCloseTo(15);
+    expect(scaleBars([5, 10], 100, 60, 10, 0, 3, 0)[1].height).toBeCloseTo(60); // no ceiling: the tallest fills it
+    expect(scaleBars([5, 10], 100, 60, 10, 0, 3, 4)[1].height).toBeCloseTo(60); // a lower ceiling changes nothing
+  });
   it('keeps a tiny value visible, and draws nothing for zero, empty or all-zero data', () => {
     const bars = scaleBars([1000, 1], 100, 60, 6, 0, 3);
     expect(bars[1].height).toBe(3);
