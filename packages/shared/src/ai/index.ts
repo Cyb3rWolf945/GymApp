@@ -15,3 +15,4 @@ export * from './history.ts';
 export * from './memory.ts';
 export * from './redteam.ts';
 export * from './coach.ts';
+export * from './budget.ts';

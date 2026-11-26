@@ -19,6 +19,8 @@ import {
   aiCallRow,
   guardrailRow,
   GENERATION_BUDGET_MS,
+  HARD_LIMIT_MS,
+  siblingWaitMs,
   STALE_JOB_MS,
   STALE_JOB_ERROR,
   missingProfileFields,
@@ -35,8 +37,6 @@ import { originsFromEnv, resolveCaller, withCors } from '../../../packages/share
 declare const Deno: { env: { get(k: string): string | undefined }; serve(h: (r: Request) => Promise<Response> | Response): void };
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
-/** The whole run is cut off here, under the Edge Function's wall-clock limit (about 120 s), so a job always ends. */
-const HARD_LIMIT_MS = 110_000;
 /** One model call never runs longer than this. Calls that finish do so in under 10 s; the ones that hang are cut at 25 s and retried once, then the template is used. */
 const CALL_TIMEOUT_MS = 25_000;
 /** The cheap guardrail classifier gets less: if it is slow the field is dropped (fail closed). */
@@ -128,11 +128,9 @@ Deno.serve(withCors(async (req) => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** The longest the nutrition job waits for the user's workout job (it never waits on a dead one: see STALE_JOB_MS). */
-const SIBLING_WAIT_MS = 60_000;
-
-async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId: string) {
-  const until = Date.now() + SIBLING_WAIT_MS;
+/** Waits up to `maxMs` for the user's workout job to finish (never on a dead one: see STALE_JOB_MS). */
+async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId: string, maxMs: number) {
+  const until = Date.now() + maxMs;
   while (Date.now() < until) {
     const { data } = await admin
       .from('generation_jobs')
@@ -140,7 +138,7 @@ async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId
       .eq('user_id', userId)
       .eq('kind', 'workout_plan')
       .in('status', ['queued', 'running'])
-      .gte('created_at', new Date(Date.now() - SIBLING_WAIT_MS).toISOString())
+      .gte('created_at', new Date(Date.now() - STALE_JOB_MS).toISOString())
       .limit(1);
     if (!data || data.length === 0) return;
     await sleep(2_000);
@@ -154,25 +152,32 @@ async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId
 async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
   const failJob = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId).neq('status', 'done');
-  // The two plan kinds run one after the other: on the free `dev` models, two long calls at once hit provider rate limits
-  // (HTTP 429 or a 40 s timeout) and both fall back. The nutrition job waits (as `queued`) for the workout job, at most
-  // SIBLING_WAIT_MS, and gets its own full time budget afterwards. Paid models finish in seconds, so this costs nothing there.
-  if (kind === 'nutrition_plan') await waitForWorkoutPlan(admin, userId);
+  // One clock for the whole run, started now: the wait below and the work after it share GENERATION_BUDGET_MS, and the
+  // hard limit is measured from here too (the numbers: see ai/budget.ts), so a run can never outlive the runtime's limit.
+  const runStartedAt = Date.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<'timeout'>((resolve) => {
     timer = setTimeout(() => resolve('timeout'), HARD_LIMIT_MS);
   });
   try {
-    const outcome = await Promise.race([generate(admin, userId, jobId, kind, update, adaptOfWeek).then(() => 'finished' as const), limit]);
+    const work = (async () => {
+      // The two plan kinds run one after the other: on the free `dev` models, two long calls at once hit provider rate
+      // limits (HTTP 429 or a timeout) and both fall back. The nutrition job waits (as `queued`) for the workout job, at
+      // most 30 s and never past the budget. Paid models finish in seconds, so this costs nothing there.
+      if (kind === 'nutrition_plan') await waitForWorkoutPlan(admin, userId, siblingWaitMs(runStartedAt, Date.now()));
+      await generate(admin, userId, jobId, kind, update, adaptOfWeek, runStartedAt);
+    })();
+    const outcome = await Promise.race([work.then(() => 'finished' as const), limit]);
     if (outcome === 'timeout') await failJob(STALE_JOB_ERROR);
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function generate(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
-  const startedAt = Date.now();
-  const deadlineAt = startedAt + GENERATION_BUDGET_MS;
+async function generate(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null, runStartedAt = Date.now()) {
+  const startedAt = runStartedAt;
+  // The budget runs from the start of the run, so time spent waiting for the workout job is already counted.
+  const deadlineAt = runStartedAt + GENERATION_BUDGET_MS;
   const fail = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId);
   try {
