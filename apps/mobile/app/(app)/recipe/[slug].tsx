@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { scaleIngredients } from '@gymapp/shared';
+import { mealKind, scaleIngredients } from '@gymapp/shared';
 import { en } from '../../../src/copy/en';
 import { type RecipeDetail, fetchRecipeDetail } from '../../../src/plan/api';
 import { useBreakpoint, useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, ListItem, Screen, ScreenSkeleton, Text } from '../../../src/ui';
+import { Button, Card, EmptyState, FoodArt, ListItem, MacroRing, Screen, ScreenSkeleton, Text } from '../../../src/ui';
 
 const r = en.nutrition.recipe;
 
 export default function RecipeScreen() {
-  const { slug, portions: portionsParam } = useLocalSearchParams<{ slug: string; portions?: string }>();
+  const { slug, portions: portionsParam, meal } = useLocalSearchParams<{ slug: string; portions?: string; meal?: string }>();
   const portions = Math.min(4, Math.max(0.25, Number(portionsParam) || 1));
   const router = useRouter();
   const wide = useBreakpoint() === 'expanded';
@@ -38,9 +38,25 @@ export default function RecipeScreen() {
     const steps = (rec.instructions ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
     return (
       <>
-        <Text variant="display">{rec.name}</Text>
-        <Text tone="muted">{r.portions(portions)} · {en.nutrition.kcalMeal(m(rec.kcal))}</Text>
-        <Text tone="muted">{r.macros(m(rec.protein_g), m(rec.carbs_g), m(rec.fat_g))}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+          <FoodArt kind={mealKind(meal ?? '')} size={96} />
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text variant="display">{rec.name}</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+          <MacroRing
+            kcal={m(rec.kcal)}
+            proteinG={m(rec.protein_g)}
+            carbsG={m(rec.carbs_g)}
+            fatG={m(rec.fat_g)}
+            label={en.nutrition.ringLabel(m(rec.kcal), m(rec.protein_g), m(rec.carbs_g), m(rec.fat_g))}
+          />
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text tone="muted">{r.portions(portions)} · {en.nutrition.kcalMeal(m(rec.kcal))}</Text>
+            <Text tone="muted">{r.macros(m(rec.protein_g), m(rec.carbs_g), m(rec.fat_g))}</Text>
+          </View>
+        </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' }} accessibilityLabel={r.allergens}>
           {rec.allergens.length === 0 ? <Text variant="small" tone="muted">{r.none}</Text> : null}
           {rec.allergens.map((a) => (

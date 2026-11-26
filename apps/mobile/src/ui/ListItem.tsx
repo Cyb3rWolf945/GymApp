@@ -7,11 +7,15 @@ import { Text } from './Text';
 interface Props {
   title: string;
   subtitle?: string;
+  /** Before the text: a picture or a check. */
+  leading?: ReactNode;
   trailing?: ReactNode;
   onPress?: () => void;
+  /** Makes the row a checkbox (a shopping list) instead of a plain button. */
+  checked?: boolean;
 }
 
-export function ListItem({ title, subtitle, trailing, onPress }: Props) {
+export function ListItem({ title, subtitle, leading, trailing, onPress, checked }: Props) {
   const { colors, spacing, minTapTarget } = useTheme();
   // A row springs in a touch when pressed (less than a button); with reduced motion it only dims. The press target is a
   // plain Pressable (its style function only dims it); the layout and the scale live on an inner Animated.View, because
@@ -19,7 +23,9 @@ export function ListItem({ title, subtitle, trailing, onPress }: Props) {
   const { scale, onPressIn, onPressOut } = usePressSpring(motion.rowPressScale);
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityRole={onPress ? (checked === undefined ? 'button' : 'checkbox') : undefined}
+      accessibilityState={checked === undefined ? undefined : { checked }}
+      aria-checked={checked}
       disabled={!onPress}
       onPress={onPress}
       onPressIn={onPressIn}
@@ -38,6 +44,7 @@ export function ListItem({ title, subtitle, trailing, onPress }: Props) {
           transform: [{ scale }],
         }}
       >
+        {leading}
         <View style={{ flex: 1 }}>
           <Text variant="bodyStrong">{title}</Text>
           {subtitle ? <Text variant="small" tone="muted">{subtitle}</Text> : null}
