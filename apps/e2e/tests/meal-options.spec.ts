@@ -121,7 +121,7 @@ test.describe('option cards and the See more sheet at every width', () => {
   /** Figures ("540 kcal", "38 g protein", "15 min", joined by non-breaking spaces) whose text is drawn over more than one line. */
   const wrappedFigures = (page: import('@playwright/test').Page, belowY = -Infinity) =>
     page.evaluate((minTop) => {
-      const re = /\d+(?:\.\d+)? (?:g protein|kcal|min|g)/g;
+      const re = /\d+(?:\.\d+)?\u00A0(?:g\u00A0protein|kcal|min|g)/g;
       const found: { all: number; wrapped: string[] } = { all: 0, wrapped: [] };
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -134,7 +134,7 @@ test.describe('option cards and the See more sheet at every width', () => {
           const lines = new Set(Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.top >= minTop).map((r) => Math.round(r.top)));
           if (lines.size === 0) continue; // not drawn, or above the area being checked
           found.all++;
-          if (lines.size > 1) found.wrapped.push(m[0].replace(/ /g, ' '));
+          if (lines.size > 1) found.wrapped.push(m[0].replace(/\u00A0/g, ' '));
         }
       }
       return found;
