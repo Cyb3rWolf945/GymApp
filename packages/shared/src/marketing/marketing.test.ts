@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mergeAttribution, parseAttribution, utmProps } from './attribution.ts';
 import { buildCapiEvent, dedupId, sendCapiEvents, sha256Hex, trackingAllowed } from './capi.ts';
+import { usableReviews } from './reviews.ts';
 
 const now = new Date('2026-12-01T10:00:00Z');
 
@@ -75,5 +76,22 @@ describe('Meta Conversions API', () => {
     expect(await sendCapiEvents({ pixelId: '123', accessToken: 't' }, [ev], boom)).toBe(false);
     expect(await sendCapiEvents({ pixelId: undefined, accessToken: 't' }, [ev], ok)).toBe(false);
     expect(await sendCapiEvents({ pixelId: '123', accessToken: 't' }, [], ok)).toBe(false);
+  });
+});
+
+describe('usableReviews', () => {
+  const ok = { quote: 'Clear plan, easy to follow.', name: 'Sam, lifting 3 days a week', rating: 5, source: 'App Store' };
+  it('shows nothing when there are no reviews', () => {
+    expect(usableReviews([])).toEqual([]);
+  });
+  it('keeps complete reviews in order and caps how many are shown', () => {
+    const many = [1, 2, 3, 4, 5].map((n) => ({ ...ok, name: `Person ${n}` }));
+    const shown = usableReviews(many);
+    expect(shown.map((r) => r.name)).toEqual(['Person 1', 'Person 2', 'Person 3']);
+  });
+  it('drops anything incomplete, unrated or out of range', () => {
+    expect(usableReviews([{ ...ok, quote: '  ' }, { ...ok, name: '' }, { ...ok, source: '' }, { ...ok, rating: 0 }, { ...ok, rating: 6 }, { ...ok, rating: 4.5 }, { quote: 'x' }])).toEqual([]);
+    expect(usableReviews([{ ...ok, quote: 'x'.repeat(281) }])).toEqual([]);
+    expect(usableReviews([ok])).toEqual([ok]);
   });
 });

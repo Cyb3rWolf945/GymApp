@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { PlanComparison } from '../../src/billing/PlanComparison';
 import { usePlanPicker } from '../../src/billing/PlanPicker';
 import { en } from '../../src/copy/en';
 import { useTheme } from '../../src/theme';
@@ -16,6 +17,7 @@ export default function Paywall() {
       <Text variant="display">{t.title}</Text>
       <Text tone="muted">{t.body}</Text>
       {picker.body}
+      <PlanComparison />
     </Screen>
   );
 }

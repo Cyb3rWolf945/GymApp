@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { type LayoutChangeEvent, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Line, Path, Stop } from 'react-native-svg';
 import { areaPath, scaleSeries, toPath } from '@gymapp/shared';
@@ -20,6 +20,8 @@ interface Props {
 /** A small line chart: no axes, just the shape of the trend. The numbers are shown in text next to it. */
 export function LineChart({ values, dots, label }: Props) {
   const { colors } = useTheme();
+  // Each chart has its own gradient id: charts on one page must not share (or override) each other's.
+  const areaId = `area-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   // Draw at the container's real width (re-measured on resize) so dots stay round and the line fills the card.
   const [measured, setMeasured] = useState(0);
   const W = measured > 0 ? measured - 12 : DEFAULT_W;
@@ -36,7 +38,7 @@ export function LineChart({ values, dots, label }: Props) {
     <View accessible accessibilityRole="image" accessibilityLabel={label} onLayout={(e: LayoutChangeEvent) => setMeasured(Math.round(e.nativeEvent.layout.width))}>
       <Svg width="100%" height={H} viewBox={`-6 0 ${W + 12} ${H}`} preserveAspectRatio="none">
         <Defs>
-          <LinearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={colors.accent} stopOpacity={0.28} />
             <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
           </LinearGradient>
@@ -45,7 +47,7 @@ export function LineChart({ values, dots, label }: Props) {
         {[8, H / 2, H - 8].map((y) => (
           <Line key={y} x1={-6} x2={W + 6} y1={y} y2={y} stroke={colors.border} strokeWidth={1} opacity={0.6} />
         ))}
-        {line.length > 1 ? <Path d={areaPath(line, H)} fill="url(#area)" opacity={dotsOpacity} /> : null}
+        {line.length > 1 ? <Path d={areaPath(line, H)} fill={`url(#${areaId})`} opacity={dotsOpacity} /> : null}
         {raw.map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5 * dotsOpacity} />
         ))}
