@@ -100,10 +100,10 @@ function AppProviders() {
             <AccountModalProvider>
               <View style={{ flex: 1, backgroundColor: colors.background }}>
                 <OfflineBanner />
+                <TrackingBanner />
                 <RootStack />
               </View>
             </AccountModalProvider>
-            <TrackingBanner />
           </OnboardingProvider>
         </AuthProvider>
       </ToastProvider>
