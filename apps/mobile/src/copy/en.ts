@@ -596,6 +596,7 @@ export const en = {
     lockedBody: 'Meals, recipes and swaps are part of Pro.',
     lockedCta: 'See plans',
     kcalMeal: (kcal: number) => `${kcal} kcal`,
+    ringLabel: (kcal: number, p: number, c: number, f: number) => `${kcal} kcal: ${p} g protein, ${c} g carbs, ${f} g fat`,
     recipe: {
       ingredients: 'Ingredients',
       steps: 'Steps',

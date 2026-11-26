@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 import {
-  NutritionPlanSchema, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays, usedStarterPlan } from '@gymapp/shared';
+  NutritionPlanSchema, mealKind, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays, usedStarterPlan } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
@@ -11,7 +12,7 @@ import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { StarterPlanNote } from '../../../src/plan/StarterPlanNote';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, EmptyState, InlineSkeleton, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, FoodArt, InlineSkeleton, ListItem, MacroRing, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const n = en.nutrition;
@@ -110,18 +111,30 @@ function Nutrition({ data }: { data: PlanData }) {
               return (
                 <Card key={weekday} style={{ gap: spacing.sm }}>
                   <Text variant="small" tone="muted">{WEEKDAY_LABELS[weekday]} · {t.dayType[d.dayType]}</Text>
-                  <Text tone="muted">
-                    {Math.round(totals.kcal)} kcal · {Math.round(totals.proteinG)} g protein · {Math.round(totals.carbsG)} g carbs · {Math.round(totals.fatG)} g fat
-                    {targets ? ` (${t.target(targets.kcal)})` : ''}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+                    <MacroRing
+                      kcal={totals.kcal}
+                      proteinG={totals.proteinG}
+                      carbsG={totals.carbsG}
+                      fatG={totals.fatG}
+                      label={n.ringLabel(Math.round(totals.kcal), Math.round(totals.proteinG), Math.round(totals.carbsG), Math.round(totals.fatG))}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text tone="muted">
+                        {Math.round(totals.kcal)} kcal · {Math.round(totals.proteinG)} g protein · {Math.round(totals.carbsG)} g carbs · {Math.round(totals.fatG)} g fat
+                        {targets ? ` (${t.target(targets.kcal)})` : ''}
+                      </Text>
+                    </View>
+                  </View>
                   {d.meals.map((m, j) => {
                     const r = bySlug.get(m.recipeSlug);
                     return (
                       <ListItem
                         key={`${m.name}-${j}`}
+                        leading={<FoodArt kind={mealKind(m.name)} />}
                         title={m.name}
                         subtitle={`${r?.name ?? m.recipeSlug} · ${n.kcalMeal(Math.round((r?.kcal ?? 0) * m.portions))}`}
-                        onPress={() => router.push({ pathname: '/recipe/[slug]', params: { slug: m.recipeSlug, portions: String(m.portions) } })}
+                        onPress={() => router.push({ pathname: '/recipe/[slug]', params: { slug: m.recipeSlug, portions: String(m.portions), meal: m.name } })}
                         trailing={
                           <Text
                             variant="small"

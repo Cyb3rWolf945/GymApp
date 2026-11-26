@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { NutritionPlanSchema, WorkoutPlanSchema, activeChecked, buildShoppingList, trainingWeekdays, type ShoppingRecipe } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
@@ -7,9 +8,25 @@ import { PlanGate } from '../../src/home/PlanGate';
 import { type PlanData, PlanDataProvider } from '../../src/home/usePlanData';
 import { clearCheckedItems, fetchCheckedItems, fetchShoppingRecipes, setItemChecked } from '../../src/plan/api';
 import { useTheme } from '../../src/theme';
-import { Button, Card, EmptyState, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text } from '../../src/ui';
+import { Button, Card, EmptyState, Icon, type IconName, ListItem, ProgressBar, ResponsiveGrid, Screen, ScreenSkeleton, Text } from '../../src/ui';
 
 const t = en.nutrition.shopping;
+
+/** One glyph per aisle, so the list reads at a glance. */
+const CATEGORY_ICONS: Record<string, IconName> = {
+  produce: 'leaf',
+  meat: 'restaurant',
+  fish_seafood: 'fish',
+  dairy: 'water',
+  eggs: 'egg',
+  grains: 'nutrition',
+  legumes: 'ellipse',
+  plant_protein: 'leaf',
+  nuts_seeds: 'ellipse',
+  fats_oils: 'water',
+  condiments: 'flask',
+  spices: 'flame',
+};
 
 function Shopping({ data }: { data: PlanData }) {
   const { spacing } = useTheme();
@@ -76,15 +93,20 @@ function Shopping({ data }: { data: PlanData }) {
         {error && recipes ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
         {!recipes && !error ? <ScreenSkeleton title={false} cards={3} label={en.common.loading} /> : null}
         {recipes && total === 0 ? <EmptyState title={t.empty} actionLabel={en.home.tabs.nutrition} onAction={() => router.replace('/nutrition')} /> : null}
-        {total > 0 ? <Text tone="muted">{t.checkedCount(done.size, total)}</Text> : null}
+        {total > 0 ? <ProgressBar step={done.size} total={total} label={t.checkedCount(done.size, total)} /> : null}
         <ResponsiveGrid gap={spacing.lg}>
         {groups.map((g) => (
           <Card key={g.category} style={{ gap: spacing.xs }}>
-            <Text variant="heading">{t.categories[g.category] ?? g.category}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Icon name={CATEGORY_ICONS[g.category] ?? 'basket'} size={22} tone="accent" />
+              <Text variant="heading">{t.categories[g.category] ?? g.category}</Text>
+            </View>
             {g.items.map((i) => (
               <ListItem
                 key={i.label}
-                title={done.has(i.label) ? `✓ ${i.label}` : i.label}
+                title={i.label}
+                checked={done.has(i.label)}
+                leading={<Icon name={done.has(i.label) ? 'checkmark-circle' : 'ellipse-outline'} size={26} tone={done.has(i.label) ? 'accent' : 'muted'} />}
                 onPress={() => void toggle(i.label, i.grams)}
                 trailing={<Text tone="muted">{i.quantity}</Text>}
               />
