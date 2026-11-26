@@ -70,3 +70,19 @@ After that, set the mode to **Auto** in "GymApp QA runner (team B)". Then add th
 Team B's account also runs a separate **SOCIAL runner** that manages Fuelift's Instagram by itself: the session "GymApp SOCIAL runner (Instagram)" and the scheduled task "GymApp SOCIAL daily (Instagram)". Its playbook is `docs/SOCIAL_RUNNER.md`, and every run is logged in issue #146. It skips its daily run when team B is building and usage is 50% or more.
 
 **Connected (2026-11-26):** Instagram @fueliftapp through the Facebook Page "Fuelift" (Instagram API with Facebook Login). The token is saved for `graph.facebook.com`. To renew or extend it: in the Graph API Explorer (`developers.facebook.com/tools/explorer`), pick the app and choose **Get User Access Token** with `instagram_basic`, `instagram_content_publish`, `instagram_manage_comments`, `instagram_manage_insights`, `pages_show_list` and `pages_read_engagement`. Extend it in the Access Token Tool, or use the Page token from `me/accounts` so it never expires. Then ask any session on this account to save it for `graph.facebook.com` through the secure credential form. Never paste it in chat.
+
+### Adding the SOCIAL runner to team A (backup)
+Team A's account can run a second SOCIAL runner as a backup. It runs an hour after team B's and posts only if nobody has posted that day. Team A needs the Meta token for `graph.facebook.com` too: either the collaborator shares it privately (never in GitHub or a chat), or the owner is added as an admin of the Meta app and the "Fuelift" Page and generates their own (steps above). In claude.ai/code, start a **new cloud session** with `Cyb3rWolf945/GymApp`, set the mode to **Auto**, and paste:
+
+```
+You are adding the SOCIAL runner for TEAM A of the GymApp MVP (repo Cyb3rWolf945/GymApp). Read docs/SOCIAL_RUNNER.md and docs/HANDOVER.md from origin/main first (if docs/SOCIAL_RUNNER.md isn't on main yet, read both from origin/docs/social-runner). Do exactly this, then stop:
+
+1. Ask me for the Meta access token with the secure credential form (never in chat): host graph.facebook.com. Verify it: GET https://graph.facebook.com/v21.0/17841480917024565?fields=username with "Authorization: Bearer proxy-injected" must return username fueliftapp. Use curl -g.
+
+2. Create one cloud session with create_session: source_url https://github.com/Cyb3rWolf945/GymApp, source_revision main, model sonnet, title "GymApp SOCIAL runner (Instagram, team A)", tags ["gymapp-mvp","runner","social","instagram","team-a"]. First prompt: "You are the SOCIAL runner of TEAM A for Fuelift (GymApp MVP, repo Cyb3rWolf945/GymApp): the backup runner for Fuelift's Instagram. For every run follow docs/SOCIAL_RUNNER.md from origin/main (until it is merged, from origin/docs/social-runner), especially 'Two accounts, one Instagram': at most one post a day, and team B posts first. Log every run in issue #146. You are not part of the build pipeline: never change product code, open PRs, merge, or message other runners. Playwright, Chromium, ffmpeg and ImageMagick are installed. For now read the playbook, run the mode check, reply 'team A SOCIAL runner ready (mode: …)' and stop."
+
+3. Create one daily scheduled task with create_trigger, persistent_session_id set to the new session: name "GymApp SOCIAL daily (Instagram, team A)", cron "37 19 * * *", prompt "Daily run: follow the 'Daily run' section of docs/SOCIAL_RUNNER.md (from origin/main, or origin/docs/social-runner until it is merged) as the TEAM A SOCIAL runner, starting with 'Two accounts, one Instagram', the usage guard and the mode check. Post only if nobody has posted today. Log the run in issue #146. Keep it under about 15 minutes."
+
+4. Tell me the session title and remind me to set the mode to Auto in it.
+```
+

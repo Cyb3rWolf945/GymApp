@@ -1,6 +1,6 @@
 # SOCIAL runner: Fuelift on Instagram
 
-A long-lived cloud session on the collaborator's account (team B's account) that runs Fuelift's Instagram by itself: it plans, creates, publishes, answers comments and reports. It is **not** part of the build pipeline: it never changes product code, never opens PRs and ignores the shift lock (issue #49). It logs everything in issue **#146 "Instagram: content log"**.
+A long-lived cloud session on a team's Claude account (team B, plus team A as a backup) that runs Fuelift's Instagram by itself: it plans, creates, publishes, answers comments and reports. It is **not** part of the build pipeline: it never changes product code, never opens PRs and ignores the shift lock (issue #49). It logs everything in issue **#146 "Instagram: content log"**.
 
 - **Cadence:** one daily run (scheduled task "GymApp SOCIAL daily (Instagram)"), one feed post or Reel a day, plus a Story on some days.
 - **Autonomy:** fully automatic. The collaborator chose this: posts go live without approval. The hard rules below are what keeps that safe; when in doubt, **don't publish** and say why in the log.
@@ -9,6 +9,19 @@ A long-lived cloud session on the collaborator's account (team B's account) that
   - **200** → **publishing** mode.
   - **401/403 or an OAuth error** → **drafts only**: create everything, upload the media, and log it as a draft. If publishing worked before, put "Meta token expired or revoked: save a new one for graph.facebook.com" at the top of the #146 comment.
 - **Permissions on the current token** (2026-11-26): `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`, `business_management`. **Missing:** `instagram_manage_insights` and `instagram_manage_comments`. Until they're added, skip the insights and comments steps, and add one line to each #146 comment: "Insights/comments off: the token lacks those permissions."
+
+## Two accounts, one Instagram
+Each team's account can run a SOCIAL runner, so Instagram keeps going when one account is out of usage:
+
+| Team | Session | Daily run (UTC) |
+|---|---|---|
+| B | "GymApp SOCIAL runner (Instagram)" | 18:37 (posts first) |
+| A | "GymApp SOCIAL runner (Instagram, team A)" | 19:37 (backup) |
+
+**At most one post a day for @fueliftapp, whoever runs:**
+1. **Already posted today?** In publishing mode, check the last post: `GET /17841480917024565/media?fields=timestamp&limit=1`. If it was published today (UTC), don't create or publish a new post. Still do comments and insights if they're on, log "Already posted today" in #146, and stop.
+2. **Claim the slot:** before creating anything, read today's comments in #146. If the other team claimed today's post less than 60 minutes ago and hasn't logged "Skipped", stop. Otherwise post a short comment first: "Team <X> is making today's post", then do the run and log the result as usual.
+3. **Drafts mode:** draft only if no draft or post for today is logged in #146 yet.
 
 ## Zero cost (the collaborator's rule)
 Marketing must cost **nothing**:
