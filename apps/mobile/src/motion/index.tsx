@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
 import { type MotionEasing, motion } from '../theme/tokens';
 import { type FeedbackEvent, type StepDirection, countUpValue, durationFor, hapticFor, pressScale, slideOffset } from './logic';
 import { useReducedMotion } from './useReducedMotion';
@@ -77,6 +78,28 @@ export function useConfirmPulse() {
     [reduced, scale],
   );
   return { style: { transform: [{ scale }] }, run };
+}
+
+/**
+ * Cross-fades a screen in each time it comes into focus (switching tabs). Works the same on the web and on phones, so
+ * it does not rely on the navigator's own animation. Reduced motion: no fade, the screen is simply there.
+ */
+export function FocusFade({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
+  const opacity = useRef(new Animated.Value(1)).current;
+  useFocusEffect(
+    useCallback(() => {
+      if (reduced) {
+        opacity.setValue(1);
+        return;
+      }
+      opacity.setValue(0);
+      const run = Animated.timing(opacity, { toValue: 1, duration: durationFor('base', false), easing: easing('enter'), useNativeDriver: true });
+      run.start();
+      return () => run.stop();
+    }, [reduced, opacity]),
+  );
+  return <Animated.View style={{ flex: 1, opacity }}>{children}</Animated.View>;
 }
 
 /** A light tap on a phone when something is chosen. Never on the web, never with reduced motion. */

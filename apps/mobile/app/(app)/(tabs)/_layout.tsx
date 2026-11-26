@@ -1,7 +1,7 @@
 import type { ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
 import { PlanDataProvider } from '../../../src/home/usePlanData';
-import { useReducedMotion } from '../../../src/motion';
+import { FocusFade } from '../../../src/motion';
 import { Icon, type IconName } from '../../../src/ui';
 import { en } from '../../../src/copy/en';
 import { SIDE_NAV_WIDTH, fonts, useBreakpoint, useTheme } from '../../../src/theme';
@@ -25,15 +25,14 @@ const tabIcon = (name: keyof typeof ICONS) => ({ color, focused, size }: { color
 export default function TabsLayout() {
   const { colors, spacing, minTapTarget } = useTheme();
   const bp = useBreakpoint();
-  const reduced = useReducedMotion();
   const side = bp !== 'compact';
   return (
     <PlanDataProvider>
       <Tabs
+        // Switching tabs cross-fades the new screen in (nothing with reduced motion).
+        screenLayout={({ children }) => <FocusFade>{children}</FocusFade>}
         screenOptions={{
           headerShown: false,
-          // Switching tabs cross-fades (nothing at all with reduced motion).
-          animation: reduced ? 'none' : 'fade',
           tabBarPosition: side ? 'left' : 'bottom',
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.muted,
