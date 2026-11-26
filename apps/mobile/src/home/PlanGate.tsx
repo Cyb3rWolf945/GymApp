@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { en } from '../copy/en';
@@ -13,6 +13,10 @@ export function PlanGate({ children }: { children: (data: PlanData) => ReactNode
   const router = useRouter();
   const { colors } = useTheme();
   const t = en.home;
+  // Only a skeleton that was really shown gives way to the content with a fade. With the data already there (a tab switch) the
+  // tab's own cross-fade is the one entrance, so a screen change never stacks a second fade on it.
+  const sawSkeleton = useRef(false);
+  if (state.status === 'loading') sawSkeleton.current = true;
 
   if (state.status === 'loading') {
     return <Screen variant="dashboard"><ScreenSkeleton label={en.common.loading} /></Screen>;
@@ -29,6 +33,5 @@ export function PlanGate({ children }: { children: (data: PlanData) => ReactNode
       </View>
     );
   }
-  // The skeleton gives way to the content with a fade, not a swap.
-  return <FadeSlideIn style={{ flex: 1 }}>{children(state.data)}</FadeSlideIn>;
+  return sawSkeleton.current ? <FadeSlideIn style={{ flex: 1 }}>{children(state.data)}</FadeSlideIn> : <>{children(state.data)}</>;
 }
