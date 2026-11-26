@@ -59,7 +59,7 @@ export function ChoiceCard({ label, icon, selected = false, onPress }: CardProps
               paddingVertical: spacing.sm,
               borderRadius: radius.lg,
               borderWidth: selected ? 2 : 1,
-              borderColor: selected ? colors.accent : colors.border,
+              borderColor: selected ? colors.accentBorder : colors.border,
               backgroundColor: selected ? colors.surface : colors.surfaceAlt,
             },
             selected ? elevation.low : null,
@@ -67,7 +67,7 @@ export function ChoiceCard({ label, icon, selected = false, onPress }: CardProps
         >
           <View style={{ width: 48, height: 48, borderRadius: radius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
             <LinearGradient pointerEvents="none" colors={selected ? [...colors.gradient.brand] : [colors.surface, colors.surface]} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-            <Icon name={icon} size={26} color={selected ? colors.onAccent : colors.accent} />
+            <Icon name={icon} size={26} color={selected ? colors.onAccent : colors.accentText} />
           </View>
           <View style={{ flex: 1 }}>
             <Text variant="bodyStrong">{label}</Text>

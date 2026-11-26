@@ -40,7 +40,7 @@ export function ListItem({ title, subtitle, leading, trailing, onPress, checked 
           gap: spacing.md,
           paddingVertical: spacing.sm,
           borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+          borderBottomColor: colors.divider,
           transform: [{ scale }],
         }}
       >

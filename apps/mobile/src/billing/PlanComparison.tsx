@@ -33,7 +33,7 @@ export function PlanComparison() {
           testID="compare-row"
           accessible
           accessibilityLabel={`${row.label}: ${PAID_TIERS.map((tier: PaidTier) => `${t.plans[tier].name} ${spoken(row[tier])}`).join(', ')}`}
-          style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border }}
+          style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: spacing.xs, borderTopWidth: 1, borderTopColor: colors.divider }}
         >
           <View style={{ flex: 2, paddingRight: spacing.sm }}>
             <Text>{row.label}</Text>

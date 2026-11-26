@@ -23,7 +23,7 @@ export function Skeleton({ width = '100%', height = 16, radius }: { width?: Dime
     loop.start();
     return () => loop.stop();
   }, [reduced, pulse]);
-  return <Animated.View style={{ width, height, borderRadius: radius ?? r.sm, backgroundColor: colors.surfaceAlt, opacity: pulse }} />;
+  return <Animated.View style={{ width, height, borderRadius: radius ?? r.sm, backgroundColor: colors.skeleton.base, opacity: pulse }} />;
 }
 
 /**

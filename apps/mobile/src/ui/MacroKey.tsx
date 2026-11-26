@@ -7,7 +7,7 @@ import { Text } from './Text';
 export function MacroKey() {
   const { colors, spacing } = useTheme();
   const items = [
-    { label: en.plan.preview.protein, color: colors.accent },
+    { label: en.plan.preview.protein, color: colors.chart[0] },
     { label: en.plan.preview.carbs, color: colors.accent2 },
     { label: en.plan.preview.fat, color: colors.success },
   ];

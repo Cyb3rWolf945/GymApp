@@ -63,7 +63,7 @@ export default function ResetPassword() {
   if (!session) {
     return (
       <Screen center framed>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={colors.accentText} />
         <Text tone="muted" accessibilityLiveRegion="polite">{authCopy.callbackWorking}</Text>
       </Screen>
     );

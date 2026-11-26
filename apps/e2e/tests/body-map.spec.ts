@@ -27,9 +27,9 @@ test('the figure is a body made of curves, with a shape per muscle and the base 
   const untrained = await page.locator('svg path[aria-label*=", 0 sets this week"]').count();
   expect(trained).toBeGreaterThan(0);
   expect(untrained).toBeGreaterThan(0);
-  const opacities = paths.filter((x) => x.fill && x.fill !== 'transparent' && x.label === null && x.opacity < 1).map((x) => x.opacity);
-  expect(opacities.some((o) => o === 0.6)).toBe(true); // empty regions: base tone
-  expect(Math.max(...paths.filter((x) => x.label === null).map((x) => x.opacity))).toBeGreaterThan(0.6);
+  // The visible regions carry no label; their fills come from the heat ramp: more than one tone (empty and trained).
+  const fills = new Set(paths.filter((x) => x.label === null && x.fill && x.fill !== 'transparent').map((x) => x.fill));
+  expect(fills.size).toBeGreaterThan(2);
 });
 
 test('Front and Back switch the muscles shown', async ({ page }) => {

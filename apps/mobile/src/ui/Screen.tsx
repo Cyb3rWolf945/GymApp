@@ -39,7 +39,7 @@ export function Screen({ variant = 'reading', scroll = true, center = false, fra
     <View
       style={[
         { ...width, padding: SCREEN_PADDING[bp], gap: spacing.xl },
-        card && { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, marginVertical: spacing.xl },
+        card && { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.divider, marginVertical: spacing.xl },
         style,
       ]}
     >

@@ -36,7 +36,7 @@ export function TrackingBanner() {
       accessibilityRole="alert"
       style={{
         position: 'absolute', left: spacing.md, right: spacing.md, top: spacing.md, gap: spacing.sm, padding: spacing.lg,
-        borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, zIndex: 100,
+        borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, zIndex: 100,
       }}
     >
       <Text variant="bodyStrong">{t.title}</Text>

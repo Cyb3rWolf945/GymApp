@@ -36,7 +36,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => t.forEach(clearTimeout);
   }, []);
 
-  const bar = { info: colors.accent, success: colors.success, error: colors.danger };
+  const bar = { info: colors.accentText, success: colors.success, error: colors.danger };
   return (
     <ToastContext.Provider value={{ show }}>
       {children}

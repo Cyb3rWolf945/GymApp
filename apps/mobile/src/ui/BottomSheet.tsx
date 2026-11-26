@@ -100,7 +100,7 @@ export function BottomSheet({ visible, onClose, title, closeLabel = 'Close', dis
           gap: spacing.lg,
         }}
       >
-        <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+        <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.divider }} />
         {title ? <Text variant="heading" accessibilityRole="header">{title}</Text> : null}
         <ScrollView style={tall ? { flex: 1 } : undefined} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg }}>{children}</ScrollView>
         {footer ? <View style={{ gap: spacing.sm }}>{footer}</View> : null}

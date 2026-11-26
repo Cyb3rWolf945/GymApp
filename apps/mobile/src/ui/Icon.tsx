@@ -17,5 +17,5 @@ interface Props {
 /** Decorative by default: the label next to it names the thing, so screen readers skip the glyph. */
 export function Icon({ name, size = 24, tone = 'text', color }: Props) {
   const { colors } = useTheme();
-  return <Ionicons name={name} size={size} color={color ?? colors[tone]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden />;
+  return <Ionicons name={name} size={size} color={color ?? (tone === 'accent' ? colors.accentText : colors[tone])} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden />;
 }

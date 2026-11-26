@@ -21,18 +21,17 @@ interface Props {
   body?: BodyVariant;
 }
 
-/** The hottest tone, for very high volume (the top band). Darker on the light theme so it keeps its contrast. */
-export const HOT_TONE = { dark: '#FF8A3D', light: '#D9480F' } as const;
-
-/** Fill colour and opacity for an intensity (0 to 1): the base tone when empty, the accent as it fills, hot in the top band. */
-export function heatPaint(cur: number, c: { accent: string; border: string }, hot: string): { fill: string; opacity: number } {
-  if (cur <= 0.001) return { fill: c.border, opacity: 0.6 };
-  return { fill: cur > 0.8 ? mixColors(c.accent, hot, (cur - 0.8) / 0.2) : c.accent, opacity: Math.min(1, (0.25 + 0.75 * cur) * Math.min(1, cur * 6)) };
+/** Fill colour for an intensity (0 to 1): along the palette's heat ramp (base tone, then up through the accent to the hottest). */
+export function heatPaint(cur: number, heatRamp: readonly string[]): { fill: string; opacity: number } {
+  const pos = Math.max(0, Math.min(1, cur)) * (heatRamp.length - 1);
+  const lo = Math.floor(pos);
+  const hi = Math.min(heatRamp.length - 1, lo + 1);
+  return { fill: mixColors(heatRamp[lo], heatRamp[hi], pos - lo), opacity: 1 };
 }
 
 /** Front or back view of an anatomical figure; each muscle is filled by last-7-days effective sets (more sets = brighter). Tap a muscle for details. */
 export function MuscleMap({ view, stats, onSelect, selected, highlight, height = 340, body }: Props) {
-  const { colors, scheme } = useTheme();
+  const { colors } = useTheme();
   const fromProfile = useBodyVariant();
   const variant = body ?? fromProfile;
   const regions = useMemo(() => bodyRegions(view, variant), [view, variant]);
@@ -59,7 +58,6 @@ export function MuscleMap({ view, stats, onSelect, selected, highlight, height =
   }, [t, targets]);
   // Web keyboard focus: the region the keyboard is on gets a visible outline.
   const [focused, setFocused] = useState<string | null>(null);
-  const hot = HOT_TONE[scheme];
   // The body: a little lighter than a card, so the figure reads on the page in both themes.
   const bodyTone = mixColors(colors.surfaceAlt, colors.text, 0.07);
   return (
@@ -69,7 +67,7 @@ export function MuscleMap({ view, stats, onSelect, selected, highlight, height =
           {/* The body: head, neck, torso, arms, legs. */}
           {/* Outline first (one merged edge around the parts), then the fills on top. */}
           {outline.map((d, i) => (
-            <Path key={`e${i}`} d={d} fill={colors.border} stroke={colors.border} strokeWidth={1.4} strokeLinejoin="round" />
+            <Path key={`e${i}`} d={d} fill={colors.divider} stroke={colors.divider} strokeWidth={1.4} strokeLinejoin="round" />
           ))}
           {outline.map((d, i) => (
             <Path key={`o${i}`} d={d} fill={bodyTone} />
@@ -78,7 +76,7 @@ export function MuscleMap({ view, stats, onSelect, selected, highlight, height =
             const cur = blendIntensity(from.current.get(r.key) ?? 0, r.h, regionProgress(t, i, targets.length));
             const label = highlight ? `${muscleLabel(r.key)}${r.role ? `, ${r.role}` : ''}` : `${muscleLabel(r.key)}, ${plural(r.sets, 'set')} this week`;
             const on = selected === r.key || focused === r.key;
-            const paint = heatPaint(cur, colors, hot);
+            const paint = heatPaint(cur, colors.heat);
             return (
               <Path
                 key={r.key}

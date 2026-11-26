@@ -18,9 +18,9 @@ export function Celebration() {
       Array.from({ length: PIECES }, (_, i) => {
         const angle = (i / PIECES) * Math.PI * 2;
         const reach = 90 + (i % 4) * 28;
-        return { dx: Math.cos(angle) * reach, dy: Math.sin(angle) * reach - 40, size: 8 + (i % 3) * 3, round: i % 2 === 0, color: [colors.accent, colors.accent2, colors.success][i % 3] };
+        return { dx: Math.cos(angle) * reach, dy: Math.sin(angle) * reach - 40, size: 8 + (i % 3) * 3, round: i % 2 === 0, color: [colors.chart[0], colors.accent2, colors.success][i % 3] };
       }),
-    [colors.accent, colors.accent2, colors.success],
+    [colors.chart[0], colors.accent2, colors.success],
   );
   useEffect(() => {
     if (reduced) return;

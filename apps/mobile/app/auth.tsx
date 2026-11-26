@@ -47,7 +47,7 @@ export default function AuthCallback() {
         </>
       ) : (
         <>
-          <ActivityIndicator color={colors.accent} />
+          <ActivityIndicator color={colors.accentText} />
           <Text tone="muted" accessibilityLiveRegion="polite">{authCopy.callbackWorking}</Text>
         </>
       )}

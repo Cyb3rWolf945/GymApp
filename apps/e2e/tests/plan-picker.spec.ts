@@ -98,10 +98,10 @@ test('desktop hover: an unselected card lightens its border towards the accent; 
   expect(selected).toBe('rgb(198, 255, 61)'); // the accent
 });
 
-test('in light mode the selected card has the light accent border and the others the plain border', async ({ page }) => {
+test('in light mode the selected card has the light accent border (accentBorder) and the others the plain border', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await paywall(page);
   const border = (tier: string) => radio(page, tier).locator('xpath=./div/div').evaluate((e) => getComputedStyle(e).borderTopColor);
-  await expect.poll(() => border('Pro')).toBe('rgb(63, 98, 18)');
-  expect(await border('Basic')).not.toBe('rgb(63, 98, 18)');
+  await expect.poll(() => border('Pro')).toBe('rgb(94, 143, 10)');
+  expect(await border('Basic')).not.toBe('rgb(94, 143, 10)');
 });
