@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
-  e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, trendChange, trendLifts, weightTrend,
+  e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, recentVolumes, trendChange, trendLifts, weightTrend,
 } from '@gymapp/shared';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../src/auth/AuthProvider';
@@ -15,7 +16,7 @@ import { Reveal, useFirstVisit } from '../../../src/motion';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
-import { BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
+import { BarChart, BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
 const p = t.progress;
@@ -36,7 +37,7 @@ function ProgressTab() {
   const first = useFirstVisit('progress');
   const router = useRouter();
   const { user } = useAuth();
-  const { spacing } = useTheme();
+  const { colors, radius, spacing } = useTheme();
   const toast = useToast();
   const { pending } = useWorkout();
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -99,6 +100,7 @@ function ProgressTab() {
   const activeLift = lift ?? lifts[0]?.slug ?? null;
   const liftTrend = useMemo(() => (activeLift ? e1rmTrend(sets.records, activeLift) : []), [sets.records, activeLift]);
   const liftName = lifts.find((l) => l.slug === activeLift)?.name ?? '';
+  const volumes = useMemo(() => recentVolumes(rows ?? []), [rows]);
   const stats = useMemo(() => muscleStats(sets.muscleSets), [sets.muscleSets]);
   const trained = [...stats.values()].filter((s) => s.sets > 0).sort((a, b) => b.sets - a.sets);
   const detail = selected ? stats.get(selected) : null;
@@ -203,6 +205,22 @@ function ProgressTab() {
         {rows !== null && !failed ? (
           <Reveal first={first} index={3}>
           <Card style={{ gap: spacing.sm }}>
+            <Text variant="heading">{p.volumeTitle}</Text>
+            {volumes.length === 0 ? (
+              <Text tone="muted">{p.volumeEmpty}</Text>
+            ) : (
+              <>
+                <Text tone="muted">{p.volumeNow(volumes[volumes.length - 1])}</Text>
+                <BarChart values={volumes} label={p.volumeChart(volumes.length)} />
+              </>
+            )}
+          </Card>
+          </Reveal>
+        ) : null}
+
+        {rows !== null && !failed ? (
+          <Reveal first={first} index={4}>
+          <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.mapTitle}</Text>
             <Text tone="muted">{p.mapBody}</Text>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -210,6 +228,13 @@ function ProgressTab() {
               <Chip label={p.back} selected={view === 'back'} onPress={() => setView('back')} />
             </View>
             <MuscleMap view={view} stats={stats} onSelect={setSelected} />
+            <View testID="heat-legend" accessible={false} importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text variant="small" tone="muted">{p.legendLess}</Text>
+              <View style={{ flex: 1, height: 8, borderRadius: radius.pill, overflow: 'hidden' }}>
+                <LinearGradient pointerEvents="none" colors={[colors.border, colors.accent]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />
+              </View>
+              <Text variant="small" tone="muted">{p.legendMore}</Text>
+            </View>
             <Text variant="bodyStrong">{p.mapListTitle}</Text>
             {trained.length === 0 ? (
               <Text tone="muted">{p.noSets}</Text>

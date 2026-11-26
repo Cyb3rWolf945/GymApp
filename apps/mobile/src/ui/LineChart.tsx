@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type LayoutChangeEvent, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
-import { scaleSeries, toPath } from '@gymapp/shared';
+import Svg, { Circle, Defs, LinearGradient, Line, Path, Stop } from 'react-native-svg';
+import { areaPath, scaleSeries, toPath } from '@gymapp/shared';
 import { drawDash, lineProgress, pointsOpacity, polylineLength, useRunProgress } from '../motion';
 import { useTheme } from '../theme';
 
@@ -35,6 +35,17 @@ export function LineChart({ values, dots, label }: Props) {
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label} onLayout={(e: LayoutChangeEvent) => setMeasured(Math.round(e.nativeEvent.layout.width))}>
       <Svg width="100%" height={H} viewBox={`-6 0 ${W + 12} ${H}`} preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.accent} stopOpacity={0.28} />
+            <Stop offset="1" stopColor={colors.accent} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        {/* Faint guides at the top, middle and bottom of the range. */}
+        {[8, H / 2, H - 8].map((y) => (
+          <Line key={y} x1={-6} x2={W + 6} y1={y} y2={y} stroke={colors.border} strokeWidth={1} opacity={0.6} />
+        ))}
+        {line.length > 1 ? <Path d={areaPath(line, H)} fill="url(#area)" opacity={dotsOpacity} /> : null}
         {raw.map((p, i) => (
           <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={colors.muted} opacity={0.5 * dotsOpacity} />
         ))}
