@@ -14,7 +14,8 @@ export interface AiCallLog {
   tokensOut: number | null;
   costUsd: number | null;
   latencyMs: number;
-  status: 'ok' | 'http_error' | 'invalid_output';
+  /** `template_fallback`: no model produced a usable plan, so the starter template was used (logged once per job). */
+  status: 'ok' | 'http_error' | 'invalid_output' | 'template_fallback';
   /** 0 for the first planner attempt, then 1, 2 (and one more for the escalation attempt). */
   retry?: number;
   /** Served by the escalation model. */

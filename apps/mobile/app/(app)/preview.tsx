@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { type PlanPreview, buildPreview, latestJobs } from '@gymapp/shared';
+import { type PlanPreview, buildPreview, latestJobs, usedStarterPlan } from '@gymapp/shared';
 import { useAuth } from '../../src/auth/AuthProvider';
 import { en } from '../../src/copy/en';
 import { FadeSlideIn, staggerDelay, useReducedMotion } from '../../src/motion';
@@ -12,7 +12,7 @@ import { Button, Card, Celebration, EmptyState, ListItem, Screen, ScreenSkeleton
 
 const t = en.plan.preview;
 
-type State = { kind: 'loading' } | { kind: 'ready'; preview: PlanPreview } | { kind: 'error' };
+type State = { kind: 'loading' } | { kind: 'ready'; preview: PlanPreview; starter: boolean } | { kind: 'error' };
 
 /** Screen 15: first workout, first day of meals, kcal/macros and a short "why". */
 export default function Preview() {
@@ -38,7 +38,7 @@ export default function Preview() {
         const preview = buildPreview(jobs.workout_plan?.result, jobs.nutrition_plan?.result, exerciseNames, recipes);
         setEntitled(isEntitled);
         if (preview.workout && preview.meals) trackEvent('plan_preview_view', {});
-        setState(preview.workout && preview.meals ? { kind: 'ready', preview } : { kind: 'error' });
+        setState(preview.workout && preview.meals ? { kind: 'ready', preview, starter: usedStarterPlan(jobs.workout_plan?.result, jobs.nutrition_plan?.result) } : { kind: 'error' });
       } catch {
         if (active) setState({ kind: 'error' });
       }
@@ -65,6 +65,7 @@ export default function Preview() {
     <Screen footer={<Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />}>
         <Celebration />
         <Text variant="display">{t.title}</Text>
+        {state.starter ? <Text tone="muted">{en.plan.starterPlan}</Text> : null}
 
         {/* The cards reveal one after another. */}
         <FadeSlideIn direction="up" delay={staggerDelay(1, reduced)}>

@@ -12,9 +12,9 @@ function fakeDb(error: unknown = null) {
 const NOW = Date.parse('2026-11-25T22:30:00.000Z');
 
 describe('stale job sweep', () => {
-  it('a job is stale after 5 minutes', () => {
-    expect(STALE_JOB_MS).toBe(5 * 60 * 1000);
-    expect(staleCutoff(NOW)).toBe('2026-11-25T22:25:00.000Z');
+  it('a job is stale after 3 minutes', () => {
+    expect(STALE_JOB_MS).toBe(3 * 60 * 1000);
+    expect(staleCutoff(NOW)).toBe('2026-11-25T22:27:00.000Z');
   });
   it('marks queued and running jobs older than the cutoff as failed with a plain message, and nothing else', async () => {
     const { db, from, update, inFn, lt } = fakeDb();
@@ -22,7 +22,7 @@ describe('stale job sweep', () => {
     expect(from).toHaveBeenCalledWith('generation_jobs');
     expect(update).toHaveBeenCalledWith({ status: 'failed', error: STALE_JOB_ERROR, finished_at: '2026-11-25T22:30:00.000Z' });
     expect(inFn).toHaveBeenCalledWith('status', ['queued', 'running']); // never done or already failed jobs
-    expect(lt).toHaveBeenCalledWith('created_at', '2026-11-25T22:25:00.000Z');
+    expect(lt).toHaveBeenCalledWith('created_at', '2026-11-25T22:27:00.000Z');
   });
   it('says so when the update failed, and never throws', async () => {
     const { db } = fakeDb({ message: 'down' });

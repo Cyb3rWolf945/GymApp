@@ -12,6 +12,13 @@ export async function fetchJobs(userId: string): Promise<JobRow[]> {
   return (data ?? []) as unknown as JobRow[];
 }
 
+/** The columns a plan cannot be built without, as saved on the server (own row, RLS). `null` = no row yet or not readable. */
+export async function fetchSavedProfile(userId: string): Promise<{ sex: string | null; birth_date: string | null; height_cm: number | null; weight_kg: number | null } | null> {
+  const { data, error } = await supabase.from('profiles').select('sex,birth_date,height_cm,weight_kg').eq('user_id', userId).maybeSingle();
+  if (error) return null;
+  return (data as { sex: string | null; birth_date: string | null; height_cm: number | null; weight_kg: number | null } | null) ?? null;
+}
+
 export type StartResult = 'started' | 'needs_trial' | 'error';
 
 /** Ask the Edge Function for a plan. It returns the job already running for this kind, if any. */

@@ -67,7 +67,7 @@ Deno.serve(withCors(async (req) => {
   const kind = body?.kind as PlanKind;
   if (!PLAN_KINDS.includes(kind)) return json(400, { error: 'Unknown plan kind.' });
 
-  // No job stays `running` forever: anything queued or running for over 5 minutes died with its function, so close it.
+  // No job stays `running` forever: anything queued or running for over `STALE_JOB_MS` (3 minutes) died with its function, so close it.
   await sweepStaleJobs(admin as never);
 
   // Access is always checked server-side. Entitled users always; everyone else gets one free
@@ -85,7 +85,7 @@ Deno.serve(withCors(async (req) => {
     .eq('kind', kind)
     .order('created_at', { ascending: false });
 
-  // A job stuck in queued/running for over 5 minutes (the function died) counts as failed.
+  // A job stuck in queued/running past the stale limit (the function died) counts as failed.
   const jobs = (prior ?? []).map((j: { id: string; status: string; created_at: string }) =>
     (j.status === 'queued' || j.status === 'running') && Date.now() - new Date(j.created_at).getTime() > STALE_JOB_MS
       ? { ...j, status: 'failed' }
@@ -128,6 +128,25 @@ Deno.serve(withCors(async (req) => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** The longest the nutrition job waits for the user's workout job (it never waits on a dead one: see STALE_JOB_MS). */
+const SIBLING_WAIT_MS = 60_000;
+
+async function waitForWorkoutPlan(admin: ReturnType<typeof createClient>, userId: string) {
+  const until = Date.now() + SIBLING_WAIT_MS;
+  while (Date.now() < until) {
+    const { data } = await admin
+      .from('generation_jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kind', 'workout_plan')
+      .in('status', ['queued', 'running'])
+      .gte('created_at', new Date(Date.now() - SIBLING_WAIT_MS).toISOString())
+      .limit(1);
+    if (!data || data.length === 0) return;
+    await sleep(2_000);
+  }
+}
+
 /**
  * Runs one generation and always ends the job: done, or failed with a plain reason. The work races a hard time limit
  * under the runtime's own, so an overrun is recorded instead of leaving the job `running` until the function is killed.
@@ -135,6 +154,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function run(admin: ReturnType<typeof createClient>, userId: string, jobId: string, kind: PlanKind, update = false, adaptOfWeek: string | null = null) {
   const failJob = (error: string) =>
     admin.from('generation_jobs').update({ status: 'failed', error, finished_at: new Date().toISOString() }).eq('id', jobId).neq('status', 'done');
+  // The two plan kinds run one after the other: on the free `dev` models, two long calls at once hit provider rate limits
+  // (HTTP 429 or a 40 s timeout) and both fall back. The nutrition job waits (as `queued`) for the workout job, at most
+  // SIBLING_WAIT_MS, and gets its own full time budget afterwards. Paid models finish in seconds, so this costs nothing there.
+  if (kind === 'nutrition_plan') await waitForWorkoutPlan(admin, userId);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<'timeout'>((resolve) => {
     timer = setTimeout(() => resolve('timeout'), HARD_LIMIT_MS);
@@ -265,6 +288,10 @@ async function generate(admin: ReturnType<typeof createClient>, userId: string, 
           jobId,
         });
       }
+    }
+    // No model produced a usable plan: the starter template is what the user gets. Leave a trace (metadata only).
+    if (result.source === 'template') {
+      await admin.from('ai_call_logs').insert(aiCallRow({ userId, jobId, role: 'planner', model: 'template', tokensIn: null, tokensOut: null, costUsd: null, latencyMs: Date.now() - startedAt, status: 'template_fallback' }));
     }
     // Plan + QA scores + attempt log live in generation_jobs.result.
     await admin

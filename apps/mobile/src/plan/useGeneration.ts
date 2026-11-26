@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type GenerationProgress, type JobRow, POLL_INTERVAL_MS, deriveProgress, isComplete, isInFlight, latestJobs } from '@gymapp/shared';
+import { AppState } from 'react-native';
+import { type GenerationProgress, type JobRow, deriveProgress, isComplete, isInFlight, latestJobs, missingProfileFields, pollDelayMs } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { useOnboarding } from '../onboarding/OnboardingProvider';
 import { saveProfileOnce } from '../onboarding/useSaveOnboarding';
-import { START_KINDS, fetchJobs, startGeneration } from './api';
+import { START_KINDS, fetchJobs, fetchSavedProfile, startGeneration } from './api';
 
 export type GenerationView =
   | { kind: 'starting' }
@@ -13,8 +14,9 @@ export type GenerationView =
   | { kind: 'error'; reason: 'profile' | 'generate' | 'timeout' };
 
 /**
- * Starts the two plan jobs (workout + meals) if they are not already done or running, then polls
- * `generation_jobs` until both are done, one failed, or the timeout passes.
+ * Starts the two plan jobs (workout + meals) if they are not already done or alive, then polls `generation_jobs` until
+ * both are done, one failed (a job whose function died counts as failed once it is stale), or the timeout passes.
+ * "Try again" starts new jobs: dead ones are never waited on.
  */
 export function useGeneration(): { view: GenerationView; retry: () => void } {
   const { session } = useAuth();
@@ -24,60 +26,86 @@ export function useGeneration(): { view: GenerationView; retry: () => void } {
   const [attempt, setAttempt] = useState(0);
   const answersRef = useRef(answers);
   answersRef.current = answers;
+  const clearRef = useRef(clear);
+  clearRef.current = clear;
+  // The 3-minute clock belongs to the attempt, not to the effect: if the effect runs again, the first start stands.
+  const clock = useRef<{ attempt: number; at: number } | null>(null);
 
   useEffect(() => {
     if (!userId || !hydrated) return;
+    if (clock.current?.attempt !== attempt) clock.current = { attempt, at: Date.now() };
+    const startedAt = clock.current.at;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const startedAt = Date.now();
+    let polling = false; // at most one poll at a time
+    let polls = 0;
     setView({ kind: 'starting' });
 
     const fail = (reason: 'profile' | 'generate' | 'timeout') => active && setView({ kind: 'error', reason });
 
     const poll = async () => {
+      if (polling || !active) return;
+      polling = true;
+      clearTimeout(timer);
       let rows: JobRow[];
       try {
         rows = await fetchJobs(userId);
       } catch {
+        polling = false;
         return fail('generate');
       }
+      polling = false;
       if (!active) return;
       const progress = deriveProgress(rows, startedAt, Date.now());
+      // Done, failed or timed out: the loop ends here, for good.
       if (progress.phase === 'done') return setView({ kind: 'done' });
       if (progress.phase === 'failed') return fail('generate');
       if (progress.phase === 'timeout') return fail('timeout');
       setView({ kind: 'running', progress });
-      timer = setTimeout(() => void poll(), POLL_INTERVAL_MS);
+      timer = setTimeout(() => void poll(), pollDelayMs(polls++));
     };
 
+    // Back in the app (or the tab visible again): look now instead of waiting out the gap.
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && started) void poll();
+    });
+    let started = false;
+
     void (async () => {
-      // The profile must exist before the function can read it.
+      // The profile must exist, and be complete, before the function reads it: save, then read it back and check it.
       if (isComplete(answersRef.current)) {
         if (!(await saveProfileOnce(userId, answersRef.current))) return fail('profile');
-        await clear();
+        await clearRef.current();
       }
+      if (missingProfileFields(await fetchSavedProfile(userId)).length > 0) return fail('profile');
+      if (!active) return;
+
       let existing: Partial<ReturnType<typeof latestJobs>>;
       try {
         existing = latestJobs(await fetchJobs(userId));
       } catch {
         return fail('generate');
       }
+      const now = Date.now();
       for (const kind of START_KINDS) {
         const job = existing[kind];
-        if (job?.status === 'done' || isInFlight(job)) continue;
+        // A dead job (stuck "running" past the stale limit) is not waited on: a new one starts instead.
+        if (job?.status === 'done' || isInFlight(job, now)) continue;
         const r = await startGeneration(kind);
         if (!active) return;
         if (r === 'needs_trial') return setView({ kind: 'needs_trial' });
         if (r === 'error') return fail('generate');
       }
+      started = true;
       void poll();
     })();
 
     return () => {
       active = false;
       clearTimeout(timer);
+      sub.remove();
     };
-  }, [userId, hydrated, attempt, clear]);
+  }, [userId, hydrated, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   return { view, retry };
