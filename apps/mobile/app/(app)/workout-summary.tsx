@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { detectPRs, pickLine, seedOf, volumeKg } from '@gymapp/shared';
 import { useCoachStyle } from '../../src/coach/useCoachStyle';
 import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
+import { useFeedback } from '../../src/motion';
 import { useTheme } from '../../src/theme';
 import { Button, Card, ChipGroup, Screen, Text, TextField, useToast } from '../../src/ui';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
@@ -19,6 +20,7 @@ export default function WorkoutSummary() {
   const toast = useToast();
   const { colors, spacing } = useTheme();
   const { style } = useCoachStyle();
+  const feedback = useFeedback();
   const [rating, setRating] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,6 +36,12 @@ export default function WorkoutSummary() {
       volume: Math.round(volumeKg(active.logged)),
     };
   }, [active]);
+
+  // The moment of a personal record: the success tap, once, when the summary opens (phones only).
+  const hasPr = (stats?.prs.length ?? 0) > 0;
+  useEffect(() => {
+    if (hasPr) feedback('pr');
+  }, [hasPr, feedback]);
 
   if (!hydrated) return null;
   if (!active || !stats) return <Redirect href="/" />;

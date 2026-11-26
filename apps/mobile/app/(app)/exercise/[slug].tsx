@@ -1,5 +1,5 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Platform, View } from 'react-native';
+import { Image, Linking, Platform, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WorkoutPlanSchema, exerciseHistory, mediaKind, muscleLabel, parseSteps, type SetRecord } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
@@ -9,7 +9,7 @@ import { type PlanData, PlanDataProvider, usePlanData } from '../../../src/home/
 import { SwapSheet } from '../../../src/plan/SwapSheet';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
 import { useBreakpoint, useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, LineChart, ListItem, Screen, ScreenSkeleton, Text } from '../../../src/ui';
+import { Button, Card, EmptyState, InlineSkeleton, LineChart, ListItem, Screen, ScreenSkeleton, Text } from '../../../src/ui';
 
 const x = en.exercise;
 
@@ -89,7 +89,7 @@ function History({ slug, name }: { slug: string; name: string }) {
   return (
     <Card style={{ gap: spacing.sm }}>
       <Text variant="heading">{x.history}</Text>
-      {state.status === 'loading' ? <ActivityIndicator /> : null}
+      {state.status === 'loading' ? <InlineSkeleton lines={4} label={en.common.loading} /> : null}
       {state.status === 'error' ? <Text tone="danger" accessibilityRole="alert">{x.historyError}</Text> : null}
       {h && h.sessions.length === 0 ? <Text tone="muted">{x.historyEmpty}</Text> : null}
       {h && h.sessions.length > 0 ? (

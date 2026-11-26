@@ -7,6 +7,7 @@ import { signOut } from '../../../src/auth/authService';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { authCopy } from '../../../src/auth/copy';
 import { SignInMethods } from '../../../src/auth/SignInMethods';
+import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { useCoachStyle } from '../../../src/coach/useCoachStyle';
 import { usePlateConfig } from '../../../src/workout/plateSettings';
@@ -19,7 +20,7 @@ import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Text, TextField
 const t = en.home;
 const d = t.data;
 
-export default function SettingsScreen() {
+function SettingsTab() {
   const { user } = useAuth();
   const { spacing } = useTheme();
   const router = useRouter();
@@ -191,5 +192,14 @@ export default function SettingsScreen() {
         <Button label={d.deleteCancel} variant="secondary" disabled={deleting} onPress={() => setConfirming(false)} />
       </BottomSheet>
     </Screen>
+  );
+}
+
+/** The screen, cross-fading in each time its tab is shown. */
+export default function SettingsScreen() {
+  return (
+    <FocusFade>
+      <SettingsTab />
+    </FocusFade>
   );
 }

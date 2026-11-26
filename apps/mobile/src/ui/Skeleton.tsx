@@ -46,3 +46,16 @@ export function ScreenSkeleton({ cards = 2, label = 'Loading…', title = true }
     </View>
   );
 }
+
+/** A few lines in place of a small spinner: inside a sheet, a card or under a heading. Announced as "Loading" once. */
+export function InlineSkeleton({ lines = 3, label = 'Loading…' }: { lines?: number; label?: string }) {
+  const { spacing } = useTheme();
+  const widths = ['100%', '85%', '65%', '90%'] as const;
+  return (
+    <View accessible accessibilityLabel={label} accessibilityRole="progressbar" accessibilityLiveRegion="polite" aria-busy style={{ gap: spacing.sm }}>
+      {Array.from({ length: lines }, (_, i) => (
+        <Skeleton key={i} width={widths[i % widths.length]} height={16} />
+      ))}
+    </View>
+  );
+}

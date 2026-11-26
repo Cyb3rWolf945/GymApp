@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, type ScrollView } from 'react-native';
+import type { ScrollView } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { type PartialAnswers, type StepId, isEditableStep, validateStep } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
@@ -8,8 +8,7 @@ import { FieldErrorsProvider, useStepErrors } from '../../../src/onboarding/Fiel
 import { STEP_BODIES } from '../../../src/onboarding/steps';
 import { fetchProfileAnswers, saveProfileEdit } from '../../../src/profile/api';
 import { markPlanOutdated } from '../../../src/profile/outdated';
-import { useTheme } from '../../../src/theme';
-import { Button, EmptyState, Screen, Text, useToast } from '../../../src/ui';
+import { Button, EmptyState, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
 const t = en.home.profile;
 const o = en.onboarding;
@@ -29,7 +28,6 @@ function Editor({ id }: { id: StepId }) {
   const { user } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const { colors } = useTheme();
   const [stored, setStored] = useState<PartialAnswers | null | undefined>(undefined);
   const [draft, setDraft] = useState<PartialAnswers>({});
   const [saving, setSaving] = useState(false);
@@ -47,7 +45,7 @@ function Editor({ id }: { id: StepId }) {
     });
   }, [user]);
 
-  if (stored === undefined) return <Screen center><ActivityIndicator color={colors.accent} /></Screen>;
+  if (stored === undefined) return <Screen><ScreenSkeleton label={en.common.loading} /></Screen>;
   if (stored === null) return <Screen center><EmptyState title={t.loadError} actionLabel={t.retry} onAction={() => router.replace(`/profile/${id}`)} /></Screen>;
 
   const copy = (o.steps as Record<StepId, StepCopy>)[id];

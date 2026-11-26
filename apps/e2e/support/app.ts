@@ -120,8 +120,8 @@ export function seedPlan(backend: Backend): void {
 }
 
 /** A signed-in Pro user whose plan is already generated, on Home. */
-export async function signedInWithPlan(page: Page): Promise<Backend> {
-  const backend = await start(page);
+export async function signedInWithPlan(page: Page, opts: { fixedTime?: boolean } = {}): Promise<Backend> {
+  const backend = await start(page, opts);
   seedPlan(backend);
   await page.addInitScript(([key, session]) => localStorage.setItem(key, JSON.stringify(session)), [SESSION_STORAGE_KEY, fakeSession()] as const);
   await page.goto('/');

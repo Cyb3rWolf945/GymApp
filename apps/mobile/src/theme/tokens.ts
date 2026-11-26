@@ -137,6 +137,10 @@ export const motion = {
   stagger: 40,
   /** A pressed button shrinks to this. */
   pressScale: 0.97,
+  /** Press states use a spring (not a timed ease): quick, with a slight settle. Passed to `Animated.spring`. */
+  spring: { stiffness: 420, damping: 24, mass: 0.9 },
+  /** A pressed row (a list item) moves less than a button. */
+  rowPressScale: 0.985,
   /** The "pop" a chosen chip or finished step makes. */
   popScale: 1.08,
   /** Horizontal travel of a step entering (px). */

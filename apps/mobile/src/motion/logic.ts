@@ -31,6 +31,31 @@ export function hapticsAllowed(platform: string, reduced: boolean): boolean {
   return !reduced && (platform === 'ios' || platform === 'android');
 }
 
+/** Moments the app confirms with a small physical tap on a phone. */
+export type FeedbackEvent = 'choice' | 'set_logged' | 'pr' | 'plan_ready';
+export type Haptic = { kind: 'impact'; weight: 'light' | 'medium' } | { kind: 'notification'; type: 'success' };
+
+/**
+ * Which tap goes with which moment: a light one for a choice, a firmer one for a set logged, and the "success" pattern
+ * for the two moments worth celebrating (a personal record, the plan being ready). Nothing at all when haptics are not
+ * allowed (web, or reduced motion).
+ */
+export function hapticFor(event: FeedbackEvent, platform: string, reduced: boolean): Haptic | null {
+  if (!hapticsAllowed(platform, reduced)) return null;
+  switch (event) {
+    case 'choice':
+      return { kind: 'impact', weight: 'light' };
+    case 'set_logged':
+      return { kind: 'impact', weight: 'medium' };
+    case 'pr':
+    case 'plan_ready':
+      return { kind: 'notification', type: 'success' };
+  }
+}
+
+/** How far a pressed thing shrinks: `1` (no change) with reduced motion, otherwise `scale`. */
+export const pressScale = (reduced: boolean, scale: number): number => (reduced ? 1 : scale);
+
 /** The number shown while counting up to `to`: eased, whole numbers, never past `to`. */
 export function countUpValue(to: number, progress: number): number {
   const p = Math.min(1, Math.max(0, progress));

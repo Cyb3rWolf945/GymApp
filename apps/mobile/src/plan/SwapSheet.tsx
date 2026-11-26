@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
 import { WorkoutPlanSchema } from '@gymapp/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { en } from '../copy/en';
 import type { PlanData } from '../home/usePlanData';
-import { useTheme } from '../theme';
-import { BottomSheet, Button, Text, useToast } from '../ui';
+import { BottomSheet, Button, InlineSkeleton, Text, useToast } from '../ui';
 import { type SwapOption, fetchSwapOptions, recordSwap } from './api';
 
 const s = en.home.swap;
@@ -26,7 +24,6 @@ interface Props {
 
 /** "Swap exercise": deterministic alternatives from the library (same muscles, your equipment, no clashes with injuries). No LLM. */
 export function SwapSheet({ target, data, onClose, onSwapped }: Props) {
-  const { colors } = useTheme();
   const { user } = useAuth();
   const toast = useToast();
   const [options, setOptions] = useState<SwapOption[] | null>(null);
@@ -64,7 +61,7 @@ export function SwapSheet({ target, data, onClose, onSwapped }: Props) {
     <BottomSheet visible={!!target} onClose={onClose} title={target ? s.title(target.name) : undefined} closeLabel={en.common.close}>
       <Text tone="muted">{s.body}</Text>
       {error ? <Text tone="danger" accessibilityRole="alert">{error}</Text> : null}
-      {!options && !error ? <ActivityIndicator color={colors.accent} /> : null}
+      {!options && !error ? <InlineSkeleton lines={3} label={en.common.loading} /> : null}
       {options && options.length === 0 ? <Text>{s.none}</Text> : null}
       {options?.map((o) => (
         <Button key={o.slug} label={s.pick(o.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />

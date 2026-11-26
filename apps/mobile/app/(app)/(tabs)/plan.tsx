@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { WEEKDAY_LABELS, WorkoutPlanSchema, formatReps, trainingWeekdays } from '@gymapp/shared';
+import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
 import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
@@ -55,5 +56,9 @@ function Plan({ data }: { data: PlanData }) {
 }
 
 export default function PlanScreen() {
-  return <PlanGate>{(data) => <Plan data={data} />}</PlanGate>;
+  return (
+    <FocusFade>
+      <PlanGate>{(data) => <Plan data={data} />}</PlanGate>
+    </FocusFade>
+  );
 }
