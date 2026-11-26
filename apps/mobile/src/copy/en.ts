@@ -642,6 +642,16 @@ export const en = {
     cta: 'Start the quiz',
     quizNote: 'It takes about a minute. See your plan before you pay.',
     signIn: 'Sign in',
+    how: {
+      title: 'How it works',
+      steps: [
+        { title: 'Answer a short quiz', body: 'Your goal, your gear and your food. It takes about a minute.' },
+        { title: 'See your plan', body: 'Workouts and meals, before you pay.' },
+        { title: 'Train and eat', body: 'Log your workouts and your plan adapts every week.' },
+      ],
+    },
+    reviewsTitle: 'What people say',
+    rated: (n: number) => `Rated ${n} out of 5`,
     points: [
       { title: 'One plan, two halves', body: 'Training and meals are built together, so your calories match your workouts.' },
       { title: 'Made for you', body: 'Your equipment, your injuries, your allergies and your schedule shape every plan.' },
@@ -677,6 +687,21 @@ export const en = {
     perDay: (price: string) => `${price}/day`,
     popular: 'Most popular',
     eliteHighlight: '+$5 for weekly auto-adjustments',
+    compare: {
+      title: 'Compare plans',
+      included: 'Included',
+      notIncluded: 'Not included',
+      // One row per feature; `true` is included, `false` is not, a string is the detail for that plan.
+      rows: [
+        { label: 'AI workouts', basic: true, pro: true, elite: true },
+        { label: 'Exercise swaps', basic: true, pro: true, elite: true },
+        { label: 'Workout log and progress', basic: true, pro: true, elite: true },
+        { label: 'Plan generation', basic: '1 a month', pro: 'Any time', elite: 'Any time, priority' },
+        { label: 'Meal plan and recipes', basic: false, pro: true, elite: true },
+        { label: 'Shopping list', basic: false, pro: true, elite: true },
+        { label: 'Weekly auto-adjustments', basic: false, pro: false, elite: true },
+      ] as { label: string; basic: boolean | string; pro: boolean | string; elite: boolean | string }[],
+    },
     plans: {
       basic: { name: 'Basic', features: ['AI workouts', '1 plan generation a month', 'Exercise swaps', 'Workout log and progress'] },
       pro: { name: 'Pro', features: ['Everything in Basic', 'Meal plan and recipes', 'Shopping list', 'Regenerate your plan any time'] },
