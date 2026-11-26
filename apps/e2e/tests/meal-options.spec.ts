@@ -14,7 +14,7 @@ async function today(page: import('@playwright/test').Page) {
   return backend;
 }
 
-const optionCards = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Use .*\. \d+ kcal/ }).filter({ visible: true });
+const optionCards = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Use .*\. \d+\skcal/ }).filter({ visible: true });
 
 test('each meal shows 2 or 3 other options, with kcal and protein; picking one changes the meal, the totals and the shopping list', async ({ page }) => {
   const backend = await today(page);
@@ -22,7 +22,7 @@ test('each meal shows 2 or 3 other options, with kcal and protein; picking one c
   const first = optionCards(page);
   await expect.poll(() => first.count()).toBeGreaterThanOrEqual(2);
   expect(await first.count()).toBeLessThanOrEqual(9); // three meals, up to three options each
-  await expect(page.getByText(/\d+ kcal · \d+ g protein/).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(/\d+\skcal · \d+\sg\sprotein/).filter({ visible: true }).first()).toBeVisible();
 
   // Breakfast options are breakfast recipes only.
   const breakfastOption = page.getByRole('button', { name: /^Use (Greek yogurt bowl|Eggs on toast|Protein pancakes)/ }).filter({ visible: true }).first();
@@ -92,4 +92,22 @@ test('Nutrition offers the same slot-fitting choices through "Swap meal" and rec
   for (const label of await picks.allTextContents()) expect(label).toMatch(/Greek yogurt bowl|Eggs on toast|Protein pancakes/);
   await picks.first().click();
   await expect.poll(() => backend.state.mealSwaps.length).toBe(1);
+});
+
+test('no number is split from its unit (kcal, g, min) and three cards share the row evenly', async ({ page }) => {
+  await today(page);
+  // Every "540 kcal", "38 g protein" and "15 min" is joined by non-breaking spaces.
+  const lines = await page.getByText(/\d+\u00A0kcal/).filter({ visible: true }).allTextContents();
+  expect(lines.length).toBeGreaterThan(0);
+  for (const line of lines) {
+    expect(line).not.toMatch(/\d [a-z]/); // a number followed by a normal space and its unit
+    expect(line).toMatch(/\d+\u00A0g\u00A0protein/);
+  }
+  // Wide layouts: the option cards in a meal are as wide as each other and share one row.
+  const vp = page.viewportSize()!;
+  if (vp.width >= 600) {
+    const boxes = await optionCards(page).evaluateAll((els) => els.slice(0, 3).map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: Math.round(r.y), w: Math.round(r.width) }; }));
+    expect(new Set(boxes.map((b) => b.y)).size).toBe(1);
+    expect(Math.max(...boxes.map((b) => b.w)) - Math.min(...boxes.map((b) => b.w))).toBeLessThanOrEqual(2);
+  }
 });

@@ -8,7 +8,7 @@ import { BottomSheet, Button, Text, TextField } from '../ui';
 const t = en.home;
 
 /** One alternative as a compact card: name, kcal, protein, prep time. */
-function OptionCard({ option, onPick, disabled }: { option: MealOption; onPick: () => void; disabled?: boolean }) {
+function OptionCard({ option, onPick, disabled, fill }: { option: MealOption; onPick: () => void; disabled?: boolean; fill?: boolean }) {
   const { colors, radius, spacing, minTapTarget } = useTheme();
   const r = option.recipe;
   return (
@@ -17,7 +17,7 @@ function OptionCard({ option, onPick, disabled }: { option: MealOption; onPick: 
       accessibilityLabel={`${t.useOption(r.name)}. ${t.optionLine(option.kcal, option.proteinG, r.prep_minutes)}`}
       disabled={disabled}
       onPress={onPick}
-      style={{ minHeight: minTapTarget, width: 168, gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: disabled ? 0.5 : 1 }}
+      style={{ minHeight: minTapTarget, ...(fill ? { flex: 1, minWidth: 0 } : { width: 168 }), gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: disabled ? 0.5 : 1 }}
     >
       <Text variant="bodyStrong" numberOfLines={2}>{r.name}</Text>
       <Text variant="caption" tone="muted">{t.optionLine(option.kcal, option.proteinG, r.prep_minutes)}</Text>
@@ -30,7 +30,7 @@ function OptionCard({ option, onPick, disabled }: { option: MealOption; onPick: 
  * "See more", which opens a sheet with up to 8 and a search box. Choosing one calls `onPick`.
  */
 export function MealOptions({ slotName, options, all, onPick, busy }: { slotName: string; options: MealOption[]; all: MealOption[]; onPick: (o: MealOption) => void; busy?: boolean }) {
-  const { spacing } = useTheme();
+  const { colors, radius, spacing, minTapTarget } = useTheme();
   const wide = useBreakpoint() !== 'compact';
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -40,8 +40,9 @@ export function MealOptions({ slotName, options, all, onPick, busy }: { slotName
     <View style={{ gap: spacing.sm }}>
       <Text variant="small" tone="muted">{t.otherOptions}</Text>
       {wide ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {options.map((o) => <OptionCard key={o.recipe.slug} option={o} disabled={busy} onPick={() => onPick(o)} />)}
+        // Equal columns across the row, so three cards fill it and none wraps alone.
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {options.map((o) => <OptionCard key={o.recipe.slug} option={o} fill disabled={busy} onPick={() => onPick(o)} />)}
         </View>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
@@ -59,16 +60,19 @@ export function MealOptions({ slotName, options, all, onPick, busy }: { slotName
         />
         {shown.length === 0 ? <Text tone="muted">{t.noOptionsFound}</Text> : null}
         {shown.map((o) => (
-          <Button
+          <Pressable
             key={o.recipe.slug}
-            label={`${t.useOption(o.recipe.name)} · ${t.optionLine(o.kcal, o.proteinG, o.recipe.prep_minutes)}`}
-            variant="secondary"
+            accessibilityRole="button"
             onPress={() => {
               setOpen(false);
               setQuery('');
               onPick(o);
             }}
-          />
+            style={{ minHeight: minTapTarget, gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt }}
+          >
+            <Text variant="bodyStrong">{t.useOption(o.recipe.name)}</Text>
+            <Text variant="caption" tone="muted">{t.optionLine(o.kcal, o.proteinG, o.recipe.prep_minutes)}</Text>
+          </Pressable>
         ))}
       </BottomSheet>
     </View>

@@ -261,7 +261,8 @@ export const en = {
     mealsProgress: (eaten: number, total: number) => `${eaten} of ${total} meals`,
     otherOptions: 'Other options',
     seeMore: 'See more',
-    optionLine: (kcal: number, proteinG: number, minutes?: number) => `${kcal} kcal · ${Math.round(proteinG)} g protein${minutes ? ` · ${minutes} min` : ''}`,
+    // Non-breaking spaces keep each number with its unit when the line wraps.
+    optionLine: (kcal: number, proteinG: number, minutes?: number) => `${kcal}\u00A0kcal · ${Math.round(proteinG)}\u00A0g\u00A0protein${minutes ? ` · ${minutes}\u00A0min` : ''}`,
     useOption: (name: string) => `Use ${name}`,
     optionsFor: (meal: string) => `Options for ${meal}`,
     searchRecipes: 'Search recipes',
