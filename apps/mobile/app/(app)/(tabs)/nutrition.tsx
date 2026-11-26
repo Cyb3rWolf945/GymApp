@@ -3,13 +3,15 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import {
-  NutritionPlanSchema, mealKind, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays, usedStarterPlan } from '@gymapp/shared';
+  NutritionPlanSchema, mealKind, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, type MealOption, nutritionDayTotals, trainingWeekdays, usedStarterPlan } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
-import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
+import { fetchAccess, recordMealSwap } from '../../../src/plan/api';
+import { newRowId, optionsForSlot, useOptionSources } from '../../../src/home/useMealOptions';
+import { trackEvent } from '../../../src/analytics/track';
 import { StarterPlanNote } from '../../../src/plan/StarterPlanNote';
 import { useTheme } from '../../../src/theme';
 import { BottomSheet, Button, Card, EmptyState, FoodArt, InlineSkeleton, ListItem, MacroKey, MacroRing, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
@@ -22,6 +24,8 @@ interface Target {
   mealIndex: number;
   slug: string;
   name: string;
+  /** The slot's name ("Dinner"): the options fit it. */
+  slot: string;
   portions: number;
 }
 
@@ -49,7 +53,8 @@ function Nutrition({ data }: { data: PlanData }) {
   }, [user]);
 
   const [target, setTarget] = useState<Target | null>(null);
-  const [options, setOptions] = useState<RecipeCandidate[] | null>(null);
+  const [options, setOptions] = useState<MealOption[] | null>(null);
+  const sources = useOptionSources(data.nutritionJobId);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -76,22 +81,21 @@ function Nutrition({ data }: { data: PlanData }) {
     setTarget(tg);
     setOptions(null);
     setError(null);
-    try {
-      const library = await fetchRecipeLibrary();
-      const inDay = plan?.days[tg.dayIndex].meals.map((m) => m.recipeSlug) ?? [];
-      setOptions(mealSwapCandidates({ slug: tg.slug, kcal: bySlug.get(tg.slug)?.kcal ?? null }, tg.portions, library, data.mealProfile, inDay));
-    } catch {
-      setError(n.swapLoadError);
-    }
+    if (!sources) return setError(n.swapLoadError);
+    const inDay = plan?.days[tg.dayIndex].meals.map((m) => m.recipeSlug) ?? [];
+    const cur = bySlug.get(tg.slug);
+    setOptions(optionsForSlot(sources, user?.id, { current: { slug: tg.slug, kcal: cur?.kcal ?? null, portions: tg.portions, proteinG: cur?.protein_g ?? null }, slotName: tg.slot, profile: data.mealProfile, usedInDay: inDay }));
+    trackEvent('meal_option_viewed', { placement: 'nutrition', slot: mealKind(tg.slot), source: usedStarterPlan(data.nutritionResult) ? 'template' : 'planner' });
   };
-  const choose = async (o: RecipeCandidate) => {
+  const choose = async (o: MealOption) => {
     if (!user || !target) return;
     setSaving(true);
-    const ok = await recordMealSwap(user.id, data.nutritionJobId, target.dayIndex, target.mealIndex, target.slug, o.slug);
+    const ok = await recordMealSwap(user.id, data.nutritionJobId, target.dayIndex, target.mealIndex, target.slug, o.recipe.slug, o.portions, newRowId());
+    if (ok) trackEvent('meal_swapped', { placement: 'nutrition', slot: mealKind(target.slot), source: usedStarterPlan(data.nutritionResult) ? 'template' : 'planner' });
     setSaving(false);
     if (!ok) return setError(n.swapSaveError);
     setTarget(null);
-    toast.show(n.swapDone(o.name), 'success');
+    toast.show(n.swapDone(o.recipe.name), 'success');
     reload();
   };
 
@@ -141,7 +145,7 @@ function Nutrition({ data }: { data: PlanData }) {
                             variant="small"
                             tone="accent"
                             accessibilityRole="button"
-                            onPress={() => void openSwap({ dayIndex: di, mealIndex: j, slug: m.recipeSlug, name: r?.name ?? m.recipeSlug, portions: m.portions })}
+                            onPress={() => void openSwap({ dayIndex: di, mealIndex: j, slug: m.recipeSlug, name: r?.name ?? m.recipeSlug, slot: m.name, portions: m.portions })}
                           >
                             {n.swapMeal}
                           </Text>
@@ -161,7 +165,7 @@ function Nutrition({ data }: { data: PlanData }) {
         {!options && !error ? <InlineSkeleton lines={3} label={en.common.loading} /> : null}
         {options && options.length === 0 ? <Text>{n.swapNone}</Text> : null}
         {options?.map((o) => (
-          <Button key={o.slug} label={n.swapPick(o.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />
+          <Button key={o.recipe.slug} label={n.swapPick(o.recipe.name)} variant="secondary" loading={saving} onPress={() => void choose(o)} />
         ))}
       </BottomSheet>
     </Screen>

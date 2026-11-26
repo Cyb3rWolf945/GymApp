@@ -374,6 +374,7 @@ export type Database = {
           from_slug: string;
           to_slug: string;
           created_at: string;
+          portions: number | null;
         };
         Insert: {
           id?: string;
@@ -384,6 +385,7 @@ export type Database = {
           from_slug: string;
           to_slug: string;
           created_at?: string;
+          portions?: number | null;
         };
         Update: Partial<Database['public']['Tables']['meal_swaps']['Insert']>;
       };
