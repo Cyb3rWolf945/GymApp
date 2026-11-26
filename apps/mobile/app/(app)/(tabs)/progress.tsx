@@ -7,6 +7,7 @@ import {
 } from '@gymapp/shared';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../src/auth/AuthProvider';
+import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
@@ -30,7 +31,7 @@ interface Row {
 const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 /** Progress: body weight, personal records, strength trend, a muscle map and the workout history. */
-export default function ProgressScreen() {
+function ProgressTab() {
   const router = useRouter();
   const { user } = useAuth();
   const { spacing } = useTheme();
@@ -238,5 +239,14 @@ export default function ProgressScreen() {
         ) : null}
       </BottomSheet>
     </Screen>
+  );
+}
+
+/** The screen, cross-fading in each time its tab is shown. */
+export default function ProgressScreen() {
+  return (
+    <FocusFade>
+      <ProgressTab />
+    </FocusFade>
   );
 }

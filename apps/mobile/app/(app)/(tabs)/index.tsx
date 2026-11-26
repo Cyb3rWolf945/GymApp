@@ -7,6 +7,7 @@ import { PastDueBanner } from '../../../src/billing/PastDueBanner';
 import { WeeklyCheckinCard } from '../../../src/checkin/WeeklyCheckinCard';
 import { WeeklyChangesCard } from '../../../src/plan/WeeklyChangesCard';
 import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
+import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
 import { PlanGate } from '../../../src/home/PlanGate';
@@ -121,5 +122,9 @@ function Today({ data }: { data: PlanData }) {
 }
 
 export default function TodayScreen() {
-  return <PlanGate>{(data) => <Today data={data} />}</PlanGate>;
+  return (
+    <FocusFade>
+      <PlanGate>{(data) => <Today data={data} />}</PlanGate>
+    </FocusFade>
+  );
 }

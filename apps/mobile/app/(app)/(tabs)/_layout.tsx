@@ -1,7 +1,6 @@
 import type { ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
 import { PlanDataProvider } from '../../../src/home/usePlanData';
-import { FocusFade } from '../../../src/motion';
 import { Icon, type IconName } from '../../../src/ui';
 import { en } from '../../../src/copy/en';
 import { SIDE_NAV_WIDTH, fonts, useBreakpoint, useTheme } from '../../../src/theme';
@@ -29,8 +28,6 @@ export default function TabsLayout() {
   return (
     <PlanDataProvider>
       <Tabs
-        // Switching tabs cross-fades the new screen in (nothing with reduced motion).
-        screenLayout={({ children }) => <FocusFade>{children}</FocusFade>}
         screenOptions={{
           headerShown: false,
           tabBarPosition: side ? 'left' : 'bottom',

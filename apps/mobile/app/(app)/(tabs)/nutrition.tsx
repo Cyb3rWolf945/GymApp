@@ -5,6 +5,7 @@ import {
   NutritionPlanSchema, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays,
 } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
+import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
@@ -153,5 +154,9 @@ function Nutrition({ data }: { data: PlanData }) {
 }
 
 export default function NutritionScreen() {
-  return <PlanGate>{(data) => <Nutrition data={data} />}</PlanGate>;
+  return (
+    <FocusFade>
+      <PlanGate>{(data) => <Nutrition data={data} />}</PlanGate>
+    </FocusFade>
+  );
 }
