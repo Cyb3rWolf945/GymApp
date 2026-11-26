@@ -147,6 +147,39 @@ test('a pressed button springs in, and springs back when let go', async ({ page 
   await expect.poll(() => scaleOf(page, en.common.continue), 'springs back').toBeGreaterThan(0.999);
 });
 
+/** A list row (a ListItem): its layout and its press scale, read from the element inside the press target. */
+async function pressRow(page: Page, name: RegExp) {
+  const row = page.getByRole('button', { name }).filter({ visible: true }).first();
+  await row.waitFor();
+  const layout = await row.evaluate((el) => {
+    const inner = el.firstElementChild as HTMLElement;
+    const cs = getComputedStyle(inner);
+    return { height: inner.getBoundingClientRect().height, direction: cs.flexDirection, border: cs.borderBottomWidth };
+  });
+  const scale = () =>
+    row.evaluate((el) => {
+      const m = getComputedStyle(el.firstElementChild as HTMLElement).transform.match(/matrix\(([^,]+),/);
+      return m ? Number(m[1]) : 1;
+    });
+  const box = (await row.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  return { layout, scale, release: async () => { await page.mouse.move(box.x + box.width / 2, box.y - 80); await page.mouse.up(); } };
+}
+
+test('a list row keeps its layout and springs in a touch when pressed', async ({ page }) => {
+  await signedInWithPlan(page, { fixedTime: false });
+  await expect(shown(page, en.home.title)).toBeVisible();
+  const r = await pressRow(page, /Barbell bench press/);
+  expect(r.layout.height, 'min height of a row').toBeGreaterThanOrEqual(56);
+  expect(r.layout.direction).toBe('row');
+  expect(r.layout.border).toBe('1px');
+  await expect.poll(r.scale, 'shrinks while pressed').toBeLessThan(0.999);
+  expect(await r.scale()).toBeGreaterThan(0.95); // a touch, not a collapse
+  await r.release();
+  await expect.poll(r.scale, 'springs back').toBeGreaterThan(0.999);
+});
+
 test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
@@ -160,6 +193,17 @@ test.describe('reduced motion', () => {
     expect(await scaleOf(page, en.common.continue)).toBe(1);
     await page.mouse.move(box.x + box.width / 2, box.y - 40);
     await page.mouse.up();
+  });
+
+  test('a list row keeps its layout and does not move when pressed', async ({ page }) => {
+    await signedInWithPlan(page);
+    await expect(shown(page, en.home.title)).toBeVisible();
+    const r = await pressRow(page, /Barbell bench press/);
+    expect(r.layout.height).toBeGreaterThanOrEqual(56);
+    expect(r.layout.direction).toBe('row');
+    await page.waitForTimeout(300);
+    expect(await r.scale()).toBe(1);
+    await r.release();
   });
 
   test('switching tabs shows the new screen at once', async ({ page }) => {
