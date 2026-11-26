@@ -44,13 +44,12 @@ test('Front and Back switch the muscles shown', async ({ page }) => {
 test('tapping a muscle highlights it and opens its details, with the exercises linking to the exercise', async ({ page }) => {
   await progress(page);
   await page.locator('svg path[aria-label^="Pectoralis major"]').first().click();
-  const sheet = page.getByRole('dialog');
+  const sheet = page.getByRole('dialog', { name: 'Pectoralis major' });
   await expect(sheet).toBeVisible();
   await expect(sheet).toContainText('Pectoralis major');
-  await expect(sheet).toContainText(p.sheetWeekly);
-  await expect(sheet).toContainText(p.sheetTop);
-  const link = sheet.getByRole('button').filter({ hasText: /sets?$/ }).first();
-  await link.click();
+  await expect(sheet).toContainText(p.detail.setsWeek);
+  await expect(sheet).toContainText(p.detail.top);
+  await sheet.getByTestId('top-exercise').first().getByRole('button').first().click();
   await expect(page).toHaveURL(/\/exercise\//);
 });
 

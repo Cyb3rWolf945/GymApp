@@ -45,9 +45,8 @@ test('signed in: every main screen prints no unknown-prop warnings, and a muscle
 
   // Click: the details open.
   await muscles.first().click();
-  const sheet = page.getByRole('dialog');
+  const sheet = page.getByRole('dialog').filter({ hasText: en.home.progress.detail.setsWeek });
   await expect(sheet).toBeVisible();
-  await expect(sheet).toContainText(en.home.progress.sheetWeekly);
   await page.goto('/progress');
   await expect(sheet).toBeHidden();
 
