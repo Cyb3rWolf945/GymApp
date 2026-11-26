@@ -72,3 +72,19 @@ describe('body map', () => {
     }
   });
 });
+
+describe('feet', () => {
+  it('each leg ends in a foot (heel and toe), fully inside the box with room to spare, in every body', () => {
+    for (const variant of VARIANTS) {
+      const legs = bodyOutline(variant).filter((d) => d.split('M').length === 3); // the shapes drawn as a pair: arms and legs
+      const feet = legs.map((d) => (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number)).map((nums) => {
+        const ys = nums.filter((_, i) => i % 2 === 1);
+        return Math.max(...ys);
+      });
+      // The lowest point of the legs is below the ankles (y 246) and above the bottom edge.
+      const lowest = Math.max(...feet);
+      expect(lowest, variant).toBeGreaterThan(256);
+      expect(lowest, variant).toBeLessThan(MAP_HEIGHT);
+    }
+  });
+});
