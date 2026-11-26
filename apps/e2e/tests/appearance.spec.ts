@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
+import { palettes } from '../../mobile/src/theme/tokens';
 import { chip, shown, signedInWithPlan } from '../support/app';
 
 const a = en.appearance;
 const state = (page: Page) =>
   page.evaluate(() => ({ scheme: document.documentElement.dataset.scheme, bg: getComputedStyle(document.documentElement).backgroundColor }));
-const DARK = { scheme: 'dark', bg: 'rgb(11, 11, 15)' };
-const LIGHT = { scheme: 'light', bg: 'rgb(246, 246, 248)' };
+// The page colour comes from the tokens, so a palette change does not need touching here.
+const rgb = (hex: string) => `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+const DARK = { scheme: 'dark', bg: rgb(palettes.dark.background) };
+const LIGHT = { scheme: 'light', bg: rgb(palettes.light.background) };
 
 test('System is the default and follows the OS live, without a reload', async ({ page }) => {
   await signedInWithPlan(page);
