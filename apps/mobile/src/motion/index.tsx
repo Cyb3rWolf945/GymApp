@@ -3,7 +3,7 @@ import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'reac
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { type MotionEasing, motion } from '../theme/tokens';
-import { type FeedbackEvent, type StepDirection, countUpValue, durationFor, hapticFor, pressScale, slideOffset } from './logic';
+import { type FeedbackEvent, type StepDirection, countUpValue, createCelebrationLedger, createVisitTracker, durationFor, hapticFor, pressScale, revealDelay, revealsIn, slideOffset } from './logic';
 import { useReducedMotion } from './useReducedMotion';
 
 export { useReducedMotion } from './useReducedMotion';
@@ -163,4 +163,80 @@ export function useCountUp(to: number): number {
     };
   }, [to, reduced]);
   return value;
+}
+
+// ---- E-63: motion across the app
+
+const visits = createVisitTracker();
+const celebrations = createCelebrationLedger();
+
+/**
+ * True on the first visit to this screen in the session (decided once, when the screen mounts), false afterwards.
+ * Pass it to `Reveal`: content staggers in on the first visit only; later visits use just the quick cross-fade.
+ */
+export function useFirstVisit(screen: string): boolean {
+  const [first] = useState(() => visits.isFirst(screen));
+  useEffect(() => {
+    visits.mark(screen);
+  }, [screen]);
+  return first;
+}
+
+/**
+ * One item of a screen's entrance: it rises and fades in, a little after the one before it. Only the first 8 items, only on
+ * the first visit, never with reduced motion: otherwise it is just its children (no wrapper, so layouts do not change).
+ */
+export function Reveal({ first, index = 0, style, children }: { first: boolean; index?: number; style?: StyleProp<ViewStyle>; children: ReactNode }) {
+  const reduced = useReducedMotion();
+  if (!revealsIn(index, first, reduced)) return style ? <Animated.View style={style}>{children}</Animated.View> : <>{children}</>;
+  return (
+    <FadeSlideIn direction="up" delay={revealDelay(index, first, reduced)} style={style}>
+      {children}
+    </FadeSlideIn>
+  );
+}
+
+/**
+ * Progress 0 to 1 over `ms`, restarting whenever `runKey` changes (new data). Reduced motion: 1 at once, so the final state
+ * shows immediately. Not on the native driver: it drives SVG props, which JS has to set.
+ */
+export function useRunProgress(runKey: string | number, ms: number): number {
+  const reduced = useReducedMotion();
+  const [t, setT] = useState(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) {
+      setT(1);
+      return;
+    }
+    setT(0);
+    const v = new Animated.Value(0);
+    const id = v.addListener(({ value }) => setT(value));
+    const run = Animated.timing(v, { toValue: 1, duration: ms, easing: Easing.linear, useNativeDriver: false });
+    run.start(({ finished }) => finished && setT(1));
+    return () => {
+      run.stop();
+      v.removeListener(id);
+    };
+  }, [runKey, ms, reduced]);
+  return t;
+}
+
+/** A one-time celebration: true the first time `id` is seen in the session (a new PR), never again on re-render or re-visit. */
+export function useCelebrateOnce(id: string): boolean {
+  const [now] = useState(() => celebrations.once(id));
+  return now;
+}
+
+/** Pops in (scales up with a spring) when `active`; otherwise it is just there. Reduced motion: no pop. */
+export function PopIn({ active, children, style }: { active: boolean; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const reduced = useReducedMotion();
+  const play = active && !reduced;
+  const scale = useRef(new Animated.Value(play ? 0.85 : 1)).current;
+  useEffect(() => {
+    if (!play) return;
+    const run = Animated.spring(scale, { toValue: 1, stiffness: 260, damping: 12, mass: 1, useNativeDriver: true });
+    run.start();
+    return () => run.stop();
+  }, [play, scale]);
+  return <Animated.View style={[{ transform: [{ scale }] }, style]}>{children}</Animated.View>;
 }

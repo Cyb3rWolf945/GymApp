@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
@@ -12,7 +13,8 @@ import { AccountModalProvider } from '../src/onboarding/AccountModalProvider';
 import { OnboardingProvider } from '../src/onboarding/OnboardingProvider';
 import { useSaveOnboarding } from '../src/onboarding/useSaveOnboarding';
 import { AppThemeProvider, useTheme } from '../src/theme';
-import { ToastProvider } from '../src/ui';
+import { FadeSlideIn } from '../src/motion';
+import { Splash, ToastProvider } from '../src/ui';
 
 // Signed-out visitors start on the landing page (web) or in onboarding (native: the landing page redirects).
 export const unstable_settings = { initialRouteName: 'landing' };
@@ -27,8 +29,10 @@ function RootStack() {
   const { session, loading } = useAuth();
   const { colors } = useTheme();
   useSaveOnboarding();
-  if (loading) return null;
+  // While the session loads: the splash, not a blank screen. The first screen then fades in over the same background.
+  if (loading) return <Splash />;
   return (
+    <FadeSlideIn style={{ flex: 1 }}>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -49,6 +53,7 @@ function RootStack() {
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
+    </FadeSlideIn>
   );
 }
 
@@ -56,11 +61,24 @@ function RootStack() {
 const FONTS = { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold, ...Ionicons.font };
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts(FONTS);
-  // If a font fails to load the app still opens (in the system face); it never sits on a blank screen.
-  if (!loaded && !error) return null;
   return (
     <AppThemeProvider>
+      <FontGate>
+        <AppProviders />
+      </FontGate>
+    </AppThemeProvider>
+  );
+}
+
+/** The splash until the fonts are in; if a font fails to load the app still opens (in the system face), never on a blank screen. */
+function FontGate({ children }: { children: ReactNode }) {
+  const [loaded, error] = useFonts(FONTS);
+  if (!loaded && !error) return <Splash />;
+  return <>{children}</>;
+}
+
+function AppProviders() {
+  return (
       <ToastProvider>
         <AuthProvider>
           <OnboardingProvider>
@@ -75,6 +93,5 @@ export default function RootLayout() {
           </OnboardingProvider>
         </AuthProvider>
       </ToastProvider>
-    </AppThemeProvider>
   );
 }

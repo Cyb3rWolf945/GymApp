@@ -2,6 +2,8 @@ export { BottomSheet } from './BottomSheet';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { Celebration } from './Celebration';
+export { FillBar } from './FillBar';
+export { Splash } from './Splash';
 export { Chip, ChipGroup } from './Chip';
 export { ChoiceCard, ChoiceCardGroup } from './ChoiceCard';
 export { EmptyState } from './EmptyState';

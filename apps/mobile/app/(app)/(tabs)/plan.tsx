@@ -1,3 +1,4 @@
+import { Reveal, useFirstVisit } from '../../../src/motion';
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
@@ -14,6 +15,7 @@ const t = en.home;
 
 function Plan({ data }: { data: PlanData }) {
   const { spacing } = useTheme();
+  const first = useFirstVisit('plan');
   const router = useRouter();
   const parsed = useMemo(() => WorkoutPlanSchema.safeParse((data.workoutResult as { plan?: unknown } | null)?.plan), [data]);
   const plan = parsed.success ? parsed.data : null;
@@ -30,7 +32,8 @@ function Plan({ data }: { data: PlanData }) {
         </Card>
         <ResponsiveGrid gap={spacing.xl}>
         {plan?.days.map((d, i) => (
-          <Card key={`${d.name}-${i}`} style={{ gap: spacing.sm }}>
+          <Reveal key={`${d.name}-${i}`} first={first} index={i}>
+          <Card style={{ gap: spacing.sm }}>
             <Text variant="small" tone="muted">{WEEKDAY_LABELS[weekdays[i]]}</Text>
             <Text variant="heading">{d.name}</Text>
             {d.exercises.map((e) => (
@@ -43,6 +46,7 @@ function Plan({ data }: { data: PlanData }) {
               />
             ))}
           </Card>
+          </Reveal>
         ))}
         </ResponsiveGrid>
         {plan ? (

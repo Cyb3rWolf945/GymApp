@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { STEP_IDS } from '@gymapp/shared';
 import { motion } from '../theme/tokens';
-import { countUpValue, createTapLock, durationFor, hapticFor, hapticsAllowed, pressScale, slideOffset, staggerDelay, stepDirection } from './logic';
+import {
+  LINE_DRAW_SHARE, SCREEN_STAGGER_MS, STAGGER_MAX_ITEMS, blendIntensity, countUpValue, createCelebrationLedger, createTapLock, createVisitTracker, drawDash, durationFor, hapticFor, hapticsAllowed,
+  lineProgress, pointsOpacity, polylineLength, pressScale, regionProgress, revealDelay, revealsIn, slideOffset, staggerDelay, stepDirection,
+} from './logic';
 
 describe('motion tokens', () => {
   it('durations are about 150 / 250 / 400 ms and in order', () => {
@@ -141,5 +144,91 @@ describe('spring press states', () => {
     const ratio = damping / (2 * Math.sqrt(stiffness * mass));
     expect(ratio).toBeGreaterThan(0.5);
     expect(ratio).toBeLessThan(1.2);
+  });
+});
+
+describe('first visit gating (E-63)', () => {
+  it('a screen is new until it is marked, and reading does not change that', () => {
+    const v = createVisitTracker();
+    expect(v.isFirst('today')).toBe(true);
+    expect(v.isFirst('today')).toBe(true); // several parts of the screen ask at once
+    v.mark('today');
+    expect(v.isFirst('today')).toBe(false);
+    expect(v.isFirst('progress')).toBe(true);
+    v.reset();
+    expect(v.isFirst('today')).toBe(true);
+  });
+  it('items stagger only on the first visit, and only the first 8', () => {
+    expect(revealDelay(0, true, false)).toBe(0);
+    expect(revealDelay(3, true, false)).toBe(3 * SCREEN_STAGGER_MS);
+    expect(revealDelay(STAGGER_MAX_ITEMS - 1, true, false)).toBe((STAGGER_MAX_ITEMS - 1) * SCREEN_STAGGER_MS);
+    expect(revealDelay(STAGGER_MAX_ITEMS, true, false)).toBe(0);
+    expect(revealDelay(3, false, false)).toBe(0); // later visits: no stagger
+    expect(revealDelay(3, true, true)).toBe(0); // reduced motion
+    expect(revealsIn(7, true, false)).toBe(true);
+    expect(revealsIn(8, true, false)).toBe(false);
+    expect(revealsIn(0, false, false)).toBe(false);
+    expect(revealsIn(0, true, true)).toBe(false);
+  });
+  it('the whole stagger of a screen stays inside the 400 ms entry budget', () => {
+    expect(revealDelay(STAGGER_MAX_ITEMS - 1, true, false) + motion.duration.base).toBeLessThanOrEqual(400);
+  });
+});
+
+describe('chart draw (E-63)', () => {
+  it('measures a line', () => {
+    expect(polylineLength([])).toBe(0);
+    expect(polylineLength([{ x: 0, y: 0 }])).toBe(0);
+    expect(polylineLength([{ x: 0, y: 0 }, { x: 3, y: 4 }, { x: 3, y: 10 }])).toBe(11);
+  });
+  it('draws left to right: nothing at 0, all at 1, clamped, and the whole line without progress info', () => {
+    expect(drawDash(200, 0)).toEqual({ dasharray: '200 200', dashoffset: 200 });
+    expect(drawDash(200, 0.25).dashoffset).toBe(150);
+    expect(drawDash(200, 1).dashoffset).toBe(0);
+    expect(drawDash(200, 7).dashoffset).toBe(0);
+    expect(drawDash(200, -3).dashoffset).toBe(200);
+    expect(drawDash(200, undefined).dashoffset).toBe(0);
+    expect(drawDash(-5, 0.5)).toEqual({ dasharray: '0 0', dashoffset: 0 });
+  });
+  it('the line draws first, then the points appear', () => {
+    expect(lineProgress(0)).toBe(0);
+    expect(lineProgress(LINE_DRAW_SHARE)).toBe(1);
+    expect(pointsOpacity(LINE_DRAW_SHARE)).toBe(0);
+    expect(pointsOpacity(1)).toBe(1);
+    expect(pointsOpacity(0.5)).toBe(0);
+    expect(lineProgress(1)).toBe(1);
+  });
+});
+
+describe('muscle map fill (E-63)', () => {
+  it('blends from the old intensity to the new one, eased and clamped', () => {
+    expect(blendIntensity(0, 1, 0)).toBe(0);
+    expect(blendIntensity(0, 1, 1)).toBe(1);
+    expect(blendIntensity(0.2, 0.8, 1)).toBeCloseTo(0.8, 9);
+    expect(blendIntensity(0.8, 0.2, 1)).toBeCloseTo(0.2, 9); // down as well as up
+    expect(blendIntensity(0, 1, 0.5)).toBeGreaterThan(0.5); // eased out
+    expect(blendIntensity(0, 1, 9)).toBe(1);
+    expect(blendIntensity(0.3, 0.9, -1)).toBeCloseTo(0.3, 9);
+  });
+  it('regions fill top to bottom, staggered, all done within the total time', () => {
+    const count = 10;
+    expect(regionProgress(0, 0, count)).toBe(0);
+    expect(regionProgress(1, count - 1, count)).toBe(1);
+    // At 50% overall the top region is done and the bottom one has not started.
+    expect(regionProgress(0.5, 0, count)).toBe(1);
+    expect(regionProgress(0.2, count - 1, count)).toBe(0);
+    for (let i = 1; i < count; i++) expect(regionProgress(0.4, i, count)).toBeLessThanOrEqual(regionProgress(0.4, i - 1, count));
+    expect(regionProgress(0.5, 0, 1)).toBe(0.5);
+  });
+});
+
+describe('celebrate once (E-63)', () => {
+  it('a new PR celebrates the first time only', () => {
+    const l = createCelebrationLedger();
+    expect(l.once('w1:squat')).toBe(true);
+    expect(l.once('w1:squat')).toBe(false);
+    expect(l.once('w1:bench')).toBe(true);
+    l.reset();
+    expect(l.once('w1:squat')).toBe(true);
   });
 });

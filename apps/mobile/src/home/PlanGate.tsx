@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { en } from '../copy/en';
+import { FadeSlideIn } from '../motion';
 import { useTheme } from '../theme';
 import { EmptyState, ScreenSkeleton, Screen } from '../ui';
 import { type PlanData, usePlanData } from './usePlanData';
@@ -28,5 +29,6 @@ export function PlanGate({ children }: { children: (data: PlanData) => ReactNode
       </View>
     );
   }
-  return <>{children(state.data)}</>;
+  // The skeleton gives way to the content with a fade, not a swap.
+  return <FadeSlideIn style={{ flex: 1 }}>{children(state.data)}</FadeSlideIn>;
 }

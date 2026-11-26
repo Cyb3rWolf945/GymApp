@@ -15,16 +15,18 @@ import { PlanGate } from '../../../src/home/PlanGate';
 import type { PlanData } from '../../../src/home/usePlanData';
 import { useBreakpoint, useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
-import { Button, Card, ListItem, Screen, StatTile, Text } from '../../../src/ui';
+import { Button, Card, FillBar, ListItem, Screen, StatTile, Text } from '../../../src/ui';
+import { Reveal, useFirstVisit } from '../../../src/motion';
 
 const t = en.home;
 
 function Today({ data }: { data: PlanData }) {
-  const { colors, spacing, radius } = useTheme();
+  const { spacing } = useTheme();
   const router = useRouter();
   const wide = useBreakpoint() !== 'compact';
   const { active, start } = useWorkout();
   const { style } = useCoachStyle();
+  const first = useFirstVisit('today');
   const now = useMemo(() => new Date(), []);
   const day = dateKey(now);
   const [eaten, setEaten] = useState<number[]>([]);
@@ -61,6 +63,7 @@ function Today({ data }: { data: PlanData }) {
       {/* Workout and meals side by side from `medium` up, stacked on phones. */}
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
         <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>
+        <Reveal first={first} index={1}>
         {workout?.kind === 'workout' ? (
           <WorkoutHero dayName={workout.dayName} meta={t.workoutMeta(workout.exercises.length, workout.minutes)}>
             {workout.exercises.map((e) => (
@@ -83,25 +86,25 @@ function Today({ data }: { data: PlanData }) {
             {workout.next ? <Text variant="bodyStrong">{t.nextWorkout(WEEKDAY_LABELS[workout.next.weekday], workout.next.dayName)}</Text> : null}
           </Card>
         ) : null}
+        </Reveal>
         </View>
 
         {meals && progress ? (
           <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%' }}>
+          <Reveal first={first} index={2}>
           <Card style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Text variant="heading">{t.mealsTitle}</Text>
               <Text variant="small" tone="muted">{t.mealsProgress(progress.eatenCount, progress.total)}</Text>
             </View>
-            <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress.fraction * 100) }} style={{ height: 6, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }}>
-              <View style={{ width: `${progress.fraction * 100}%`, height: 6, borderRadius: radius.sm, backgroundColor: colors.accent }} />
+            <FillBar fraction={progress.fraction} />
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <StatTile label={en.plan.preview.kcal} value={n(progress.eaten.kcal)} countTo={Math.round(progress.eaten.kcal)} hint={target ? t.target(target) : `of ${n(meals.totals.kcal)} kcal`} />
+              <StatTile label={en.plan.preview.protein} value={n(progress.eaten.proteinG)} countTo={Math.round(progress.eaten.proteinG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].proteinG} g` : undefined} />
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <StatTile label={en.plan.preview.kcal} value={n(progress.eaten.kcal)} hint={target ? t.target(target) : `of ${n(meals.totals.kcal)} kcal`} />
-              <StatTile label={en.plan.preview.protein} value={n(progress.eaten.proteinG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].proteinG} g` : undefined} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <StatTile label={en.plan.preview.carbs} value={n(progress.eaten.carbsG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].carbsG} g` : undefined} />
-              <StatTile label={en.plan.preview.fat} value={n(progress.eaten.fatG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].fatG} g` : undefined} />
+              <StatTile label={en.plan.preview.carbs} value={n(progress.eaten.carbsG)} countTo={Math.round(progress.eaten.carbsG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].carbsG} g` : undefined} />
+              <StatTile label={en.plan.preview.fat} value={n(progress.eaten.fatG)} countTo={Math.round(progress.eaten.fatG)} unit="g" hint={data.targets ? `of ${data.targets[meals.dayType].fatG} g` : undefined} />
             </View>
             {meals.meals.map((m, i) => (
               <ListItem
@@ -113,6 +116,7 @@ function Today({ data }: { data: PlanData }) {
               />
             ))}
           </Card>
+          </Reveal>
           </View>
         ) : null}
       </View>

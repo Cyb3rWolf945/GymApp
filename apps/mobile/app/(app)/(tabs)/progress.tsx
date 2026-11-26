@@ -11,6 +11,7 @@ import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
 import { MuscleMap } from '../../../src/progress/MuscleMap';
+import { Reveal, useFirstVisit } from '../../../src/motion';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
@@ -32,6 +33,7 @@ const shortDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toL
 
 /** Progress: body weight, personal records, strength trend, a muscle map and the workout history. */
 function ProgressTab() {
+  const first = useFirstVisit('progress');
   const router = useRouter();
   const { user } = useAuth();
   const { spacing } = useTheme();
@@ -125,6 +127,7 @@ function ProgressTab() {
 
         <ResponsiveGrid gap={spacing.xl} columns={{ expanded: 2 }}>
         {rows !== null && !failed ? (
+          <Reveal first={first} index={0}>
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.weightTitle}</Text>
             {trend.length === 0 ? (
@@ -151,9 +154,11 @@ function ProgressTab() {
             </View>
             {weightError ? <Text tone="danger" accessibilityRole="alert">{weightError}</Text> : null}
           </Card>
+          </Reveal>
         ) : null}
 
         {rows !== null && !failed ? (
+          <Reveal first={first} index={1}>
           <Card style={{ gap: spacing.xs }}>
             <Text variant="heading">{p.prsTitle}</Text>
             {prs.length === 0 ? (
@@ -167,9 +172,11 @@ function ProgressTab() {
               </>
             )}
           </Card>
+          </Reveal>
         ) : null}
 
         {rows !== null && !failed ? (
+          <Reveal first={first} index={2}>
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.trendTitle}</Text>
             {lifts.length === 0 ? (
@@ -190,9 +197,11 @@ function ProgressTab() {
               </>
             )}
           </Card>
+          </Reveal>
         ) : null}
 
         {rows !== null && !failed ? (
+          <Reveal first={first} index={3}>
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{p.mapTitle}</Text>
             <Text tone="muted">{p.mapBody}</Text>
@@ -208,6 +217,7 @@ function ProgressTab() {
               trained.map((s) => <ListItem key={s.muscle} title={muscleLabel(s.muscle)} subtitle={p.sets(s.sets)} onPress={() => setSelected(s.muscle)} />)
             )}
           </Card>
+          </Reveal>
         ) : null}
         </ResponsiveGrid>
 
