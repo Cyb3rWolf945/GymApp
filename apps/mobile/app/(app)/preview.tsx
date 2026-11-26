@@ -7,6 +7,7 @@ import { en } from '../../src/copy/en';
 import { FadeSlideIn, staggerDelay, useReducedMotion } from '../../src/motion';
 import { trackEvent } from '../../src/analytics/track';
 import { fetchAccess, fetchCatalogNames, fetchJobs } from '../../src/plan/api';
+import { StarterPlanNote } from '../../src/plan/StarterPlanNote';
 import { useTheme } from '../../src/theme';
 import { Button, Card, Celebration, EmptyState, ListItem, Screen, ScreenSkeleton, StatTile, Text } from '../../src/ui';
 
@@ -65,7 +66,7 @@ export default function Preview() {
     <Screen footer={<Button label={t.cta} onPress={() => router.replace(entitled ? '/' : '/paywall')} />}>
         <Celebration />
         <Text variant="display">{t.title}</Text>
-        {state.starter ? <Text tone="muted">{en.plan.starterPlan}</Text> : null}
+        {state.starter ? <StarterPlanNote /> : null}
 
         {/* The cards reveal one after another. */}
         <FadeSlideIn direction="up" delay={staggerDelay(1, reduced)}>

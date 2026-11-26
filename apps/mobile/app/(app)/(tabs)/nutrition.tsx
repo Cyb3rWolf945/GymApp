@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  NutritionPlanSchema, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays,
-} from '@gymapp/shared';
+  NutritionPlanSchema, type RecipeCandidate, WEEKDAYS, WEEKDAY_LABELS, WorkoutPlanSchema, mealSwapCandidates, nutritionDayTotals, trainingWeekdays, usedStarterPlan } from '@gymapp/shared';
 import { useAuth } from '../../../src/auth/AuthProvider';
 import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { PlanGate } from '../../../src/home/PlanGate';
 import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
+import { StarterPlanNote } from '../../../src/plan/StarterPlanNote';
 import { useTheme } from '../../../src/theme';
 import { BottomSheet, Button, Card, EmptyState, InlineSkeleton, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
@@ -97,6 +97,7 @@ function Nutrition({ data }: { data: PlanData }) {
   return (
     <Screen variant="dashboard">
         <Text variant="display">{t.nutritionTitle}</Text>
+        {plan && usedStarterPlan(data.nutritionResult) ? <StarterPlanNote /> : null}
         {plan ? <Text tone="muted">{n.swapNote}</Text> : null}
         {plan ? <Button label={n.shoppingList} variant="secondary" onPress={() => router.push('/shopping')} /> : null}
         {plan ? (
