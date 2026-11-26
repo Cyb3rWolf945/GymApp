@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { MAP_HEIGHT, MAP_REGIONS, MAP_WIDTH, type MapView, type MuscleId, type MuscleStat, ellipsePath, heat, muscleLabel, regionShapes } from '@gymapp/shared';
 import { plural } from '../copy/plural';
 import { blendIntensity, regionProgress, useRunProgress } from '../motion';
 import { useTheme } from '../theme';
+import { pressableSvgProps } from './pressableSvg';
 
 interface Props {
   view: MapView;
@@ -38,6 +39,8 @@ export function MuscleMap({ view, stats, onSelect, highlight, height = 340 }: Pr
   useEffect(() => {
     if (t >= 1) from.current = new Map(targets.map((x) => [x.key, x.h]));
   }, [t, targets]);
+  // Web keyboard focus: the region the keyboard is on gets a visible outline (SVG has no CSS outline of its own here).
+  const [focused, setFocused] = useState<string | null>(null);
   const order = new Map(ordered.map((x, i) => [x.key, i]));
   return (
     <View style={{ alignItems: 'center' }}>
@@ -58,10 +61,13 @@ export function MuscleMap({ view, stats, onSelect, highlight, height = 340 }: Pr
               fill={cur > 0.001 ? colors.accent : colors.border}
               // Empty regions are the neutral tone; as they fill the accent comes in with the intensity.
               fillOpacity={cur > 0.001 ? Math.min(1, (0.25 + 0.75 * cur) * Math.min(1, cur * 6)) : 0.6}
-              stroke={colors.background}
-              strokeWidth={0.8}
+              stroke={focused === r.key ? colors.text : colors.background}
+              strokeWidth={focused === r.key ? 2 : 0.8}
               accessibilityLabel={label}
-              onPress={onSelect ? () => onSelect(r.muscle) : undefined}
+              {...pressableSvgProps(onSelect ? () => onSelect(r.muscle) : undefined, Platform.OS, {
+                onFocus: (e) => setFocused((e as { target?: { matches?: (q: string) => boolean } }).target?.matches?.(':focus-visible') ? r.key : null),
+                onBlur: () => setFocused(null),
+              })}
             />
           );
         })}
