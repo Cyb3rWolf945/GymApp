@@ -33,7 +33,8 @@ test('warm-up sets for the first barbell lift: logged as warm-ups, the working s
 
   // The workout still starts at the first working set, with the same weight, and warm-ups say so in the list.
   await expect(shown(page, 'Set 1 of 3', false)).toBeVisible();
-  await expect(shown(page, `${w.warmup.label} · 40 kg × 5`, false)).toBeVisible();
+  await expect(shown(page, '40 kg × 5')).toBeVisible();
+  await expect(shown(page, `${w.warmup.label} · Barbell bench press`)).toBeVisible();
 
   // A working set is a normal row.
   await button(page, w.logSet).click();
