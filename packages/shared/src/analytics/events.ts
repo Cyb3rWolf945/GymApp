@@ -6,6 +6,8 @@ import { ONBOARDING_EVENTS } from '../onboarding/analytics.ts';
 // Props never carry answers or free text (health data): only ids, counts and enums. Unknown props are rejected.
 
 const onboardingProps = z.object({ step: z.string().max(40), screen: z.number().int(), version: z.number().int() }).strict();
+/** Where the options were shown, the meal slot kind, and whether the plan is the starter template or a planner plan. */
+const mealOptionProps = z.object({ placement: z.enum(['today', 'nutrition']), slot: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'other']), source: z.enum(['template', 'planner']) }).strict();
 const tierProp = z.enum(['basic', 'pro', 'elite']);
 
 const utm = z.string().max(80).optional();
@@ -30,6 +32,9 @@ export const EVENT_PROPS = {
   paywall_view: z.object({ variant: z.string().max(40).optional(), placement: z.enum(['paywall', 'account_modal']).optional() }).strict(),
   checkout_start: z.object({ price_key: z.string().max(40), variant: z.string().max(40).optional(), placement: z.enum(['paywall', 'account_modal']).optional() }).strict(),
   plan_step_skipped: z.object({}).strict(),
+  // Meal options (E-71): ids and enums only, never the recipe a person likes or dislikes.
+  meal_option_viewed: mealOptionProps,
+  meal_swapped: mealOptionProps,
   trial_start: z.object({ tier: tierProp }).strict(),
   purchase: z.object({ tier: tierProp, interval: z.enum(['month', 'year']), amount_usd: z.number().min(0), reason: z.string().max(40) }).strict(),
   workout_logged: z.object({ sets: z.number().int().min(0), minutes: z.number().int().min(0) }).strict(),
@@ -40,7 +45,7 @@ export type EventProps<N extends AnalyticsEventName> = z.infer<(typeof EVENT_PRO
 
 /** Events a browser or app may send through `track-event`. Everything else is written by the server only. */
 export const CLIENT_EVENTS = [
-  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'onboarding_resumed_signed_in', 'onboarding_validation_unknown', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'plan_step_skipped', 'workout_logged',
+  'landing_view', 'quiz_start', 'quiz_complete', ...ONBOARDING_EVENTS, 'account_modal_view', 'onboarding_resumed_signed_in', 'onboarding_validation_unknown', 'signin_method_chosen', 'plan_preview_view', 'paywall_view', 'checkout_start', 'plan_step_skipped', 'meal_option_viewed', 'meal_swapped', 'workout_logged',
 ] as const satisfies readonly AnalyticsEventName[];
 /** Money and identity events: written by webhooks and database triggers, so they can't be forged. */
 export const SERVER_EVENTS = ['signup', 'trial_start', 'purchase'] as const satisfies readonly AnalyticsEventName[];

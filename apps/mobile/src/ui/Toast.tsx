@@ -5,9 +5,11 @@ import { type ToastItem, dismissToast, pushToast } from './logic';
 import { Text } from './Text';
 
 const AUTO_DISMISS_MS = 4000;
+/** A toast with an action ("Undo") stays about 5 s, so there is time to use it. */
+const ACTION_DISMISS_MS = 5000;
 
 interface ToastApi {
-  show: (message: string, tone?: ToastItem['tone']) => void;
+  show: (message: string, tone?: ToastItem['tone'], action?: ToastItem['action']) => void;
 }
 const ToastContext = createContext<ToastApi>({ show: () => {} });
 export const useToast = (): ToastApi => useContext(ToastContext);
@@ -24,10 +26,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setItems((l) => dismissToast(l, id));
   }, []);
   const show = useCallback(
-    (message: string, tone: ToastItem['tone'] = 'info') => {
+    (message: string, tone: ToastItem['tone'] = 'info', action?: ToastItem['action']) => {
       const id = nextId.current++;
-      setItems((l) => pushToast(l, { id, message, tone }));
-      timers.current.set(id, setTimeout(() => dismiss(id), AUTO_DISMISS_MS));
+      setItems((l) => pushToast(l, { id, message, tone, action }));
+      timers.current.set(id, setTimeout(() => dismiss(id), action ? ACTION_DISMISS_MS : AUTO_DISMISS_MS));
     },
     [dismiss],
   );
@@ -58,7 +60,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               paddingVertical: spacing.md,
             }}
           >
-            <Text>{t.message}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <Text>{t.message}</Text>
+              </View>
+              {t.action ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.action.label}
+                  onPress={() => {
+                    t.action?.onPress();
+                    dismiss(t.id);
+                  }}
+                  style={{ minHeight: minTapTarget, minWidth: minTapTarget, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.sm }}
+                >
+                  <Text variant="bodyStrong" tone="accent">{t.action.label}</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </Pressable>
         ))}
       </View>

@@ -29,6 +29,8 @@ export interface ToastItem {
   id: number;
   message: string;
   tone: 'info' | 'success' | 'error';
+  /** A button on the toast ("Undo"). A toast with an action stays a little longer. */
+  action?: { label: string; onPress: () => void };
 }
 export const MAX_TOASTS = 3;
 

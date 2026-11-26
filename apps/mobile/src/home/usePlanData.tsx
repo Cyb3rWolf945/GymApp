@@ -22,7 +22,7 @@ export interface PlanData {
   /** The nutrition job the meal plan comes from (meal swaps are recorded against it). */
   nutritionJobId: string;
   /** Hard constraints for meal swaps. */
-  mealProfile: { diet: Diet; allergens: Allergen[] };
+  mealProfile: { diet: Diet; allergens: Allergen[]; dislikes: string[]; cookingMinutes?: number; budget?: 'low' | 'medium' | 'high' };
 }
 
 export type PlanState =
@@ -69,7 +69,7 @@ export function PlanDataProvider({ children }: { children: ReactNode }) {
           ? { ...(jobs.workout_plan.result as object), plan: applySwaps(parsedPlan.data, (swapRows ?? []) as SwapRow[]) }
           : jobs.workout_plan.result;
 
-        const { data: mealSwapRows } = await supabase.from('meal_swaps').select('day_index,meal_index,from_slug,to_slug,created_at').eq('job_id', jobs.nutrition_plan.id);
+        const { data: mealSwapRows } = await supabase.from('meal_swaps').select('id,day_index,meal_index,from_slug,to_slug,portions,created_at').eq('job_id', jobs.nutrition_plan.id);
         const parsedNutrition = NutritionPlanSchema.safeParse((jobs.nutrition_plan.result as { plan?: unknown } | null)?.plan);
         const nutritionResult = parsedNutrition.success
           ? { ...(jobs.nutrition_plan.result as object), plan: applyMealSwaps(parsedNutrition.data, (mealSwapRows ?? []) as MealSwapRow[]) }
@@ -87,19 +87,22 @@ export function PlanDataProvider({ children }: { children: ReactNode }) {
         let targets: PlanData['targets'] = null;
         let preferredDays: Weekday[] = [];
         const swapProfile: PlanData['swapProfile'] = { equipment: ['bodyweight'], contraindications: [], level: 'beginner' };
-        const mealProfile: PlanData['mealProfile'] = { diet: 'omnivore', allergens: [] };
+        const mealProfile: PlanData['mealProfile'] = { diet: 'omnivore', allergens: [], dislikes: [] };
         if (profile.data) {
           try {
             targets = buildPlanInputs(profile.data as never).targets;
           } catch {
             targets = null;
           }
-          const ob = (profile.data.onboarding ?? {}) as { preferredDays?: Weekday[]; equipment?: string[]; contraindications?: string[]; diet?: Diet; allergens?: Allergen[] };
+          const ob = (profile.data.onboarding ?? {}) as { preferredDays?: Weekday[]; equipment?: string[]; contraindications?: string[]; diet?: Diet; allergens?: Allergen[]; dislikes?: string[]; cookingMinutes?: number; budget?: 'low' | 'medium' | 'high' };
           if (Array.isArray(ob.preferredDays)) preferredDays = ob.preferredDays;
           if (Array.isArray(ob.equipment) && ob.equipment.length) swapProfile.equipment = ob.equipment;
           if (Array.isArray(ob.contraindications)) swapProfile.contraindications = ob.contraindications;
           if (ob.diet) mealProfile.diet = ob.diet;
           if (Array.isArray(ob.allergens)) mealProfile.allergens = ob.allergens;
+          if (Array.isArray(ob.dislikes)) mealProfile.dislikes = ob.dislikes;
+          if (typeof ob.cookingMinutes === 'number') mealProfile.cookingMinutes = ob.cookingMinutes;
+          if (ob.budget === 'low' || ob.budget === 'medium' || ob.budget === 'high') mealProfile.budget = ob.budget;
           if (profile.data.experience) swapProfile.level = profile.data.experience as string;
         }
         if (active) setState({ status: 'ready', data: { workoutResult, nutritionResult, exerciseNames, recipes, preferredDays, targets, workoutJobId: jobs.workout_plan.id, swapProfile, nutritionJobId: jobs.nutrition_plan.id, mealProfile } });

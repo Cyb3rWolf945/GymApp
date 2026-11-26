@@ -112,16 +112,23 @@ export async function recordSwap(userId: string, jobId: string, dayIndex: number
 }
 
 type IngredientJoin = { grams: number; ingredients: { name: string; allergens: string[] } | null }[];
+type LibraryJoin = { grams?: number; ingredients: { name: string; allergens: string[] } | null }[];
 
 /** All recipes with allergens derived from their ingredients: the pool for "Swap meal". */
 export async function fetchRecipeLibrary(): Promise<RecipeCandidate[]> {
   const { data, error } = await supabase
     .from('recipes')
-    .select('slug,name,diet,kcal,protein_g,carbs_g,fat_g,recipe_ingredients(ingredients(allergens))');
+    .select('slug,name,diet,kcal,protein_g,carbs_g,fat_g,meal_types,prep_minutes,cost_tier,recipe_ingredients(grams,ingredients(name,allergens))');
   if (error) throw error;
-  return ((data ?? []) as unknown as (Omit<RecipeCandidate, 'allergens'> & { recipe_ingredients: IngredientJoin })[]).map(
-    ({ recipe_ingredients, ...r }) => ({ ...r, allergens: deriveAllergens((recipe_ingredients ?? []).map((i) => ({ allergens: i.ingredients?.allergens ?? [] }))) }),
-  );
+  return ((data ?? []) as unknown as (Omit<RecipeCandidate, 'allergens' | 'ingredients'> & { recipe_ingredients: LibraryJoin })[]).map(({ recipe_ingredients, ...r }) => {
+    const rows = (recipe_ingredients ?? []).filter((i) => i.ingredients);
+    return {
+      ...r,
+      allergens: deriveAllergens(rows.map((i) => ({ allergens: i.ingredients!.allergens ?? [] }))),
+      // Biggest first: the first one is the recipe's main ingredient (used for variety in the options).
+      ingredients: [...rows].sort((a, b) => Number(b.grams ?? 0) - Number(a.grams ?? 0)).map((i) => i.ingredients!.name),
+    };
+  });
 }
 
 export interface RecipeDetail {
@@ -155,9 +162,21 @@ export async function fetchRecipeDetail(slug: string): Promise<RecipeDetail | nu
 }
 
 /** Record a meal swap (own row, RLS). It is the signal for memory; the plan view applies it on top of the generated plan. */
-export async function recordMealSwap(userId: string, jobId: string, dayIndex: number, mealIndex: number, fromSlug: string, toSlug: string): Promise<boolean> {
-  const { error } = await supabase.from('meal_swaps').insert({ user_id: userId, job_id: jobId, day_index: dayIndex, meal_index: mealIndex, from_slug: fromSlug, to_slug: toSlug } as never);
+export async function recordMealSwap(userId: string, jobId: string, dayIndex: number, mealIndex: number, fromSlug: string, toSlug: string, portions?: number, id?: string): Promise<boolean> {
+  const { error } = await supabase.from('meal_swaps').insert({ ...(id ? { id } : {}), user_id: userId, job_id: jobId, day_index: dayIndex, meal_index: mealIndex, from_slug: fromSlug, to_slug: toSlug, ...(portions ? { portions } : {}) } as never);
   return !error;
+}
+
+/** Undo a meal swap: drop its row (own row, RLS), so the slot shows the previous meal again. */
+export async function deleteMealSwap(id: string): Promise<boolean> {
+  const { error } = await supabase.from('meal_swaps').delete().eq('id', id);
+  return !error;
+}
+
+/** Recipes the user swapped away from before (for the soft filters of the options). */
+export async function fetchSwappedAway(userId: string): Promise<string[]> {
+  const { data } = await supabase.from('meal_swaps').select('from_slug').eq('user_id', userId);
+  return [...new Set(((data ?? []) as { from_slug: string }[]).map((r) => r.from_slug))];
 }
 
 /** Recipes with their ingredients (grams for the whole recipe), for the shopping list. */
