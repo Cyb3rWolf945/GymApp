@@ -12,7 +12,7 @@ import { type PlanData, usePlanData } from '../../../src/home/usePlanData';
 import { fetchAccess, fetchRecipeLibrary, recordMealSwap } from '../../../src/plan/api';
 import { StarterPlanNote } from '../../../src/plan/StarterPlanNote';
 import { useTheme } from '../../../src/theme';
-import { BottomSheet, Button, Card, EmptyState, FoodArt, InlineSkeleton, ListItem, MacroRing, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
+import { BottomSheet, Button, Card, EmptyState, FoodArt, InlineSkeleton, ListItem, MacroKey, MacroRing, ResponsiveGrid, Screen, ScreenSkeleton, Text, useToast } from '../../../src/ui';
 
 const t = en.home;
 const n = en.nutrition;
@@ -124,6 +124,7 @@ function Nutrition({ data }: { data: PlanData }) {
                         {Math.round(totals.kcal)} kcal · {Math.round(totals.proteinG)} g protein · {Math.round(totals.carbsG)} g carbs · {Math.round(totals.fatG)} g fat
                         {targets ? ` (${t.target(targets.kcal)})` : ''}
                       </Text>
+                      <MacroKey />
                     </View>
                   </View>
                   {d.meals.map((m, j) => {

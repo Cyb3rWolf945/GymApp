@@ -94,7 +94,7 @@ export const exerciseRows = () => EXERCISES.map((e) => ({ ...e, mechanic: null, 
 
 /** Sets of the last 3 weeks (an upper and a lower workout each week) with rising weights. */
 export function setLogHistory(now: Date) {
-  const rows: { weight_kg: number; reps: number; logged_at: string; exercises: { slug: string; name: string; exercise_muscles: (typeof MUSCLES)[string] } }[] = [];
+  const rows: { session_id: string; weight_kg: number; reps: number; logged_at: string; exercises: { slug: string; name: string; exercise_muscles: (typeof MUSCLES)[string] } }[] = [];
   const base: Record<string, number> = { 'barbell-bench-press': 70, 'standing-barbell-overhead-press': 42.5, 'barbell-back-squat': 90, 'conventional-deadlift': 110 };
   for (let week = 0; week < 3; week++) {
     for (const [slugs, offset] of [[['barbell-bench-press', 'standing-barbell-overhead-press'], 1], [['barbell-back-squat', 'conventional-deadlift'], 4]] as const) {
@@ -102,7 +102,7 @@ export function setLogHistory(now: Date) {
         const ex = EXERCISES.find((e) => e.slug === slug)!;
         for (let set = 0; set < 3; set++) {
           // The most recent week (0) is the heaviest: the trend goes up.
-          rows.push({ weight_kg: base[slug] + (2 - week) * 2.5, reps: 10 - set, logged_at: iso(now, week * 7 + offset), exercises: { slug, name: ex.name, exercise_muscles: MUSCLES[slug] } });
+          rows.push({ session_id: `30000000-0000-4000-8000-0000000000${week}${offset === 1 ? 1 : 2}`, weight_kg: base[slug] + (2 - week) * 2.5, reps: 10 - set, logged_at: iso(now, week * 7 + offset), exercises: { slug, name: ex.name, exercise_muscles: MUSCLES[slug] } });
         }
       }
     }

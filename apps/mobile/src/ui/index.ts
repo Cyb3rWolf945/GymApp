@@ -1,4 +1,5 @@
 export { BottomSheet } from './BottomSheet';
+export { BarChart } from './BarChart';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { Celebration } from './Celebration';
@@ -11,6 +12,7 @@ export { Icon, type IconName } from './Icon';
 export { LineChart } from './LineChart';
 export { FoodArt } from './FoodArt';
 export { ListItem } from './ListItem';
+export { MacroKey } from './MacroKey';
 export { MacroRing } from './MacroRing';
 export { ProgressBar } from './ProgressBar';
 export { ResponsiveGrid } from './ResponsiveGrid';

@@ -19,10 +19,10 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   fish_seafood: 'fish',
   dairy: 'water',
   eggs: 'egg',
-  grains: 'nutrition',
-  legumes: 'ellipse',
+  grains: 'basket',
+  legumes: 'flower',
   plant_protein: 'leaf',
-  nuts_seeds: 'ellipse',
+  nuts_seeds: 'sparkles',
   fats_oils: 'water',
   condiments: 'flask',
   spices: 'flame',
@@ -98,7 +98,7 @@ function Shopping({ data }: { data: PlanData }) {
         {groups.map((g) => (
           <Card key={g.category} style={{ gap: spacing.xs }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Icon name={CATEGORY_ICONS[g.category] ?? 'basket'} size={22} tone="accent" />
+              <Icon name={CATEGORY_ICONS[g.category] ?? 'cart'} size={22} tone="accent" />
               <Text variant="heading">{t.categories[g.category] ?? g.category}</Text>
             </View>
             {g.items.map((i) => (

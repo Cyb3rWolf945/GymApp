@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MUSCLE_IDS } from '../catalog/catalog.ts';
-import { scaleSeries, toPath } from './chart.ts';
+import { areaPath, scaleBars, scaleSeries, recentVolumes, toPath } from './chart.ts';
 import { type SetRecord, e1rmTrend, personalRecords, trendLifts } from './lifts.ts';
 import { HEAT_FULL_SETS, MAP_HEIGHT, MAP_REGIONS, MAP_WIDTH, UNMAPPED, type MuscleSet, ellipsePath, heat, muscleLabel, muscleStats, regionShapes } from './muscles.ts';
 import { parseWeightKg, trendChange, weightTrend } from './weight.ts';
@@ -163,5 +163,37 @@ describe('scaleSeries', () => {
     expect(scaleSeries([7], 100, 50)).toEqual([{ x: 50, y: 25 }]);
     expect(scaleSeries([], 100, 50)).toEqual([]);
     expect(toPath([{ x: 0, y: 1 }, { x: 2, y: 3.14159 }])).toBe('M 0.0 1.0 L 2.0 3.1');
+  });
+});
+
+describe('areaPath, scaleBars and recentVolumes', () => {
+  it('closes a line down to the bottom edge', () => {
+    const pts = scaleSeries([10, 20, 30], 100, 50, 5);
+    const d = areaPath(pts, 50);
+    expect(d.startsWith(toPath(pts))).toBe(true);
+    expect(d.endsWith('L 100.0 50 L 0.0 50 Z')).toBe(true);
+    expect(areaPath([], 50)).toBe('');
+  });
+  it('makes bars in proportion, from the bottom, filling the width', () => {
+    const bars = scaleBars([50, 100, 25], 100, 60, 10, 0);
+    expect(bars).toHaveLength(3);
+    expect(bars[1].height).toBeCloseTo(60);
+    expect(bars[0].height).toBeCloseTo(30);
+    expect(bars[2].height).toBeCloseTo(15);
+    expect(bars.every((b) => b.y + b.height === 60)).toBe(true);
+    const last = bars[2];
+    expect(last.x + last.width).toBeCloseTo(100);
+  });
+  it('keeps a tiny value visible, and draws nothing for zero, empty or all-zero data', () => {
+    const bars = scaleBars([1000, 1], 100, 60, 6, 0, 3);
+    expect(bars[1].height).toBe(3);
+    expect(scaleBars([0, 0], 100, 60).every((b) => b.height === 0)).toBe(true);
+    expect(scaleBars([], 100, 60)).toEqual([]);
+  });
+  it('takes the last volumes in time order and skips empty workouts', () => {
+    const rows = [{ volume: 5 }, { volume: 0 }, { volume: 4 }, { volume: 3 }, { volume: 2 }, { volume: 1 }];
+    expect(recentVolumes(rows, 3)).toEqual([3, 4, 5]);
+    expect(recentVolumes(rows, 10)).toEqual([1, 2, 3, 4, 5]);
+    expect(recentVolumes([])).toEqual([]);
   });
 });

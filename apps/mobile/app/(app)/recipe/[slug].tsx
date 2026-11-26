@@ -5,7 +5,7 @@ import { mealKind, scaleIngredients } from '@gymapp/shared';
 import { en } from '../../../src/copy/en';
 import { type RecipeDetail, fetchRecipeDetail } from '../../../src/plan/api';
 import { useBreakpoint, useTheme } from '../../../src/theme';
-import { Button, Card, EmptyState, FoodArt, ListItem, MacroRing, Screen, ScreenSkeleton, Text } from '../../../src/ui';
+import { Button, Card, EmptyState, FoodArt, ListItem, MacroKey, MacroRing, Screen, ScreenSkeleton, Text } from '../../../src/ui';
 
 const r = en.nutrition.recipe;
 
@@ -55,6 +55,7 @@ export default function RecipeScreen() {
           <View style={{ flex: 1, gap: spacing.xs }}>
             <Text tone="muted">{r.portions(portions)} · {en.nutrition.kcalMeal(m(rec.kcal))}</Text>
             <Text tone="muted">{r.macros(m(rec.protein_g), m(rec.carbs_g), m(rec.fat_g))}</Text>
+            <MacroKey />
           </View>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' }} accessibilityLabel={r.allergens}>
