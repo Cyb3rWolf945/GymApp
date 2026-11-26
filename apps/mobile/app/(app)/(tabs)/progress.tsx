@@ -10,7 +10,7 @@ import { useAuth } from '../../../src/auth/AuthProvider';
 import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
-import { HOT_TONE, MuscleMap, heatPaint } from '../../../src/progress/MuscleMap';
+import { MuscleMap, heatPaint } from '../../../src/progress/MuscleMap';
 import { Reveal, useFirstVisit } from '../../../src/motion';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
@@ -36,7 +36,7 @@ function ProgressTab() {
   const first = useFirstVisit('progress');
   const router = useRouter();
   const { user } = useAuth();
-  const { colors, radius, spacing, scheme } = useTheme();
+  const { colors, radius, spacing } = useTheme();
   const toast = useToast();
   const { pending } = useWorkout();
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -240,10 +240,10 @@ function ProgressTab() {
               <Text variant="small" tone="muted">{p.legendTitle}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs }}>
                 {HEAT_LEVEL_LABELS.map((label, i) => {
-                  const paint = heatPaint(HEAT_INTENSITY[i], colors, HOT_TONE[scheme]);
+                  const paint = heatPaint(HEAT_INTENSITY[i], colors.heat);
                   return (
                     <View key={label} style={{ flex: 1, gap: 2, alignItems: 'center' }}>
-                      <View style={{ alignSelf: 'stretch', height: 8, borderRadius: radius.pill, backgroundColor: paint.fill, opacity: paint.opacity }} />
+                      <View style={{ alignSelf: 'stretch', height: 8, borderRadius: radius.pill, backgroundColor: paint.fill }} />
                       <Text variant="small" tone="muted">{label}</Text>
                     </View>
                   );

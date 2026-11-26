@@ -33,12 +33,12 @@ export default function TabsLayout() {
           // The scene behind each tab: the theme background, so the cross-fade between tabs never passes through another colour.
           sceneStyle: { backgroundColor: colors.background },
           tabBarPosition: side ? 'left' : 'bottom',
-          tabBarActiveTintColor: colors.accent,
+          tabBarActiveTintColor: colors.accentText,
           tabBarInactiveTintColor: colors.muted,
           tabBarActiveBackgroundColor: side ? colors.surfaceAlt : undefined,
           tabBarStyle: side
-            ? { backgroundColor: colors.surface, borderRightColor: colors.border, borderRightWidth: 1, width: SIDE_NAV_WIDTH[bp], minWidth: SIDE_NAV_WIDTH[bp], maxWidth: SIDE_NAV_WIDTH[bp], paddingTop: spacing.xl }
-            : { backgroundColor: colors.surface, borderTopColor: colors.border, height: minTapTarget + 24, paddingTop: spacing.xs },
+            ? { backgroundColor: colors.surface, borderRightColor: colors.divider, borderRightWidth: 1, width: SIDE_NAV_WIDTH[bp], minWidth: SIDE_NAV_WIDTH[bp], maxWidth: SIDE_NAV_WIDTH[bp], paddingTop: spacing.xl }
+            : { backgroundColor: colors.surface, borderTopColor: colors.divider, height: minTapTarget + 24, paddingTop: spacing.xs },
           // In the rail the label is the tap target: line height plus padding makes it at least `minTapTarget` tall.
           tabBarLabelStyle: side ? { fontFamily: fonts.uiSemiBold, fontSize: 16, lineHeight: 24, paddingVertical: (minTapTarget - 24) / 2, textAlign: 'left' } : { fontFamily: fonts.uiSemiBold, fontSize: 12 },
           tabBarItemStyle: side

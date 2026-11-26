@@ -12,7 +12,7 @@ export function SetRow({ badge, exercise, main, effort, warmup }: { badge: strin
     <View
       accessible
       accessibilityLabel={`${exercise}: ${main}${effort ? `, ${effort}` : ''}`}
-      style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}
+      style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }}
     >
       <View style={{ width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: warmup ? colors.surfaceAlt : colors.accent }}>
         <Text variant="bodyStrong" style={{ color: warmup ? colors.muted : colors.onAccent }}>{badge}</Text>

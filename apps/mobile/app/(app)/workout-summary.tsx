@@ -102,7 +102,7 @@ export default function WorkoutSummary() {
 
         {stats.prs.map((p) => (
           <PrPop key={p.slug} id={`${active.id}:${p.slug}`}>
-          <Card style={{ gap: spacing.xs, borderColor: colors.accent }}>
+          <Card style={{ gap: spacing.xs, borderColor: colors.accentBorder }}>
             <Text variant="heading" tone="accent">{t.pr(nameOf(p.slug), p.e1rm)}</Text>
             <Text tone="muted">{pickLine(en.coach.prCheer, style, seedOf(p.slug))}</Text>
             <Text tone="muted">{t.prDelta(Math.round((p.e1rm - p.previous) * 10) / 10)}</Text>

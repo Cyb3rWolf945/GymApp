@@ -25,7 +25,7 @@ export function BuildingOrb() {
         const scale = reduced ? 1 + phase : p.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.7] });
         const opacity = reduced ? 0.2 : p.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
         return (
-          <Animated.View key={i} style={{ position: 'absolute', width: 96, height: 96, borderRadius: 48, borderWidth: 2, borderColor: colors.accent, opacity, transform: [{ scale }] }} />
+          <Animated.View key={i} style={{ position: 'absolute', width: 96, height: 96, borderRadius: 48, borderWidth: 2, borderColor: colors.accentText, opacity, transform: [{ scale }] }} />
         );
       })}
       <View style={{ width: 72, height: 72, borderRadius: 36, overflow: 'hidden' }}>

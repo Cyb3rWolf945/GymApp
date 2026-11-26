@@ -15,7 +15,7 @@ export function StatTile({ label, value, unit, hint, countTo }: { label: string;
     <View
       accessible
       accessibilityLabel={`${label}: ${value}${unit ? ` ${unit}` : ''}`}
-      style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}
+      style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.divider }}
     >
       <Text variant="caption" tone="muted">{label}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>

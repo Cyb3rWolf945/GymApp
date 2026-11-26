@@ -9,7 +9,7 @@ export function Card({ children, style, raised = false, ...rest }: ViewProps & {
     <View
       {...rest}
       style={[
-        { backgroundColor: raised ? colors.surfaceAlt : colors.surface, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
+        { backgroundColor: raised ? colors.surfaceAlt : colors.surface, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.divider },
         raised ? elevation.mid : elevation.low,
         style,
       ]}

@@ -27,7 +27,7 @@ export function BarChart({ values, label }: { values: readonly number[]; label: 
         {bars.map((b, i) => {
           const h = b.height * t;
           const latest = i === bars.length - 1;
-          return <Rect key={i} x={b.x} y={H - h} width={b.width} height={h} rx={Math.min(4, b.width / 2)} fill={colors.accent} opacity={latest ? 1 : 0.4} />;
+          return <Rect key={i} x={b.x} y={H - h} width={b.width} height={h} rx={Math.min(4, b.width / 2)} fill={colors.chart[0]} opacity={latest ? 1 : 0.4} />;
         })}
       </Svg>
     </View>

@@ -238,9 +238,9 @@ function PlanCard({ selected, label, onSelect, onKey, cardRef, children }: {
     if (reduced) on.setValue(selected ? 1 : 0);
     else Animated.timing(on, { toValue: selected ? 1 : 0, duration: durationFor('base', false) - 50, easing: easing('standard'), useNativeDriver: false }).start();
   }, [selected, reduced, on]);
-  const idle = hovered && !selected ? mixColors(colors.border, colors.accent, 0.5) : colors.border;
-  const borderColor = on.interpolate({ inputRange: [0, 1], outputRange: [idle, colors.accent] });
-  const backgroundColor = on.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, mixColors(colors.surface, colors.accent, 0.12)] });
+  const idle = hovered && !selected ? mixColors(colors.border, colors.accentBorder, 0.5) : colors.border;
+  const borderColor = on.interpolate({ inputRange: [0, 1], outputRange: [idle, colors.accentBorder] });
+  const backgroundColor = on.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, colors.accentSubtle] });
   // The check pops in on the new card (a short overshoot) and fades out on the old one.
   const checkScale = on.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.5, 1.15, 1] });
   const webProps = Platform.OS === 'web'
@@ -272,7 +272,7 @@ function PlanCard({ selected, label, onSelect, onKey, cardRef, children }: {
             { gap: spacing.sm, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 2, borderColor, backgroundColor },
             // Hover lifts an unselected card a little; a selected card does not change on hover.
             hovered && !selected ? elevation.mid : undefined,
-            focused ? { outlineStyle: 'solid', outlineWidth: 3, outlineColor: colors.accent, outlineOffset: 2 } as object : undefined,
+            focused ? { outlineStyle: 'solid', outlineWidth: 3, outlineColor: colors.focusRing, outlineOffset: 2 } as object : undefined,
           ]}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 24 }}>

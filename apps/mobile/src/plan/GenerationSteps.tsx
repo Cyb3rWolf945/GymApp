@@ -32,16 +32,16 @@ function Indicator({ state }: { state: GenerationStepState }) {
     }
     was.current = state;
   }, [state, reduced, pop]);
-  if (state === 'active') return <ActivityIndicator color={colors.accent} />;
+  if (state === 'active') return <ActivityIndicator color={colors.accentText} />;
   if (state === 'done') {
     const scale = pop.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.4, motion.popScale + 0.1, 1] });
     return (
       <Animated.View style={{ opacity: pop, transform: [{ scale }] }}>
-        <Text variant="heading" style={{ color: colors.accent }}>✓</Text>
+        <Text variant="heading" style={{ color: colors.accentText }}>✓</Text>
       </Animated.View>
     );
   }
-  return <Text variant="heading" style={{ color: colors.border }}>•</Text>;
+  return <Text variant="heading" style={{ color: colors.divider }}>•</Text>;
 }
 
 /** A label that breathes while its step is in progress. */

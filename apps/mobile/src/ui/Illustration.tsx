@@ -48,7 +48,7 @@ export function Illustration({ kind }: { kind: IllustrationKind }) {
     return () => loop.stop();
   }, [reduced, float]);
   const translateY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
-  const tone = kind === 'error' ? colors.danger : colors.accent;
+  const tone = kind === 'error' ? colors.danger : colors.accentText;
   return (
     <View testID={`illustration-${kind}`} accessible={false} importantForAccessibility="no-hide-descendants" aria-hidden style={{ width: W, height: H, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute' }}>
@@ -63,9 +63,9 @@ export function Illustration({ kind }: { kind: IllustrationKind }) {
         <Circle cx={168} cy={28} r={6} fill={colors.accent2} opacity={0.6} />
         <Circle cx={176} cy={104} r={3} fill={tone} opacity={0.6} />
         <Circle cx={34} cy={108} r={5} fill={colors.accent2} opacity={0.5} />
-        <Circle cx={W / 2} cy={H / 2} r={52} fill="none" stroke={colors.border} strokeWidth={1} opacity={0.7} />
+        <Circle cx={W / 2} cy={H / 2} r={52} fill="none" stroke={colors.divider} strokeWidth={1} opacity={0.7} />
       </Svg>
-      <Animated.View style={[{ width: 76, height: 76, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', transform: [{ translateY }] }, elevation.mid]}>
+      <Animated.View style={[{ width: 76, height: 76, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center', transform: [{ translateY }] }, elevation.mid]}>
         <Icon name={GLYPHS[kind]} size={38} color={tone} />
       </Animated.View>
     </View>

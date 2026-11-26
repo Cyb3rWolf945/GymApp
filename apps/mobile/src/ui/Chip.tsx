@@ -35,7 +35,7 @@ export function Chip({ label, selected = false, onPress, disabled }: ChipProps) 
     }
   }, [selected, reduced, tint, pop]);
   const backgroundColor = tint.interpolate({ inputRange: [0, 1], outputRange: [colors.surfaceAlt, colors.accent] });
-  const borderColor = tint.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.accent] });
+  const borderColor = tint.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.accentBorder] });
   return (
     <Animated.View style={{ transform: [{ scale: pop }], opacity: disabled ? 0.5 : 1 }}>
       <Pressable

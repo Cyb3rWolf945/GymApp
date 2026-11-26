@@ -58,7 +58,7 @@ export default function Memory() {
         ) : (
           <Card style={{ gap: spacing.xs }}>
             {facts.map((f) => (
-              <View key={f.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <View key={f.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyStrong">{f.fact}</Text>
                 </View>

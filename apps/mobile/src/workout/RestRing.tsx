@@ -20,7 +20,7 @@ export function RestRing({ left, total }: { left: number; total: number }) {
     <View testID="rest-ring" accessible={false} importantForAccessibility="no-hide-descendants" aria-hidden style={{ alignSelf: 'center', width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={SIZE} height={SIZE} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
         <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke={colors.surfaceAlt} strokeWidth={STROKE} fill="none" />
-        <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke={colors.accent} strokeWidth={STROKE} fill="none" strokeLinecap="round" strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - f)} />
+        <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke={colors.chart[0]} strokeWidth={STROKE} fill="none" strokeLinecap="round" strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - f)} />
       </Svg>
       <Text variant="display">{formatRest(left)}</Text>
     </View>

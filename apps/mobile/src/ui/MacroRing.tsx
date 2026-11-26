@@ -27,7 +27,7 @@ export function MacroRing({ kcal, proteinG, carbsG, fatG, size = 96, label }: Pr
   const c = 2 * Math.PI * r;
   const s = macroShares(proteinG, carbsG, fatG);
   const parts = [
-    { key: 'protein', share: s.protein, color: colors.accent },
+    { key: 'protein', share: s.protein, color: colors.chart[0] },
     { key: 'carbs', share: s.carbs, color: colors.accent2 },
     { key: 'fat', share: s.fat, color: colors.success },
   ].filter((p) => p.share > 0);

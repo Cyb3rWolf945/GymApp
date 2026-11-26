@@ -6,22 +6,46 @@ export interface Palette {
   background: string;
   surface: string;
   surfaceAlt: string;
+  /** Outlines of controls (inputs, chips, toggles): at least 3:1 against the page and the cards (WCAG 1.4.11). */
   border: string;
+  /** Non-interactive separators (list rows, section rules): lighter than `border`. */
+  divider: string;
   text: string;
   muted: string;
-  /** The brand colour: neon lime in dark, a deep green in light (so it still reads as text on white). */
+  /** The brand fill: buttons, selected fills, progress. Neon lime in both themes. Never used as text on a surface. */
   accent: string;
   /** Text/icon colour on top of `accent`. */
   onAccent: string;
-  /** The soft halo under the main button: the brand colour, translucent. Empty (no halo) where it would look dirty. */
+  /** The brand colour as text, links and icons on a surface: the same lime in dark, a deep green in light (so it reads on white). */
+  accentText: string;
+  /** A tinted background for selected and hover states, with `accentBorder` as its outline. */
+  accentSubtle: string;
+  accentBorder: string;
+  /** The soft halo under the main button: the brand colour, translucent. */
   accentGlow: string;
   /** Secondary accent (electric violet): charts, highlights and decoration next to the brand colour, never a second "primary". */
   accent2: string;
   /** Text/icon colour on top of `accent2`. */
   onAccent2: string;
   danger: string;
+  onDanger: string;
   success: string;
+  onSuccess: string;
+  warning: string;
+  onWarning: string;
+  info: string;
+  onInfo: string;
+  /** Keyboard focus outline: at least 3:1 against the page and the cards. */
+  focusRing: string;
   overlay: string;
+  /** Loading skeletons: the resting block and the highlight that sweeps over it. */
+  skeleton: { base: string; highlight: string };
+  /** Shadow colour, and its opacity per elevation level (cards and sheets). */
+  shadow: { color: string; sm: number; md: number; lg: number };
+  /** Five series colours for charts, each at least 3:1 on a card. The first is the brand. */
+  chart: readonly [string, string, string, string, string];
+  /** The body map ramp, from "not trained" to "very high volume". Ordered by brightness (so it reads in greyscale). */
+  heat: readonly [string, string, string, string, string];
   /** Two-stop gradients (top-left to bottom-right unless noted). Decoration only: text never sits on a gradient edge. */
   gradient: {
     /** Progress fills and highlights: brand colour to mint. */
@@ -39,16 +63,32 @@ export const palettes: Record<Scheme, Palette> = {
     surface: '#14161D',
     surfaceAlt: '#1D202A',
     border: '#2A2E3C',
+    divider: '#2A2E3C',
     text: '#F5F6FA',
     muted: '#A6AABC',
     accent: '#C6FF3D',
     onAccent: '#0A0B10',
+    accentText: '#C6FF3D',
+    accentSubtle: '#293221',
+    accentBorder: '#C6FF3D',
     accentGlow: 'rgba(198,255,61,0.22)',
     accent2: '#9A8CFF',
     onAccent2: '#0A0B10',
     danger: '#FF7A7A',
+    onDanger: '#0A0B10',
     success: '#4ADE80',
+    onSuccess: '#0A0B10',
+    warning: '#FFB74D',
+    onWarning: '#0A0B10',
+    info: '#7CB8FF',
+    onInfo: '#0A0B10',
+    focusRing: '#C6FF3D',
     overlay: 'rgba(0,0,0,0.6)',
+    skeleton: { base: '#1D202A', highlight: '#2A2E3C' },
+    shadow: { color: '#000000', sm: 0.3, md: 0.4, lg: 0.5 },
+    chart: ['#C6FF3D', '#9A8CFF', '#5BE3B0', '#FFB74D', '#FF7A7A'],
+    // The look the body map had before the tokens: the accent over the body tone at growing opacity, the top band hot orange.
+    heat: ['#2B2E3B', '#75923B', '#92B93C', '#AFE03C', '#FF8A3D'],
     gradient: {
       brand: ['#C6FF3D', '#5BE3B0'],
       card: ['#1B1E28', '#14161D'],
@@ -56,27 +96,52 @@ export const palettes: Record<Scheme, Palette> = {
     },
   },
   light: {
-    background: '#F5F6FA',
+    background: '#E9ECF2',
     surface: '#FFFFFF',
-    surfaceAlt: '#ECEEF4',
-    border: '#D3D7E2',
+    surfaceAlt: '#F1F3F8',
+    border: '#7B8195',
+    divider: '#DCE0E9',
     text: '#0B0D14',
-    muted: '#575C6E',
-    accent: '#3F6212',
-    onAccent: '#FFFFFF',
-    accentGlow: '',
+    muted: '#4F5468',
+    accent: '#B8F230',
+    onAccent: '#0B0D14',
+    accentText: '#3F6212',
+    accentSubtle: '#EEF9D0',
+    accentBorder: '#5E8F0A',
+    accentGlow: 'rgba(184,242,48,0.4)',
     accent2: '#5B45E8',
     onAccent2: '#FFFFFF',
     danger: '#B91C1C',
+    onDanger: '#FFFFFF',
     success: '#166534',
+    onSuccess: '#FFFFFF',
+    warning: '#92400E',
+    onWarning: '#FFFFFF',
+    info: '#1D4ED8',
+    onInfo: '#FFFFFF',
+    focusRing: '#3F6212',
     overlay: 'rgba(0,0,0,0.4)',
+    skeleton: { base: '#E3E7EF', highlight: '#F4F6FA' },
+    shadow: { color: '#0B0D14', sm: 0.08, md: 0.12, lg: 0.18 },
+    chart: ['#4D7C0F', '#5B45E8', '#0F766E', '#B45309', '#B91C1C'],
+    heat: ['#DCE0E9', '#C9E586', '#A4D12F', '#5F9A14', '#C2410C'],
     gradient: {
-      brand: ['#3F6212', '#0F766E'],
+      brand: ['#B8F230', '#5BE3B0'],
       card: ['#FFFFFF', '#F7F8FC'],
-      glow: ['rgba(91,69,232,0.12)', 'rgba(245,246,250,0)'],
+      glow: ['rgba(91,69,232,0.12)', 'rgba(233,236,242,0)'],
     },
   },
 };
+
+/**
+ * Colours that are not the app's theme: the Fuelift mark and the sign-in providers' official marks. Fixed on purpose
+ * (a logo does not change with the theme); this is the only place besides the palettes where colour literals live.
+ */
+export const brandAssets = {
+  mark: { lime: '#C6FF3D', mint: '#5BE3B0', ink: '#0A0B10', violet: '#6D5BFF', white: '#FFFFFF' },
+  google: { yellow: '#FFC107', red: '#FF3D00', green: '#4CAF50', blue: '#1976D2', border: '#8E918F', surface: '#131314', label: '#E3E3E3' },
+  apple: { black: '#000000', white: '#FFFFFF' },
+} as const;
 
 /** One-handed gym use: every tappable thing is at least this big (px). */
 export const MIN_TAP_TARGET = 48;
@@ -165,9 +230,9 @@ export const elevations: Record<Scheme, Record<Elevation, { boxShadow?: string }
   },
   light: {
     none: {},
-    low: { boxShadow: '0 1px 2px rgba(15,18,32,0.06), 0 4px 12px rgba(15,18,32,0.06)' },
-    mid: { boxShadow: '0 2px 4px rgba(15,18,32,0.08), 0 10px 24px rgba(15,18,32,0.1)' },
-    high: { boxShadow: '0 4px 8px rgba(15,18,32,0.1), 0 20px 48px rgba(15,18,32,0.16)' },
+    low: { boxShadow: '0 1px 2px rgba(11,13,20,0.08), 0 4px 12px rgba(11,13,20,0.08)' },
+    mid: { boxShadow: '0 2px 4px rgba(11,13,20,0.1), 0 10px 24px rgba(11,13,20,0.12)' },
+    high: { boxShadow: '0 4px 8px rgba(11,13,20,0.12), 0 20px 48px rgba(11,13,20,0.18)' },
   },
 };
 
