@@ -243,9 +243,25 @@ async function generate(admin: ReturnType<typeof createClient>, userId: string, 
     const history = formatUserHistory(historyRaw);
     const memorySummary = swapLines.join('\n');
 
+    // Soft signals for the template meal plan (only used if the models fail): meals this user swapped away from, and
+    // remembered facts. The seed makes the template this user's own without making it random.
+    let templateContext: { seed: string; avoidSlugs: string[]; facts: string[] } = { seed: userId, avoidSlugs: [], facts: [] };
+    if (kind === 'nutrition_plan') {
+      const [{ data: mealSwaps }, { data: facts }] = await Promise.all([
+        admin.from('meal_swaps').select('from_slug').eq('user_id', userId).limit(200),
+        admin.from('memory_facts').select('fact').eq('user_id', userId).eq('obsolete', false).limit(30),
+      ]);
+      templateContext = {
+        seed: userId,
+        avoidSlugs: [...new Set((mealSwaps ?? []).map((s: { from_slug: string }) => s.from_slug))],
+        facts: (facts ?? []).map((f: { fact: string }) => f.fact),
+      };
+    }
+
     const result = await runPipeline({
       kind, userId, jobId, inputs, userText: { notes: guard.notes, memory: memorySummary, history },
       library: candidates, // already filtered in SQL; the validator re-checks every item
+      templateContext,
       canEscalate: profile.escalation !== null,
       maxRetries: profile.maxRetries,
       qa: profile.qa,

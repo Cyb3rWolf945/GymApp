@@ -16,3 +16,5 @@ export * from './memory.ts';
 export * from './redteam.ts';
 export * from './coach.ts';
 export * from './budget.ts';
+export * from './dislikes.ts';
+export * from './mealTemplate.ts';

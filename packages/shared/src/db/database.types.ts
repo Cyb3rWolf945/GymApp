@@ -642,6 +642,9 @@ export type Database = {
           fat_g: number | null;
           created_at: string;
           diet: string;
+          meal_types: string[];
+          prep_minutes: number;
+          cost_tier: string;
         };
         Insert: {
           id?: string;
@@ -655,6 +658,9 @@ export type Database = {
           fat_g?: number | null;
           created_at?: string;
           diet?: string;
+          meal_types?: string[];
+          prep_minutes?: number;
+          cost_tier?: string;
         };
         Update: Partial<Database['public']['Tables']['recipes']['Insert']>;
       };
