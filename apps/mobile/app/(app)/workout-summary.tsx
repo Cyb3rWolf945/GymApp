@@ -7,7 +7,7 @@ import { en } from '../../src/copy/en';
 import { supabase } from '../../src/supabase';
 import { useFeedback } from '../../src/motion';
 import { useTheme } from '../../src/theme';
-import { Button, Card, ChipGroup, Screen, Text, TextField, useToast } from '../../src/ui';
+import { Button, Card, Celebration, ChipGroup, Screen, Text, TextField, useToast } from '../../src/ui';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
 const t = en.workout.summary;
@@ -74,6 +74,7 @@ export default function WorkoutSummary() {
         </>
       }
     >
+        {hasPr ? <Celebration /> : null}
         <Text variant="display">{pickLine(en.coach.summaryTitle, style, seedOf(active.id))}</Text>
 
         {stats.prs.map((p) => (

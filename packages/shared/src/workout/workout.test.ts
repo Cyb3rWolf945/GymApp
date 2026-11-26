@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FeedbackSchema, detectPRs, enqueue, epley, flushOutbox, formatRest, inSyncOrder, nextPosition, prefillSet, setLine,
+  FeedbackSchema, detectPRs, enqueue, epley, flushOutbox, formatRest, inSyncOrder, restFraction, nextPosition, prefillSet, setLine,
   summarizeHistory, volumeKg, type HistoryRow, type LoggedSet, type OutboxItem, type PlannedExercise,
 } from '../index';
 
@@ -59,6 +59,12 @@ describe('formatting', () => {
   it('formats rest as m:ss', () => {
     expect(formatRest(90)).toBe('1:30');
     expect(formatRest(5)).toBe('0:05');
+    expect(restFraction(90, 90)).toBe(1);
+    expect(restFraction(45, 90)).toBe(0.5);
+    expect(restFraction(0, 90)).toBe(0);
+    expect(restFraction(120, 90)).toBe(1); // never past full
+    expect(restFraction(-3, 90)).toBe(0);
+    expect(restFraction(10, 0)).toBe(0);
     expect(formatRest(-3)).toBe('0:00');
   });
   it('writes the set line', () => {

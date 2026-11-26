@@ -6,6 +6,7 @@ import { firstBarbellCompound, formatRest, nextPosition, platesPerSide, prefillS
 import { en } from '../../src/copy/en';
 import { useBreakpoint, useTheme } from '../../src/theme';
 import { BottomSheet, Button, Card, ChipGroup, ListItem, Screen, Stepper, Text } from '../../src/ui';
+import { RestRing } from '../../src/workout/RestRing';
 import { usePlateConfig } from '../../src/workout/plateSettings';
 import { useWorkout } from '../../src/workout/WorkoutProvider';
 
@@ -88,6 +89,8 @@ export default function WorkoutScreen() {
               {setLine(pos.set + 1, exercise.sets, weight, reps)}
               {resting ? ` · ${t.rest(formatRest(restLeft))}` : ''}
             </Text>
+
+            {resting && lastPlanned ? <RestRing left={restLeft} total={lastPlanned.restSeconds} /> : null}
 
             {warmups.length > 0 && !warmupSkipped ? (
               <Card style={{ gap: spacing.sm }}>

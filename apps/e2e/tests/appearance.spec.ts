@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { en } from '../../mobile/src/copy/en';
 import { palettes } from '../../mobile/src/theme/tokens';
-import { chip, shown, signedInWithPlan } from '../support/app';
+import { button, chip, shown, signedInWithPlan } from '../support/app';
 
 const a = en.appearance;
 const state = (page: Page) =>
@@ -45,11 +45,22 @@ test('Light and Dark override the OS, apply at once and are still there after a 
   await expect.poll(() => state(page)).toEqual(LIGHT);
 });
 
-test('the main screens draw with the light palette (the heading uses the light accent, not the dark one)', async ({ page }) => {
+test('the main screens draw with the light palette (text and the active tab use the light colours, not the dark ones)', async ({ page }) => {
   await signedInWithPlan(page);
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
-  await expect(shown(page, en.home.title)).toBeVisible();
-  const title = await shown(page, en.home.title).evaluate((el) => getComputedStyle(el).color);
-  expect(title).toBe('rgb(63, 98, 18)'); // palettes.light.accent (dark accent is rgb(198, 255, 61))
+  // Wait for the screen itself: the tab bar's "Today" is on screen before the plan has loaded.
+  await expect(button(page, en.home.startWorkout)).toBeVisible();
+  // The heading is in the text colour, the active tab label in the accent (the light palette's, not the dark one's).
+  // Told apart by being inside a tab or not, not by their order on the page (it differs between phone and desktop).
+  const colors = await page.evaluate((text) => {
+    const out: { tab: boolean; color: string }[] = [];
+    for (const el of Array.from(document.querySelectorAll('div'))) {
+      if (el.children.length !== 0 || el.textContent !== text || el.getBoundingClientRect().height === 0) continue;
+      out.push({ tab: !!el.closest('[role="tab"]'), color: getComputedStyle(el).color });
+    }
+    return out;
+  }, en.home.title);
+  expect(colors.filter((c) => !c.tab).map((c) => c.color)).toContain('rgb(11, 13, 20)'); // palettes.light.text
+  expect(colors.filter((c) => c.tab).map((c) => c.color)).toContain('rgb(63, 98, 18)'); // palettes.light.accent (dark accent is rgb(198, 255, 61))
 });

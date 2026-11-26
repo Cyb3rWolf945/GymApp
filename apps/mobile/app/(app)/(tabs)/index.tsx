@@ -10,6 +10,7 @@ import { PlanOutdatedCard } from '../../../src/profile/PlanOutdatedCard';
 import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { loadEaten, saveEaten } from '../../../src/home/eaten';
+import { WorkoutHero } from '../../../src/home/WorkoutHero';
 import { PlanGate } from '../../../src/home/PlanGate';
 import type { PlanData } from '../../../src/home/usePlanData';
 import { useBreakpoint, useTheme } from '../../../src/theme';
@@ -61,9 +62,7 @@ function Today({ data }: { data: PlanData }) {
       <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: 'flex-start', gap: spacing.xl }}>
         <View style={{ flex: wide ? 1 : undefined, width: wide ? undefined : '100%', gap: spacing.xl }}>
         {workout?.kind === 'workout' ? (
-          <Card style={{ gap: spacing.sm }}>
-            <Text variant="heading">{workout.dayName}</Text>
-            <Text tone="muted">{t.workoutMeta(workout.exercises.length, workout.minutes)}</Text>
+          <WorkoutHero dayName={workout.dayName} meta={t.workoutMeta(workout.exercises.length, workout.minutes)}>
             {workout.exercises.map((e) => (
               <ListItem key={e.slug} title={e.name} subtitle={`${e.sets} × ${e.reps}`} onPress={() => router.push({ pathname: '/exercise/[slug]', params: { slug: e.slug } })} />
             ))}
@@ -76,7 +75,7 @@ function Today({ data }: { data: PlanData }) {
                 router.push('/workout');
               }}
             />
-          </Card>
+          </WorkoutHero>
         ) : workout?.kind === 'rest' ? (
           <Card style={{ gap: spacing.sm }}>
             <Text variant="heading">{t.restTitle}</Text>
