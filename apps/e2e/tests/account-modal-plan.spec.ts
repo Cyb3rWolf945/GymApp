@@ -51,6 +51,23 @@ test('step 1 shows "1 of 2" and the price line; signing up moves to step 2 in pl
   expect(seen.at(-1)?.props).toMatchObject({ placement: 'account_modal' });
 });
 
+test('selecting Basic: only Basic is selected, the line under the button follows it, and Checkout starts with Basic', async ({ page, context }) => {
+  const backend = await toModal(page);
+  await signUpWithPassword(page);
+  await expect(planDialog(page)).toBeVisible();
+  await page.getByRole('radio', { name: p.chosen('Basic', p.annual) }).click();
+  await expect(page.getByRole('radio', { name: p.chosen('Basic', p.annual) })).toBeChecked();
+  for (const other of ['Pro', 'Elite']) await expect(page.getByRole('radio', { name: p.chosen(other, p.annual) })).not.toBeChecked();
+  await expect(shown(page, p.selected)).toHaveCount(1); // the word, not only the colour
+  await expect(shown(page, p.popular)).toBeVisible(); // "Most popular" stays on Pro as a label
+  await expect(page.getByText(/Then \$59\.99\/year after the trial/).filter({ visible: true }).first()).toBeVisible();
+  const popup = context.waitForEvent('page');
+  await button(page, p.ctaTrial(7)).click();
+  await (await popup).close();
+  expect((backend.writesTo('/stripe-checkout')[0]?.body as { priceKey: string }).priceKey).toBe('basic_annual');
+  expect(events(backend).find((e) => e.name === 'checkout_start')?.props).toMatchObject({ price_key: 'basic_annual', placement: 'account_modal' });
+});
+
 test('Start free trial opens Checkout for the selected tier; the picker remembers it', async ({ page, context }) => {
   const backend = await toModal(page);
   await signUpWithPassword(page);

@@ -95,7 +95,6 @@ function PlanStep({ initial, onSkip, onDismiss, onCheckoutStart }: { initial: Pl
   const web = Platform.OS === 'web';
   const picker = usePlanPicker({
     placement: 'account_modal',
-    mode: 'select',
     initial,
     onCheckoutStart,
     // "See my plan first" (web); on phones there is no checkout here, so the same exit reads "Continue".

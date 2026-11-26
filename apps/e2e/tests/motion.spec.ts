@@ -18,6 +18,22 @@ async function atGoalStep(page: Page) {
   return backend;
 }
 
+/** The opacity the element is drawn with right now (its own times its parents'), or 0 when it is not on screen. */
+const opacityNow = (page: Page, text: string) =>
+  page.evaluate((t) => {
+    const el = Array.from(document.querySelectorAll('div')).find((d) => d.children.length === 0 && d.textContent === t);
+    if (!el) return 0;
+    let o = 1;
+    for (let n: Element | null = el; n; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+    return o;
+  }, text);
+
+/**
+ * Ends fully visible. This waits for it instead of reading the value once at the end of a fixed window: on a busy machine
+ * (CI, a slow phone) the screen mounts late, and the 250 ms fade then ends after the window, though nothing is wrong.
+ */
+const endsVisible = (page: Page, text: string) => expect.poll(() => opacityNow(page, text), { timeout: 5_000 }).toBe(1);
+
 /** The lowest opacity the element (and its parents) had over the next `ms`: below 1 means it was animating in. */
 const lowestOpacity = (page: Page, text: string, ms = 700) =>
   page.evaluate(
@@ -53,10 +69,10 @@ test('a step fades and slides in, and settles fully visible', async ({ page }) =
   await chip(page, o.goal.options.recomp).click();
   const seen = lowestOpacity(page, o.basics.title);
   await button(page, en.common.continue).click();
-  const { min, final, moved } = await seen;
+  const { min, moved } = await seen;
   expect(min, 'the title started faded').toBeLessThan(0.9);
   expect(moved, 'and travelled sideways').toBe(true);
-  expect(final, 'and ended fully visible').toBe(1);
+  await endsVisible(page, o.basics.title); // and ends fully visible
 });
 
 test('going back enters from the other side', async ({ page }) => {
@@ -66,8 +82,8 @@ test('going back enters from the other side', async ({ page }) => {
   await expect(page.getByText(o.basics.title, { exact: true }).first()).toBeVisible();
   const seen = lowestOpacity(page, o.goal.title);
   await button(page, en.common.back).click();
-  const { final } = await seen;
-  expect(final).toBe(1);
+  await seen;
+  await endsVisible(page, o.goal.title);
   await expect(page).toHaveURL(/\/onboarding\/goal/);
 });
 
@@ -87,9 +103,9 @@ test('Continue with nothing chosen shakes and the message fades in; the step sta
   const seen = lowestOpacity(page, en.onboarding.fieldErrors.goalType.missing, 600);
   await button(page, en.common.continue).click();
   await expect(page.getByRole('alert').filter({ hasText: en.onboarding.fieldErrors.goalType.missing })).toBeVisible();
-  const { min, final } = await seen;
+  const { min } = await seen;
   expect(min, 'the message faded in').toBeLessThan(0.9);
-  expect(final).toBe(1);
+  await endsVisible(page, en.onboarding.fieldErrors.goalType.missing);
   await expect(page).toHaveURL(/\/onboarding\/goal/);
   // Choosing something clears the way: Continue now moves on.
   await chip(page, o.goal.options.recomp).click();
@@ -131,9 +147,9 @@ test('switching tabs cross-fades the new screen in', async ({ page }) => {
   await expect(shown(page, en.home.title)).toBeVisible();
   const seen = lowestOpacity(page, en.home.planTitle, 700);
   await page.getByRole('tab', { name: en.home.tabs.plan, exact: true }).click();
-  const { min, final } = await seen;
+  const { min } = await seen;
   expect(min, 'the Plan screen faded in').toBeLessThan(0.9);
-  expect(final).toBe(1);
+  await endsVisible(page, en.home.planTitle);
 });
 
 /** The scale of the element as the browser draws it (1 = no transform). */

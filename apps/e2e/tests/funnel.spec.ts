@@ -42,7 +42,7 @@ test('landing → quiz → account → plan generated → preview → paywall �
 
   // Checkout opens in a new tab (Stripe's hosted page; here a stub). The webhook then grants the entitlement.
   const popup = context.waitForEvent('page');
-  await button(page, en.paywall.cta).first().click();
+  await button(page, en.paywall.ctaTrial(7)).click(); // one button, for the selected card (Pro, annual)
   const checkout = await popup;
   await expect(checkout.getByText('Stripe Checkout (test stub)')).toBeVisible();
   expect(backend.functionCalls).toContain('stripe-checkout');

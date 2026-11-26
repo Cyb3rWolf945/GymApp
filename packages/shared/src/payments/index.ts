@@ -5,3 +5,4 @@ export * from './entitlements.ts';
 export * from './revenue.ts';
 export * from './gating.ts';
 export * from './variants.ts';
+export * from './planSelection.ts';

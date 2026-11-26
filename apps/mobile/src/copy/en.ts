@@ -654,6 +654,7 @@ export const en = {
     terms: 'Terms',
     privacy: 'Privacy',
     chosen: (tier: string, interval: string) => `${tier}, ${interval}, selected`,
+    selected: 'Selected',
     subscribe: 'Subscribe',
     restore: 'Restore purchase',
     monthly: 'Monthly',
