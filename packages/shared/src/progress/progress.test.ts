@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MUSCLE_IDS } from '../catalog/catalog.ts';
 import { areaPath, scaleBars, scaleSeries, recentVolumes, toPath } from './chart.ts';
 import { type SetRecord, e1rmTrend, personalRecords, trendLifts } from './lifts.ts';
-import { HEAT_FULL_SETS, MAP_HEIGHT, MAP_REGIONS, MAP_WIDTH, UNMAPPED, type MuscleSet, ellipsePath, heat, muscleLabel, muscleStats, regionShapes } from './muscles.ts';
+import { HEAT_INTENSITY, HEAT_LEVEL_LABELS, type MuscleSet, heat, heatLevel, muscleLabel, muscleStats } from './muscles.ts';
 import { parseWeightKg, trendChange, weightTrend } from './weight.ts';
 
 describe('parseWeightKg', () => {
@@ -106,40 +106,25 @@ describe('muscleStats', () => {
     expect(muscleLabel('latissimus_dorsi')).toBe('Latissimus dorsi');
     expect(muscleLabel('quadriceps')).toBe('Quadriceps');
   });
-  it('maps weekly sets to heat between 0 and 1', () => {
+  it('a 30-day window is a weekly average: 30 days of 10 sets a week is 10 sets a week', () => {
+    const now = new Date('2026-11-26T12:00:00Z');
+    const day = (n: number) => new Date(now.getTime() - n * 86_400_000).toISOString();
+    const row = (n: number): MuscleSet => ({ slug: 'bench', name: 'Bench', loggedAt: day(n), muscles: [{ muscle: 'pectoralis_major', role: 'primary' }] });
+    const logged = Array.from({ length: 30 }, (_, i) => row(i + 0.5)); // one set a day
+    expect(muscleStats(logged, now, 7).get('pectoralis_major')!.sets).toBe(7);
+    expect(muscleStats(logged, now, 30).get('pectoralis_major')!.sets).toBe(7); // 30 sets over 30 days = 7 a week
+    expect(muscleStats(logged, now, 30).get('pectoralis_major')!.topExercises[0].sets).toBe(7);
+  });
+  it('bands weekly sets: 0, 1-4, 5-9, 10-20, more than 20', () => {
+    const cases: [number, number][] = [[-1, 0], [0, 0], [0.5, 1], [4, 1], [4.5, 1], [5, 2], [9.5, 2], [10, 3], [20, 3], [20.5, 4], [60, 4]];
+    for (const [sets, level] of cases) expect(heatLevel(sets), `${sets} sets`).toBe(level);
+    expect(HEAT_LEVEL_LABELS).toEqual(['0', '1–4', '5–9', '10–20', '20+']);
+  });
+  it('has a brighter intensity for every level (it still reads in greyscale)', () => {
+    expect(HEAT_INTENSITY).toHaveLength(HEAT_LEVEL_LABELS.length);
+    for (let i = 1; i < HEAT_INTENSITY.length; i++) expect(HEAT_INTENSITY[i]).toBeGreaterThan(HEAT_INTENSITY[i - 1]);
     expect(heat(0)).toBe(0);
-    expect(heat(HEAT_FULL_SETS / 2)).toBe(0.5);
-    expect(heat(HEAT_FULL_SETS * 3)).toBe(1);
-    expect(heat(-1)).toBe(0);
-  });
-});
-
-describe('muscle map geometry', () => {
-  it('only uses real muscle ids and keeps every shape inside the box', () => {
-    for (const regions of Object.values(MAP_REGIONS)) {
-      for (const r of regions) {
-        expect(MUSCLE_IDS as readonly string[]).toContain(r.muscle);
-        for (const s of regionShapes(r)) {
-          expect(s.cx - s.rx, r.muscle).toBeGreaterThanOrEqual(0);
-          expect(s.cx + s.rx, r.muscle).toBeLessThanOrEqual(MAP_WIDTH);
-          expect(s.cy - s.ry, r.muscle).toBeGreaterThanOrEqual(0);
-          expect(s.cy + s.ry, r.muscle).toBeLessThanOrEqual(MAP_HEIGHT);
-        }
-      }
-    }
-  });
-  it('mirrors paired muscles and draws centred ones once', () => {
-    const [pec] = MAP_REGIONS.front.filter((r) => r.muscle === 'pectoralis_major');
-    expect(regionShapes(pec).map((s) => s.cx)).toEqual([47, MAP_WIDTH - 47]);
-    const abs = MAP_REGIONS.front.find((r) => r.muscle === 'rectus_abdominis')!;
-    expect(regionShapes(abs)).toHaveLength(1);
-  });
-  it('lists the muscles the map cannot show instead of dropping them silently', () => {
-    expect([...UNMAPPED]).toEqual(['pectoralis_minor', 'transversus_abdominis']);
-    for (const id of UNMAPPED) expect(Object.values(MAP_REGIONS).flat().some((r) => r.muscle === id)).toBe(false);
-  });
-  it('builds a closed ellipse path', () => {
-    expect(ellipsePath({ cx: 10, cy: 20, rx: 4, ry: 6 })).toBe('M 6 20 a 4 6 0 1 0 8 0 a 4 6 0 1 0 -8 0 Z');
+    expect(heat(100)).toBe(1);
   });
 });
 
