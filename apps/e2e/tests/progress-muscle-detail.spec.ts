@@ -43,7 +43,8 @@ test('tapping Quadriceps opens the sheet: heat level, tiles, 8-week chart, top e
   await expect(dialog.getByText(d.setsWeek, { exact: true })).toBeVisible();
   await expect(dialog.getByText(d.last, { exact: true })).toBeVisible();
   await expect(dialog.getByText(d.status, { exact: true })).toBeVisible();
-  await expect(dialog.getByText(d.daysAgo(4), { exact: true })).toBeVisible();
+  // The fixture trains it "4 days ago" counted back from the current time (minus an hour), so between 00:00 and 01:00 UTC the calendar count is 5.
+  await expect(dialog.getByText(new RegExp(`^(${d.daysAgo(4)}|${d.daysAgo(5)})$`))).toBeVisible();
   await expect(dialog.getByText(d.statusNames.ready, { exact: true })).toBeVisible();
   await expect(dialog.getByText(d.statusNote, { exact: false })).toBeVisible();
 
@@ -160,4 +161,35 @@ test('a muscle drawn on both sides stays on the Back map, and the arrows step th
   await expect(page.locator('svg[aria-label="Muscle map, front view"]').filter({ visible: true })).toHaveCount(0);
   await sheet(page, nextName).getByTestId('muscle-prev').click();
   await expect(sheet(page, 'Trapezius')).toBeVisible();
+});
+
+test('the words in the three tiles stay inside their tile at 340 and 390 px, for a muscle trained yesterday', async ({ page }) => {
+  for (const width of [340, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const muscle of ['Trapezius', 'Deltoid anterior', 'Pectoralis major', 'Triceps brachii']) {
+      await progress(page); // a fresh Progress each time: the previous sheet is gone
+      if (muscle === 'Trapezius' || muscle === 'Pectoralis major' || muscle === 'Deltoid anterior') await chip(page, p.front).filter({ visible: true }).first().click();
+      else await chip(page, p.back).filter({ visible: true }).first().click();
+      await tapMuscle(page, muscle);
+      const dialog = sheet(page, muscle);
+      await expect(dialog).toBeVisible();
+      // Every text in a tile ends before its tile's edge (the status word used to stick out: "Recoverin").
+      const overflow = await dialog.evaluate((root) => {
+        const out: string[] = [];
+        for (const tile of Array.from(root.querySelectorAll('[aria-label]')).filter((e) => /^(Sets this week|Last trained|Status)/.test(e.getAttribute('aria-label') ?? ''))) {
+          const box = tile.getBoundingClientRect();
+          for (const el of Array.from(tile.querySelectorAll('*'))) {
+            if (!el.children.length && (el.textContent ?? '').trim()) {
+              const r = document.createRange();
+              r.selectNodeContents(el);
+              const t = r.getBoundingClientRect();
+              if (t.right > box.right - 1 || t.left < box.left) out.push(`${(el.textContent ?? '').trim()} (+${Math.round(t.right - box.right)} px)`);
+            }
+          }
+        }
+        return out;
+      });
+      expect(overflow, `${width} px, ${muscle}`).toEqual([]);
+    }
+  }
 });

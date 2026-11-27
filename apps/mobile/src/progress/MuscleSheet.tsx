@@ -42,6 +42,9 @@ function ago(days: number | null): string {
  * sets against a general guideline, the exercises that work it and what to train next. A bottom sheet on a phone, a
  * centred dialog from 600 px wide. The arrows step through the muscles of the view; the content cross-fades between them.
  */
+/** Wide enough for the longest word in a tile ("Recovering") at the compact size, with the tile's padding. */
+const TILE_MIN_WIDTH = 116;
+
 export function MuscleSheet({ muscle, view, period, muscleSets, onSelect, onClose }: Props) {
   const { colors, radius, spacing, minTapTarget } = useTheme();
   const router = useRouter();
@@ -133,10 +136,11 @@ export function MuscleSheet({ muscle, view, period, muscleSets, onSelect, onClos
 
           {detail.trained ? (
             <>
-              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <StatTile compact label={period === 7 ? d.setsWeek : d.setsWeek30} value={String(detail.sets)} unit={d.sets} countTo={detail.sets} />
-                <StatTile compact label={d.last} value={ago(days)} />
-                <StatTile compact label={d.status} value={d.statusNames[detail.status]} />
+              {/* One row when the three fit; on a narrow phone the last tile goes to the next row instead of being cut off. */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                <StatTile compact minWidth={TILE_MIN_WIDTH} label={period === 7 ? d.setsWeek : d.setsWeek30} value={String(detail.sets)} unit={d.sets} countTo={detail.sets} />
+                <StatTile compact minWidth={TILE_MIN_WIDTH} label={d.last} value={ago(days)} />
+                <StatTile compact minWidth={TILE_MIN_WIDTH} label={d.status} value={d.statusNames[detail.status]} />
               </View>
               <Text variant="small" tone="muted">{`${d.statusHints[detail.status]} ${d.statusNote}`}</Text>
 
