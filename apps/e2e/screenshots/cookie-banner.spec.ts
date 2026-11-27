@@ -16,3 +16,13 @@ test('cookie banner open', async ({ page }) => {
     await page.screenshot({ path: join(DIR, project, `banner-${name}.jpg`), type: 'jpeg', quality: 65 });
   }
 });
+
+test('cookie banner open, landscape phone', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await start(page);
+  const project = test.info().project.name;
+  mkdirSync(join(DIR, project), { recursive: true });
+  await page.goto('/onboarding/goal');
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: join(DIR, project, 'banner-landscape-quiz.jpg'), type: 'jpeg', quality: 65 });
+});
