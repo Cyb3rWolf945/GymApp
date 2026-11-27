@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import {
   HEAT_INTENSITY, HEAT_LEVEL_LABELS, type MapView, type MuscleId, type MuscleSet, type SetRecord, type WeightPoint,
-  e1rmTrend, muscleLabel, muscleStats, parseWeightKg, personalRecords, recentVolumes, trendChange, trendLifts, weightTrend,
+  e1rmTrend, muscleLabel, muscleStats, muscleView, parseWeightKg, personalRecords, recentVolumes, trendChange, trendLifts, weightTrend,
 } from '@gymapp/shared';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../../src/auth/AuthProvider';
@@ -11,11 +11,12 @@ import { FocusFade } from '../../../src/motion';
 import { en } from '../../../src/copy/en';
 import { fetchSets, fetchWeights, logWeight } from '../../../src/progress/api';
 import { MuscleMap, heatPaint } from '../../../src/progress/MuscleMap';
+import { MuscleSheet } from '../../../src/progress/MuscleSheet';
 import { Reveal, useFirstVisit } from '../../../src/motion';
 import { supabase } from '../../../src/supabase';
 import { useTheme } from '../../../src/theme';
 import { useWorkout } from '../../../src/workout/WorkoutProvider';
-import { BarChart, BottomSheet, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
+import { BarChart, Button, Card, Chip, EmptyState, LineChart, ListItem, ResponsiveGrid, Screen, ScreenSkeleton, Text, TextField, useToast } from '../../../src/ui';
 
 const t = en.home;
 const p = t.progress;
@@ -51,6 +52,12 @@ function ProgressTab() {
   const [lift, setLift] = useState<string | null>(null);
   const [view, setView] = useState<MapView>('front');
   const [selected, setSelected] = useState<MuscleId | null>(null);
+  // Choosing a muscle (a tap, or the sheet's arrows) also turns the map to the side that shows it.
+  const selectMuscle = (m: MuscleId) => {
+    setSelected(m);
+    const v = muscleView(m, view); // stay on the side being shown when it draws the muscle
+    if (v) setView(v);
+  };
   const [period, setPeriod] = useState<7 | 30>(7);
 
   const load = useCallback(async () => {
@@ -103,7 +110,6 @@ function ProgressTab() {
   const volumes = useMemo(() => recentVolumes(rows ?? []), [rows]);
   const stats = useMemo(() => muscleStats(sets.muscleSets, new Date(), period), [sets.muscleSets, period]);
   const trained = [...stats.values()].filter((s) => s.sets > 0).sort((a, b) => b.sets - a.sets);
-  const detail = selected ? stats.get(selected) : null;
 
   const saveWeight = async () => {
     const kg = parseWeightKg(weightText);
@@ -235,7 +241,7 @@ function ProgressTab() {
               <Chip label={p.period7} selected={period === 7} onPress={() => setPeriod(7)} />
               <Chip label={p.period30} selected={period === 30} onPress={() => setPeriod(30)} />
             </View>
-            <MuscleMap view={view} stats={stats} onSelect={setSelected} selected={selected} />
+            <MuscleMap view={view} stats={stats} onSelect={selectMuscle} selected={selected} />
             <View testID="heat-legend" accessible={false} importantForAccessibility="no-hide-descendants" style={{ gap: spacing.xs }}>
               <Text variant="small" tone="muted">{p.legendTitle}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs }}>
@@ -258,7 +264,7 @@ function ProgressTab() {
             {trained.length === 0 ? (
               <Text tone="muted">{period === 7 ? p.noSets : p.noSets30}</Text>
             ) : (
-              trained.map((s) => <ListItem key={s.muscle} title={muscleLabel(s.muscle)} subtitle={p.sets(s.sets)} onPress={() => setSelected(s.muscle)} />)
+              trained.map((s) => <ListItem key={s.muscle} title={muscleLabel(s.muscle)} subtitle={p.sets(s.sets)} onPress={() => selectMuscle(s.muscle)} />)
             )}
           </Card>
           </Reveal>
@@ -274,19 +280,7 @@ function ProgressTab() {
             ))}
           </Card>
         ) : null}
-      <BottomSheet visible={!!detail} onClose={() => setSelected(null)} title={selected ? muscleLabel(selected) : undefined} closeLabel={en.common.close}>
-        {detail ? (
-          <>
-            <Text>{`${period === 7 ? p.sheetWeekly : p.sheetWeekly30}: ${detail.sets > 0 ? p.sets(detail.sets) : period === 7 ? p.noSets : p.noSets30}`}</Text>
-            <Text>{`${p.sheetLast}: ${detail.lastTrained ? shortDate(detail.lastTrained) : p.sheetNever}`}</Text>
-            <Text variant="bodyStrong">{p.sheetTop}</Text>
-            {detail.topExercises.length === 0 ? <Text tone="muted">{p.sheetNoExercises}</Text> : null}
-            {detail.topExercises.map((e) => (
-              <ListItem key={e.slug} title={e.name} subtitle={p.sets(e.sets)} onPress={() => { setSelected(null); router.push({ pathname: '/exercise/[slug]', params: { slug: e.slug } }); }} />
-            ))}
-          </>
-        ) : null}
-      </BottomSheet>
+      <MuscleSheet muscle={selected} view={view} period={period} muscleSets={sets.muscleSets} onSelect={selectMuscle} onClose={() => setSelected(null)} />
     </Screen>
   );
 }

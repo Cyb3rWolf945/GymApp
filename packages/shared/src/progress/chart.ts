@@ -40,11 +40,12 @@ export interface Bar {
 
 /**
  * Bars for a series of non-negative values, all starting at the bottom of the box: the tallest fills the height (less
- * `pad` at the top), the rest are in proportion, and any value above zero is at least `minHeight` tall so it stays visible.
+ * `pad` at the top, or `ceiling` if that is taller), the rest are in proportion, and any value above zero is at least `minHeight` tall so it stays visible.
  */
-export function scaleBars(values: readonly number[], width: number, height: number, gap = 6, pad = 4, minHeight = 3): Bar[] {
+export function scaleBars(values: readonly number[], width: number, height: number, gap = 6, pad = 4, minHeight = 3, ceiling = 0): Bar[] {
   if (values.length === 0) return [];
-  const max = Math.max(...values.map((v) => Math.max(0, v)));
+  // `ceiling` lets another thing share the scale (a reference band that is taller than every bar).
+  const max = Math.max(ceiling, ...values.map((v) => Math.max(0, v)));
   const barWidth = Math.max(2, (width - gap * (values.length - 1)) / values.length);
   const inner = height - pad;
   return values.map((v, i) => {
