@@ -9,7 +9,14 @@ test.use({ reducedMotion: 'no-preference' });
 const tab = (page: import('@playwright/test').Page, name: string) => page.getByRole('tab', { name, exact: true });
 
 test('with animations on: sign in, Today, Plan, Progress and the plan preview all finish and show their content', async ({ page }) => {
-  await signedInWithPlan(page, { fixedTime: false });
+  // This test runs on the real clock (animations need it), so make today a training day: the sample plan trains on Mondays and
+  // Thursdays, and on any other weekday Today shows the rest card, not "Start workout".
+  const backend = await signedInWithPlan(page, { fixedTime: false });
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const today = (new Date().getDay() + 6) % 7;
+  const profile = backend.state.profile as { onboarding: Record<string, unknown> };
+  profile.onboarding = { ...profile.onboarding, preferredDays: [days[today], days[(today + 3) % 7]] };
+  await page.reload();
 
   // Today: the greeting, the workout card and the meals card arrive.
   await expect(shown(page, en.home.title)).toBeVisible();
