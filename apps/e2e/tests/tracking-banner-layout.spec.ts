@@ -38,3 +38,24 @@ test('with the banner open, the Experience answer can be clicked, and Reject sti
   await expect(page.getByText(o.experience.title, { exact: false }).filter({ visible: true }).first()).toBeVisible();
   await expect(banner(page)).toHaveCount(0); // the choice is remembered
 });
+
+test('on a phone held sideways (844 x 390) the banner is compact and the quiz question and first answer stay reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await start(page);
+  await page.goto('/onboarding/goal');
+  await bottomOfBanner(page);
+  const box = (await banner(page).boundingBox())!;
+  expect(box.height, 'a compact row, not more than a third of the screen').toBeLessThan(390 / 3);
+  // The policy link, Reject and Accept are all there.
+  await expect(page.getByRole('link', { name: en.tracking.privacy }).first()).toBeVisible();
+  await expect(button(page, en.tracking.reject)).toBeVisible();
+  await expect(button(page, en.tracking.accept)).toBeVisible();
+  // The question is reachable (by scrolling if need be) and the first answer can be clicked, without dismissing the banner.
+  const title = page.getByText(o.goal.title, { exact: true }).filter({ visible: true }).first();
+  // Without scrolling: the footer scrolls with the content on a short screen, so the question is already on screen.
+  await expect(title).toBeInViewport({ ratio: 1 });
+  await chip(page, o.goal.options.cut).scrollIntoViewIfNeeded();
+  await chip(page, o.goal.options.cut).click();
+  await expect(chip(page, o.goal.options.cut)).toBeChecked();
+  await expect(banner(page)).toBeVisible(); // still open: nothing had to be dismissed
+});

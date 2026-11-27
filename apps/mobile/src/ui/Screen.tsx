@@ -1,5 +1,5 @@
 import type { ComponentRef, ReactNode, Ref } from 'react';
-import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, View, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH, type ContentVariant, SCREEN_PADDING, useBreakpoint, useTheme } from '../theme';
@@ -25,6 +25,9 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
+/** Below this window height (px) a screen's footer scrolls with its content instead of staying pinned. */
+export const SHORT_SCREEN_HEIGHT = 500;
+
 /**
  * The page frame: dark background, safe areas, and content centred with a maximum width and padding that grows with
  * the breakpoint. On phones (`compact`) the content is as wide as the screen with the same 24 px padding screens
@@ -33,6 +36,8 @@ interface Props {
 export function Screen({ variant = 'reading', scroll = true, center = false, framed = false, header, footer, keyboardTaps = false, scrollRef, children, style }: Props) {
   const { colors, radius, spacing } = useTheme();
   const bp = useBreakpoint();
+  // A short screen (a phone held sideways): a pinned footer would take most of the height, so it scrolls with the content instead.
+  const short = useWindowDimensions().height < SHORT_SCREEN_HEIGHT;
   const card = framed && bp !== 'compact';
   const width = { width: '100%', maxWidth: CONTENT_MAX_WIDTH[variant] } as const;
   const inner = (
@@ -65,11 +70,12 @@ export function Screen({ variant = 'reading', scroll = true, center = false, fra
           keyboardShouldPersistTaps={keyboardTaps ? 'handled' : undefined}
         >
           {inner}
+          {short ? edge(footer, false) : null}
         </ScrollView>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: center ? 'center' : 'flex-start' }}>{inner}</View>
       )}
-      {edge(footer, false)}
+      {short && scroll ? null : edge(footer, false)}
     </SafeAreaView>
   );
 }
